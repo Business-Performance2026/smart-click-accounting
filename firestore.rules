@@ -51,9 +51,9 @@ service cloud.firestore {
 
     // Business data
     match /{col}/{id} {
-      allow read: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments'];
-      allow create, update: if canWrite() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments'];
-      allow delete: if col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments']
+      allow read: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns'];
+      allow create, update: if canWrite() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns'];
+      allow delete: if col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns']
         && (isAdmin() || (col == 'payments' && canWrite()));
     }
   }
