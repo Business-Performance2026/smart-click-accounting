@@ -23,7 +23,7 @@ a{color:var(--pri)}
 #side a.on{background:#20384f;color:#fff}
 #side .ic{width:22px;text-align:center}
 #scrim{display:none}
-main{flex:1;min-width:0;padding:20px 26px 100px;max-width:1180px}
+main{flex:1;min-width:0;padding:20px 28px 100px}
 #bottom{display:none}
 #topbar{display:none}
 body.authmode #side,body.authmode #bottom,body.authmode #topbar,body.authmode #banner{display:none!important}
@@ -571,7 +571,7 @@ function monthlyChart(){
   for(let i=5;i>=0;i--){const d=new Date(base);d.setMonth(d.getMonth()-i);months.push({key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,lbl:AR_MON[d.getMonth()]})}
   const sum=(arr,k)=>arr.filter(x=>(x.date||'').startsWith(k)).reduce((a,x)=>a+num(x.total),0);
   months.forEach(m=>{m.s=sum(S.sales,m.key);m.p=sum(S.purchases,m.key)});
-  const W=Math.round(Math.min(760,Math.max(300,(window.innerWidth>860?Math.min(window.innerWidth-236,1180)-60:window.innerWidth-58)))),H=W<480?200:230,L=40,R=6,T=12,B=30,ih=H-T-B,iw=W-L-R;
+  const W=Math.round(Math.min(1500,Math.max(300,(window.innerWidth>860?window.innerWidth-236-90:window.innerWidth-58)))),H=W<480?200:230,L=40,R=6,T=12,B=30,ih=H-T-B,iw=W-L-R;
   const mx=niceMax(Math.max(...months.map(m=>Math.max(m.s,m.p))));
   const y=v=>T+ih-(v/mx)*ih;const gw=iw/months.length;const bw=Math.min(22,gw*0.32);
   const bar=(x,v,c)=>{const h=Math.max(0,(v/mx)*ih);if(h<0.5)return '';const r=Math.min(4,h,bw/2);const y0=T+ih;return `<path d="M${x},${y0}V${y0-h+r}Q${x},${y0-h} ${x+r},${y0-h}H${x+bw-r}Q${x+bw},${y0-h} ${x+bw},${y0-h+r}V${y0}Z" fill="${c}"/>`};
