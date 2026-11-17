@@ -244,7 +244,7 @@ const norm=s=>String(s??'').trim().toLowerCase();
 const nowIso=()=>new Date().toISOString();
 
 let db=null,RO=false,ADMIN=false,MYID=null,ROLE=null,AUTHU=null,NODB=false;const MCP=true,downloads=true;
-const COLS=['customers','suppliers','products','quotes','sales','purchases','payments','sreturns','preturns'];
+const COLS=['customers','suppliers','products','quotes','sales','purchases','payments','sreturns','preturns','appointments'];
 const S={settings:{},ready:new Set(),settingsReady:false,err:null,slow:false};
 COLS.forEach(c=>{S[c]=[];S['_'+c]=new Map()});
 let ver=0;
@@ -299,7 +299,7 @@ const EN={
 'اسم جديد — سيُضاف كعميل جديد عند الحفظ':'New name — will be added as a new customer on save','اسم جديد — سيُضاف كمورد جديد عند الحفظ':'New name — will be added as a new supplier on save','الرصيد الحالي':'Current balance','التوقيع':'Signature','الختم':'Stamp',
 'يتم عرض أحدث 300، استخدم البحث للوصول للأقدم.':'Showing the latest 300; use search for older ones.','يتم عرض أول 400، استخدم البحث.':'Showing the first 400; use search.','قبض':'Receipt','تحديث السجلات الموجودة بنفس الاسم':'Update existing records with the same name','أو الكود':'or code','تم العثور على':'Found','صف. طابق الأعمدة:':'rows. Map the columns:',
 'الكمية غير كافية في المخزون لـ:':'Not enough stock for:','هل تريد الحفظ رغم ذلك؟':'Save anyway?','الإجمالي الجديد':'The new total','أقل من المبلغ المدفوع على الفاتورة':'is less than the amount paid on the invoice','هل تريد تخفيض الدفعة ليساوي الإجمالي؟ إذا اخترت الإبقاء، يُحسب الفرق':'Reduce the payment to match the total? If you keep it, the difference','رصيداً لصالح':'stays as credit for','المبلغ المدفوع':'The amount paid','أكبر من إجمالي الفاتورة':'is more than the invoice total','تعديل المدفوع ليساوي الإجمالي؟':'Change paid to equal the total?','تعديل إلى':'Change to','المبلغ':'The amount','أكبر من المتبقي على الفاتورة':'is more than the balance due','سيُحسب رصيداً زائداً. عدّل المبلغ أو اضغط':'will count as overpayment. Edit the amount or press','مبلغ زائد (رصيد لصالح العميل)':'Overpaid (customer credit)','مبلغ زائد (رصيد لصالح المورد)':'Overpaid (supplier credit)','الفرق':'the difference',
-'سند قبض ':'Receipt ','مرتجع المبيعات':'Sales returns','مرتجع المشتريات':'Purchase returns','مرتجعات المبيعات':'Sales returns','مرتجعات المشتريات':'Purchase returns','مرتجع مبيعات':'Sales return','مرتجع مشتريات':'Purchase return','مرتجع مبيعات جديد':'New sales return','مرتجع مشتريات جديد':'New purchase return','تعديل مرتجع مبيعات':'Edit sales return','تعديل مرتجع مشتريات':'Edit purchase return','خصم من الرصيد':'Credited','تم رد المبلغ':'Refunded','المالية':'Finance','الخزائن والبنوك':'Cash & banks','سندات القبض':'Receipts','سندات الصرف':'Payments','المصروفات':'Expenses','الفواتير':'Invoices','السندات':'Vouchers','ر.ع.':'OMR','من زر المشاركة (Share) في أعلى صفحة البرنامج على claude.ai، ادعُ كل موظف ببريده الإلكتروني بصلاحية':'Use the Share button at the top of the app page on claude.ai to invite each employee by email as','محرر (Editor)':'Editor','ليتمكن من إضافة الفواتير. من تتم دعوته بصلاحية':'so they can add invoices. Anyone invited as','مشاهد (Viewer)':'Viewer','يمكنه الاطلاع فقط.':'can only view.','إرفاق تفاصيل كل الفواتير مع الكشف':'Attach every invoice\'s details with the statement','الملف كبير جداً للإرسال. جرّب كشفاً بدون تفاصيل الفواتير.':'The file is too large to send. Try the statement without invoice details.','رفض Gmail الإرسال: ':'Gmail refused to send: ','إعدادات مؤسستك تمنع الإرسال عبر Gmail من هنا.':'Your organization\'s policy blocks sending via Gmail here.','📧 آخر إرسال بالإيميل:':'📧 Last emailed:','سند صرف ':'Payment ','رصيد حسابكم':'Your account balance','السيد/':'Dear',
+'سند قبض ':'Receipt ','فواتير المرتجعات':'Returns','إدارة العملاء':'Manage customers','المواعيد والزيارات':'Appointments & visits','مرتجع المبيعات':'Sales returns','مرتجع المشتريات':'Purchase returns','مرتجعات المبيعات':'Sales returns','مرتجعات المشتريات':'Purchase returns','مرتجع مبيعات':'Sales return','مرتجع مشتريات':'Purchase return','مرتجع مبيعات جديد':'New sales return','مرتجع مشتريات جديد':'New purchase return','تعديل مرتجع مبيعات':'Edit sales return','تعديل مرتجع مشتريات':'Edit purchase return','خصم من الرصيد':'Credited','تم رد المبلغ':'Refunded','المالية':'Finance','الخزائن والبنوك':'Cash & banks','سندات القبض':'Receipts','سندات الصرف':'Payments','المصروفات':'Expenses','الفواتير':'Invoices','السندات':'Vouchers','ر.ع.':'OMR','من زر المشاركة (Share) في أعلى صفحة البرنامج على claude.ai، ادعُ كل موظف ببريده الإلكتروني بصلاحية':'Use the Share button at the top of the app page on claude.ai to invite each employee by email as','محرر (Editor)':'Editor','ليتمكن من إضافة الفواتير. من تتم دعوته بصلاحية':'so they can add invoices. Anyone invited as','مشاهد (Viewer)':'Viewer','يمكنه الاطلاع فقط.':'can only view.','إرفاق تفاصيل كل الفواتير مع الكشف':'Attach every invoice\'s details with the statement','الملف كبير جداً للإرسال. جرّب كشفاً بدون تفاصيل الفواتير.':'The file is too large to send. Try the statement without invoice details.','رفض Gmail الإرسال: ':'Gmail refused to send: ','إعدادات مؤسستك تمنع الإرسال عبر Gmail من هنا.':'Your organization\'s policy blocks sending via Gmail here.','📧 آخر إرسال بالإيميل:':'📧 Last emailed:','سند صرف ':'Payment ','رصيد حسابكم':'Your account balance','السيد/':'Dear',
 'اربط Gmail أولاً: من claude.ai ← الإعدادات ← Connectors.':'Connect Gmail first: claude.ai → Settings → Connectors.','انتهت صلاحية ربط Gmail. أعد ربطه من claude.ai ← الإعدادات ← Connectors.':'Gmail connection expired. Reconnect it in claude.ai → Settings → Connectors.','الإرسال يحتاج موافقتك على استخدام Gmail. افتح البرنامج في claude.ai ووافق عند الطلب.':'Sending needs your approval to use Gmail. Open the app in claude.ai and allow it when asked.','لم يتأكد الإرسال. تحقق من مجلد المرسل في Gmail قبل المحاولة مرة أخرى.':'Sending was not confirmed. Check your Gmail Sent folder before trying again.','أدخل بريداً إلكترونياً صحيحاً':'Enter a valid email address','الإيميل غير متاح في هذا العرض':'Email is not available in this view','تعذر الإرسال':'Could not send','آخر إرسال بالإيميل:':'Last emailed:',
 };
 // Arabic-letter-aware phrase replacement (longest first)
@@ -345,17 +345,22 @@ const T=(ar,en)=>LANG==='en'?en:ar;
 /* ================= labels ================= */
 const NAV=[
  ['dashboard','الرئيسية','🏠'],
- ['sales','فواتير المبيعات','🧾'],
- ['quotes','عروض الأسعار','📝'],
- ['sreturns','مرتجع المبيعات','↩️'],
- ['purchases','فواتير المشتريات','📥'],
- ['preturns','مرتجع المشتريات','↪️'],
+ ['salesg','المبيعات','🛒','h'],
+ ['sales','فواتير المبيعات','🧾','s'],
+ ['sreturns','فواتير المرتجعات','↩️','s'],
+ ['quotes','عروض الأسعار','📝','s'],
+ ['purg','المشتريات','📥','h'],
+ ['purchases','فواتير المشتريات','🧾','s'],
+ ['preturns','فواتير المرتجعات','↪️','s'],
+ ['custg','العملاء','👥','h'],
+ ['customers','إدارة العملاء','📇','s'],
+ ['+customer','إضافة عميل','➕','s'],
+ ['appointments','المواعيد والزيارات','📅','s'],
  ['finance','المالية','💰','h'],
  ['accounts','الخزائن والبنوك','🏦','s'],
  ['receipts','سندات القبض','💵','s'],
  ['payouts','سندات الصرف','💸','s'],
  ['expenses','المصروفات','🧮','s'],
- ['customers','العملاء','👥'],
  ['suppliers','الموردين','🏭'],
  ['products','الأصناف والمخزون','📦'],
  ['reports','التقارير','📊'],
@@ -509,6 +514,7 @@ function navHtml(cur){
       continue;
     }
     if(f==='s'){if(!open)continue}else grp=null;
+    if(k==='+customer'){if(!RO)out+=`<a href="#" class="sub" data-act="editParty" data-col="customers"><span class="ic">${ic}</span>${t}</a>`;continue}
     out+=`<a href="#${k}" class="${cur===k?'on':''}${f==='s'?' sub':''}" data-act="nav" data-r="${k}"><span class="ic">${ic}</span>${t}</a>`;
   }
   return out;
@@ -517,7 +523,7 @@ function renderShell(){
   const cur=route;
   $('#side').innerHTML=`<div class="brand">${esc(ST().company||'نظام الإدارة والمحاسبة')}<small>المبيعات · المشتريات · المخزون</small></div>`+navHtml(cur)+`<a href="#" data-act="lang" translate="no" style="margin-top:14px;border-top:1px solid #24384c;border-radius:0;padding-top:14px"><span class="ic">🌐</span>${LANG==='en'?'العربية':'English'}</a>`;
   $('#bottom').innerHTML=BOTTOM.map(([k,t,i])=>k==='more'?`<a href="#" data-act="openSide"><span>${i}</span>${t}</a>`:`<a href="#${k}" class="${cur===k?'on':''}" data-act="nav" data-r="${k}"><span>${i}</span>${t}</a>`).join('');
-  const n=NAV.find(x=>x[0]===cur);$('#tb-title').textContent=n?n[1]:'';
+  const n=NAV.find(x=>x[0]===cur);$('#tb-title').textContent=isRet(cur)?KIND[cur].many:n?n[1]:'';
   let b='';
   if(NODB) b=`<div class="banner">${T('تعذر الاتصال بـ Firebase. تحقق من ملف firebase-config.js والاتصال بالإنترنت.','Could not connect to Firebase. Check firebase-config.js and your connection.')}</div>`;
   else if(S.err) b=`<div class="banner">${esc(S.err)}</div>`;
@@ -551,6 +557,137 @@ function render(fromData){
 const VIEWS={},AFTER={};
 const loading=()=>!allReady()&&!NODB?`<div class="muted" style="font-size:13px;margin-bottom:8px"><span class="spin"></span> جارِ مزامنة البيانات…</div>`:'';
 const addBtn=(act,txt,extra='')=>RO?'':`<button class="btn pri" data-act="${act}" ${extra}>+ ${txt}</button>`;
+
+/* ---------- appointments & visits ---------- */
+const AP_TYPES={site:['زيارة موقع','Site visit','📍','#eb6834','#fdeee6'],office:['زيارة العميل للمكتب','Customer at office','🏢','#2a78d6','#e7f0fb'],other:['أخرى','Other','📌','#6d4fc2','#efebfa']};
+const AR_DAYS=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'],EN_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const dayName=d=>{const x=new Date(d+'T00:00:00');return (LANG==='en'?EN_DAYS:AR_DAYS)[x.getDay()]};
+const fTime=t=>{if(!t)return '';const [h,m]=t.split(':').map(Number);const h12=((h+11)%12)+1;return `${h12}:${String(m).padStart(2,'0')} ${h<12?T('ص','AM'):T('م','PM')}`};
+const apType=a=>AP_TYPES[a.type]||AP_TYPES.other;
+const staffName=uid=>{if(!uid)return '';const x=STF.staff.find(s=>s.id===uid);return x?(x.name||x.email||''):(uid===MYID&&AUTHU?AUTHU.email:'')};
+const mapsLink=a=>a.mapUrl||(a.location?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.location)}`:'');
+function apStatus(a){
+  if(a.status==='done')return [T('تمت','Done'),'b-green'];
+  if(a.status==='cancelled')return [T('ملغي','Cancelled'),'b-red'];
+  const t=today();if(a.date<t)return [T('فائت','Missed'),'b-amber'];
+  if(a.date===t)return [T('اليوم','Today'),'b-pri'];
+  return [T('مجدول','Scheduled'),'b-pri'];
+}
+function apItem(a,showDate){
+  const ty=apType(a);const [st,cls]=apStatus(a);
+  return `<div class="item" data-act="openSub" data-type="appt" data-id="${a.id}"><div style="text-align:center;min-width:58px"><div style="font-weight:700;font-size:14px" class="num">${esc(fTime(a.time)||'—')}</div>${showDate?`<div class="muted" style="font-size:11.5px">${fdate(a.date).slice(0,5)}</div>`:''}</div>
+   <span class="acc-i" style="width:36px;height:36px;border-radius:10px;background:${ty[4]};font-size:17px">${ty[2]}</span>
+   <div class="m"><div class="t" translate="no" dir="auto">${esc(a.customerName||'—')}</div><div class="d">${T(ty[0],ty[1])}${a.location?` · <span translate="no">${esc(a.location)}</span>`:''}${a.assignedTo?` · 👤 <span translate="no" dir="auto">${esc(staffName(a.assignedTo).split('@')[0])}</span>`:''}</div></div>
+   <span class="badge ${cls}">${st}</span></div>`;
+}
+VIEWS.appointments=()=>{
+  const t=today();const f=Q.appt_f||'up';const ty=Q.apty_f||'all';const mine=Q.apmine_f==='1';
+  let arr=[...S.appointments];
+  if(ty!=='all')arr=arr.filter(a=>(a.type||'other')===ty);
+  if(mine)arr=arr.filter(a=>a.assignedTo===MYID);
+  const q=norm(Q.appointments);if(q)arr=arr.filter(a=>norm(a.customerName).includes(q)||norm(a.location).includes(q)||norm(a.notes).includes(q));
+  const late=arr.filter(a=>a.status!=='done'&&a.status!=='cancelled'&&a.date<t).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+  if(f==='up')arr=arr.filter(a=>a.status!=='done'&&a.status!=='cancelled'&&a.date>=t);
+  else if(f==='today')arr=arr.filter(a=>a.date===t);
+  else if(f==='done')arr=arr.filter(a=>a.status==='done');
+  else if(f==='late')arr=late;
+  const asc=f==='up'||f==='today';
+  arr.sort((a,b)=>asc?(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')):(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
+  const groups=new Map();arr.slice(0,300).forEach(a=>{if(!groups.has(a.date))groups.set(a.date,[]);groups.get(a.date).push(a)});
+  const dl=d=>d===t?T('اليوم','Today'):d===addDays(t,1)?T('غداً','Tomorrow'):d===addDays(t,-1)?T('أمس','Yesterday'):'';
+  const todayN=S.appointments.filter(a=>a.date===t&&a.status!=='cancelled').length,weekN=S.appointments.filter(a=>a.date>=t&&a.date<=addDays(t,6)&&a.status!=='done'&&a.status!=='cancelled').length;
+  return `${loading()}<div class="head"><h1>${T('المواعيد والزيارات','Appointments & visits')}</h1>${RO?'':`<button class="btn pri" data-act="newAppt">+ ${T('موعد جديد','New appointment')}</button>`}</div>
+  ${S.rulesOld&&!S.appointments.length?'':''}
+  <div class="grid g3" style="margin-bottom:12px"><div class="stat"><div class="k">${T('مواعيد اليوم','Today')}</div><div class="v num">${todayN}</div></div><div class="stat"><div class="k">${T('خلال 7 أيام','Next 7 days')}</div><div class="v num">${weekN}</div></div><div class="stat" data-act="filt" data-k="appt" data-v="late" style="cursor:pointer"><div class="k">${T('فائتة لم تُغلق','Missed, not closed')}</div><div class="v num ${late.length?'neg':''}">${late.length}</div></div></div>
+  <div class="search"><input id="q-appointments" placeholder="${T('بحث بالعميل أو الموقع…','Search customer or location…')}" value="${esc(Q.appointments||'')}" data-q="appointments"></div>
+  <div class="tabs">${[['up',T('القادمة','Upcoming')],['today',T('اليوم','Today')],['late',T('الفائتة','Missed')],['done',T('المنجزة','Done')],['all',T('الكل','All')]].map(([v,x])=>`<button class="${f===v?'on':''}" data-act="filt" data-k="appt" data-v="${v}">${x}</button>`).join('')}</div>
+  <div class="tabs">${[['all',T('كل الأنواع','All types')],['site','📍 '+T('زيارات المواقع','Site visits')],['office','🏢 '+T('في المكتب','At office')]].map(([v,x])=>`<button class="${ty===v?'on':''}" data-act="filt" data-k="apty" data-v="${v}">${x}</button>`).join('')}<button class="${mine?'on':''}" data-act="filt" data-k="apmine" data-v="${mine?'0':'1'}">👤 ${T('مواعيدي','Mine')}</button></div>
+  ${groups.size?[...groups].map(([d,list])=>`<h3 style="margin:14px 2px 8px;font-size:14px">${dl(d)?`<span style="color:var(--pri)">${dl(d)}</span> · `:''}${dayName(d)} <span class="num muted" style="font-weight:500">${fdate(d)}</span></h3><div class="list">${list.map(a=>apItem(a,false)).join('')}</div>`).join(''):`<div class="list"><div class="empty">${T('لا توجد مواعيد','No appointments')}</div></div>`}`;
+};
+function apptView(id){
+  const a=S._appointments.get(id);if(!a)return `${backBtn}<div class="empty">${allReady()?T('غير موجود','Not found'):'<span class="spin"></span>'}</div>`;
+  const ty=apType(a);const [st,cls]=apStatus(a);const c=a.customerId?S._customers.get(a.customerId):null;const ml=mapsLink(a);
+  const open=a.status!=='done'&&a.status!=='cancelled';
+  return `<div class="head">${backBtn}<h2>${ty[2]} ${T(ty[0],ty[1])}</h2><span class="badge ${cls}">${st}</span></div>
+  <div class="btns" style="margin-bottom:12px">
+   ${!RO&&open?`<button class="btn pri" data-act="doneAppt" data-id="${id}">✓ ${T('تمت الزيارة','Mark done')}</button>`:''}
+   ${RO?'':`<button class="btn" data-act="editAppt" data-id="${id}">✏️ ${T('تعديل','Edit')}</button>`}
+   ${c&&c.phone&&open?`<button class="btn" data-act="waAppt" data-id="${id}">💬 ${T('تذكير واتساب','WhatsApp reminder')}</button>`:''}
+   ${ml?`<a class="btn" href="${esc(ml)}" target="_blank" rel="noopener">🗺️ ${T('الخريطة','Map')}</a>`:''}
+   <button class="btn" data-act="icsAppt" data-id="${id}">📆 ${T('إضافة للتقويم','Add to calendar')}</button>
+   ${RO?'':`<button class="btn" data-act="newAppt" data-follow="${id}">↻ ${T('موعد متابعة','Follow-up')}</button>`}
+   ${!RO&&open?`<button class="btn red" data-act="cancelAppt" data-id="${id}">${T('إلغاء الموعد','Cancel')}</button>`:''}
+   ${!RO&&ADMIN?`<button class="btn red" data-act="delAppt" data-id="${id}">${T('حذف','Delete')}</button>`:''}
+  </div>
+  <div class="card"><div class="kv">
+   <span>${T('العميل','Customer')}</span><span translate="no">${c?`<a href="#" data-act="openSub" data-type="party" data-col="customers" data-id="${c.id}">${esc(a.customerName)}</a>`:esc(a.customerName||'—')}${c&&c.phone?` · <span class="num">${esc(c.phone)}</span>`:''}</span>
+   <span>${T('الموعد','When')}</span><span>${dayName(a.date)} <span class="num">${fdate(a.date)}</span> · <span class="num">${esc(fTime(a.time))}</span>${a.duration?` · ${a.duration} ${T('دقيقة','min')}`:''}</span>
+   ${a.location?`<span>${T('الموقع','Location')}</span><span translate="no">${esc(a.location)}</span>`:''}
+   ${a.assignedTo?`<span>${T('المسؤول','Assigned to')}</span><span translate="no" dir="auto">${esc(staffName(a.assignedTo))}</span>`:''}
+   ${a.notes?`<span>${T('ملاحظات','Notes')}</span><span translate="no" style="white-space:pre-wrap">${esc(a.notes)}</span>`:''}
+   ${a.result?`<span>${T('نتيجة الزيارة','Outcome')}</span><span translate="no" style="white-space:pre-wrap">${esc(a.result)}</span>`:''}
+  </div></div>
+  ${c?`<div class="card"><h3>${T('مواعيد أخرى لهذا العميل','Other appointments with this customer')}</h3><div class="list" style="border:0">${S.appointments.filter(x=>x.customerId===c.id&&x.id!==id).sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time)).slice(0,10).map(x=>apItem(x,true)).join('')||`<div class="empty">${T('لا يوجد','None')}</div>`}</div></div>`:''}`;
+}
+function editAppt(o){
+  const base=o.id?{...S._appointments.get(o.id)}:{type:'site',date:today(),time:'10:00',duration:60,assignedTo:MYID||'',customerName:'',location:'',notes:''};
+  if(o.follow){const f=S._appointments.get(o.follow);if(f)Object.assign(base,{customerId:f.customerId,customerName:f.customerName,type:f.type,location:f.location,mapUrl:f.mapUrl||'',assignedTo:f.assignedTo,date:addDays(today(),7),notes:T('متابعة','Follow-up')})}
+  if(o.customer){const c=S._customers.get(o.customer);if(c){base.customerId=c.id;base.customerName=c.name;base.location=c.address||''}}
+  const staffOpts=STF.staff.length?STF.staff:[{id:MYID,email:AUTHU&&AUTHU.email||''}];
+  openModal(`<div data-keep><h3>📅 ${o.id?T('تعديل الموعد','Edit appointment'):T('موعد جديد','New appointment')}</h3><div class="grid g2 f">
+   <label style="grid-column:1/-1">${T('العميل *','Customer *')}<input id="ap-cust" list="dl-customers" value="${esc(base.customerName||'')}" autocomplete="off" dir="auto"></label>
+   <label style="grid-column:1/-1">${T('نوع الموعد','Type')}<select id="ap-type">${Object.entries(AP_TYPES).map(([k,v])=>`<option value="${k}" ${base.type===k?'selected':''}>${v[2]} ${T(v[0],v[1])}</option>`).join('')}</select></label>
+   <label>${T('التاريخ','Date')}<input type="date" id="ap-date" value="${esc(base.date)}"></label>
+   <label>${T('الوقت','Time')}<input type="time" id="ap-time" value="${esc(base.time||'')}"></label>
+   <label>${T('المدة','Duration')}<select id="ap-dur">${[15,30,45,60,90,120,180,240].map(m=>`<option value="${m}" ${num(base.duration)===m?'selected':''}>${m<60?m+' '+T('دقيقة','min'):(m/60)+' '+T('ساعة','h')}</option>`).join('')}</select></label>
+   <label>${T('المسؤول','Assigned to')}<select id="ap-who"><option value="">—</option>${staffOpts.map(x=>`<option value="${esc(x.id)}" ${x.id===base.assignedTo?'selected':''}>${esc(x.name||x.email||x.id)}</option>`).join('')}</select></label>
+   <label style="grid-column:1/-1" id="ap-locw">${T('الموقع / العنوان','Location / address')}<input id="ap-loc" value="${esc(base.location||'')}" dir="auto" placeholder="${T('مثال: الخوض، المبنى 12','e.g. Al Khoudh, building 12')}"></label>
+   <label style="grid-column:1/-1" id="ap-mapw">${T('رابط خرائط Google (اختياري)','Google Maps link (optional)')}<input id="ap-map" value="${esc(base.mapUrl||'')}" dir="ltr" placeholder="https://maps.app.goo.gl/…"></label>
+   <label style="grid-column:1/-1">${T('ملاحظات / الغرض من الزيارة','Notes / purpose')}<textarea id="ap-notes">${esc(base.notes||'')}</textarea></label>
+  </div><div class="btns" style="margin-top:14px;justify-content:flex-end"><button class="btn" data-act="closeModal">${T('إلغاء','Cancel')}</button><button class="btn pri" data-act="saveAppt" data-id="${o.id||''}">${T('حفظ','Save')}</button></div></div>`);
+  const sync=()=>{const site=$('#ap-type').value==='site';$('#ap-mapw').classList.toggle('hide',!site)};$('#ap-type').onchange=sync;sync();
+  $('#ap-cust').onchange=()=>{const c=partyByName('customers',$('#ap-cust').value);if(c&&c.address&&!$('#ap-loc').value)$('#ap-loc').value=c.address};
+}
+async function saveAppt(id){
+  const name=$('#ap-cust').value.trim();if(!name){toast(T('اختر العميل','Choose the customer'));return}
+  const date=$('#ap-date').value;if(!date){toast(T('اختر التاريخ','Choose the date'));return}
+  const V={type:$('#ap-type').value,date,time:$('#ap-time').value,duration:num($('#ap-dur').value),assignedTo:$('#ap-who').value,location:$('#ap-loc').value.trim(),mapUrl:$('#ap-map').value.trim(),notes:$('#ap-notes').value.trim()};
+  if(V.mapUrl&&!/^https?:\/\//i.test(V.mapUrl))V.mapUrl='';
+  const ok=await W(async()=>{
+    const c=await ensureParty('customers',name);
+    const old=id?S._appointments.get(id)||{}:{};
+    const body={...old,...V,customerId:c?c.id:'',customerName:c?c.name:name,status:old.status||'scheduled',updatedAt:nowIso()};delete body.id;
+    if(!id){body.createdAt=nowIso();body.createdBy=MYID||''}
+    const ref=id?db.collection('appointments').doc(id):db.collection('appointments').doc();
+    await ref.set(body);return ref.id;
+  },T('تم الحفظ ✓','Saved ✓'));
+  if(ok){closeModal();if(sub&&sub.type==='appt'&&sub.id===ok)render();else openSub('appt',ok)}
+}
+function doneAppt(id){
+  openModal(`<div data-keep><h3>✓ ${T('إغلاق الزيارة','Close the visit')}</h3><label>${T('نتيجة الزيارة / ما تم','Outcome / what was done')}<textarea id="ap-res" style="min-height:110px"></textarea></label>
+   <div class="btns" style="margin-top:14px;justify-content:flex-end"><button class="btn" data-act="closeModal">${T('إلغاء','Cancel')}</button><button class="btn pri" data-act="saveDone" data-id="${id}">${T('حفظ','Save')}</button></div></div>`);
+}
+function icsAppt(id){
+  const a=S._appointments.get(id);if(!a)return;
+  const st=(a.date+'T'+(a.time||'09:00')).replace(/[-:]/g,'')+'00';
+  const end=new Date(`${a.date}T${a.time||'09:00'}:00`);end.setMinutes(end.getMinutes()+(num(a.duration)||60));
+  const p=n=>String(n).padStart(2,'0');const en=`${end.getFullYear()}${p(end.getMonth()+1)}${p(end.getDate())}T${p(end.getHours())}${p(end.getMinutes())}00`;
+  const e=s=>String(s||'').replace(/[\;,]/g,m=>'\\'+m).replace(/\n/g,'\\n');
+  const ty=apType(a);
+  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//SmartClick//Accounting//AR','BEGIN:VEVENT',`UID:${id}@smartclick`,`DTSTAMP:${new Date().toISOString().replace(/[-:]/g,'').slice(0,15)}Z`,`DTSTART:${st}`,`DTEND:${en}`,`SUMMARY:${e(T(ty[0],ty[1])+' — '+a.customerName)}`,`LOCATION:${e(a.location)}`,`DESCRIPTION:${e(a.notes)}`,'BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:Reminder','END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
+  saveFile(`${a.date}-${(a.customerName||'appointment').replace(/[\\/:*?"<>|]/g,'')}.ics`,new Blob([ics],{type:'text/calendar'}));
+}
+function apptCustomerCard(cid){
+  const t=today();const list=S.appointments.filter(a=>a.customerId===cid).sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
+  const up=list.filter(a=>a.date>=t&&a.status!=='done'&&a.status!=='cancelled').reverse();const past=list.filter(a=>!up.includes(a)).slice(0,5);
+  return `<div class="card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><h3 style="margin:0;flex:1">📅 ${T('المواعيد والزيارات','Appointments & visits')}</h3>${RO?'':`<button class="btn sm" data-act="newAppt" data-customer="${cid}">+ ${T('موعد','Appointment')}</button>`}</div>
+   <div class="list" style="border:0">${[...up,...past].map(a=>apItem(a,true)).join('')||`<div class="empty" style="padding:14px">${T('لا توجد مواعيد لهذا العميل','No appointments for this customer')}</div>`}</div></div>`;
+}
+function todayApptsBlock(){
+  const t=today();const list=S.appointments.filter(a=>a.date===t&&a.status!=='cancelled').sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  if(!list.length)return '';
+  return `<div class="card" style="padding:14px 14px 6px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><h3 style="margin:0;flex:1">📅 ${T('مواعيد اليوم','Today\'s appointments')}</h3><button class="btn sm" data-act="nav" data-r="appointments">${T('عرض الكل','Show all')}</button></div><div class="list" style="border:0;margin:0 -14px">${list.slice(0,6).map(a=>apItem(a,false)).join('')}</div></div>`;
+}
 
 /* ---------- dashboard quick actions ---------- */
 const QI={
@@ -604,6 +741,7 @@ VIEWS.dashboard=()=>{
     <div class="stat" data-act="nav" data-r="accounts" style="cursor:pointer"><div class="k">${T('النقد والبنوك','Cash & bank')}</div><div class="v">${money([...d.acc.values()].reduce((a,x)=>a+x,0))}</div></div>
     <div class="stat"><div class="k">أصناف تحت الحد الأدنى</div><div class="v num ${low.length?'neg':''}">${low.length}</div></div>
   </div>
+  ${todayApptsBlock()}
   ${overdueBlock(overdue,overdueAmt)}
   ${dashCharts()}
   <div class="grid g2 f">
@@ -981,6 +1119,7 @@ function renderSub(){
   if(sub.type==='product') return productView(sub.id);
   if(sub.type==='pay') return payView(sub.id);
   if(sub.type==='account') return accountView(sub.id);
+  if(sub.type==='appt') return apptView(sub.id);
   if(sub.type==='editor') return '';
   return '';
 }
@@ -1111,6 +1250,7 @@ function partyView(col,id){
   <div class="card"><h3>كشف الحساب</h3><div class="tw"><table class="t"><tr><th>التاريخ</th><th>البيان</th><th class="n">مدين</th><th class="n">دائن</th><th class="n">الرصيد</th></tr>
    ${rows.map(r=>`<tr ${r.open?`data-act="openSub" data-type="${r.open.type}" data-k="${r.open.k||''}" data-id="${r.open.id}" style="cursor:pointer"`:''}><td class="num">${esc(r.date)}</td><td>${esc(r.desc)}</td><td class="n num">${r.dr?fmt(r.dr):''}</td><td class="n num">${r.cr?fmt(r.cr):''}</td><td class="n num">${fmt(r.bal)}</td></tr>`).join('')}
   </table></div></div>
+  ${isC?apptCustomerCard(id):''}
   ${quotes.length?`<div class="card"><h3>عروض الأسعار</h3><div class="list" style="border:0">${quotes.map(x=>docItem('quotes',x)).join('')}</div></div>`:''}`;
 }
 function statement(col,id){
@@ -1722,6 +1862,7 @@ function onLocalChanges(col,snap){
     const x=ch.doc.data()||{};
     if(col==='customers')queuePortalSync(ch.doc.id);
     else if(col==='sales'||col==='quotes'||col==='sreturns')queuePortalSync(x.partyId);
+    else if(col==='appointments')continue;
     else if(col==='payments'&&x.partyType==='customer')queuePortalSync(x.partyId);
   }
 }
@@ -1823,11 +1964,11 @@ function startData(){
       if(!snap.metadata.fromCache){S.ready.add(c);if(allReady()){clearTimeout(slowT);S.slow=false}}
       onLocalChanges(c,snap);
       schedule();
-    },e=>{if(c==='sreturns'||c==='preturns'){console.warn(c,e);S.ready.add(c);S.rulesOld=true;renderShell();schedule();return}onErr(c)(e)});
+    },e=>{if(c==='sreturns'||c==='preturns'||c==='appointments'){console.warn(c,e);S.ready.add(c);S.rulesOld=true;renderShell();schedule();return}onErr(c)(e)});
   });
   db.doc('meta/settings').onSnapshot(s=>{const local=s.metadata&&s.metadata.hasPendingWrites;S.settings=s.exists?s.data():{};S.settingsReady=true;schedule();if(local&&!RO){S.customers.filter(c=>c.portalToken).forEach(c=>queuePortalSync(c.id))}},onErr('settings'));
+  db.collection('staff').onSnapshot(s=>{STF.staff=s.docs.map(x=>({...x.data(),id:x.id}));if((route==='settings'||route==='appointments')&&!E)schedule()},()=>{});
   if(ADMIN){
-    db.collection('staff').onSnapshot(s=>{STF.staff=s.docs.map(x=>({...x.data(),id:x.id}));if(route==='settings'&&!sub&&!E)schedule()},()=>{});
     db.collection('invites').onSnapshot(s=>{STF.invites=s.docs.map(x=>({...x.data(),id:x.id}));if(route==='settings'&&!sub&&!E)schedule()},()=>{});
     db.doc('meta/owner').get().then(o=>{STF.owner=o.exists?o.data():null}).catch(()=>{});
   }
@@ -1990,7 +2131,7 @@ const ACT={
   pdfDoc:o=>{const d=S['_'+o.k].get(o.id);htmlToPdf(paperDoc(o.k,d),`${docNo(o.k,d.no)} - ${d.partyName||''}.pdf`)},
   pdfPay:o=>{const p=S._payments.get(o.id);htmlToPdf(paperPay(p),`${payNo(p)}.pdf`)},
   pdfStatement:o=>{const p=S['_'+o.col].get(o.id);htmlToPdf(statementHtml(o.col,o.id),`كشف حساب - ${p.name}.pdf`)},
-  editParty:o=>editParty(o.col,o.id),
+  editParty:o=>{closeSide();editParty(o.col,o.id)},
   saveParty:o=>saveParty(o.col,o.id||null),
   delParty:async o=>{
     const p=S['_'+o.col].get(o.id);
@@ -2008,6 +2149,16 @@ const ACT={
   },
   newPay:o=>editPay({type:o.t,partyId:o.party,partyType:o.pt,invId:o.inv,invKind:o.k,exp:o.exp,acc:o.acc}),
   newTransfer:o=>editTransfer({from:o.from}),
+  newAppt:o=>editAppt({follow:o.follow,customer:o.customer}),editAppt:o=>editAppt({id:o.id}),saveAppt:o=>saveAppt(o.id||null),
+  doneAppt:o=>doneAppt(o.id),
+  saveDone:async o=>{const r=$('#ap-res').value.trim();if(await W(()=>db.collection('appointments').doc(o.id).update({status:'done',result:r,doneAt:nowIso(),doneBy:MYID||''}),T('تم ✓','Done ✓')))closeModal()},
+  cancelAppt:async o=>{if(await ask(T('إلغاء هذا الموعد؟','Cancel this appointment?'),T('إلغاء الموعد','Cancel appointment'),true,T('رجوع','Back')))await W(()=>db.collection('appointments').doc(o.id).update({status:'cancelled',updatedAt:nowIso()}),T('تم','Done'))},
+  delAppt:async o=>{if(await ask(T('حذف الموعد نهائياً؟','Delete this appointment?'),T('حذف','Delete'),true)&&await W(()=>db.collection('appointments').doc(o.id).delete(),T('تم الحذف','Deleted')))back()},
+  icsAppt:o=>icsAppt(o.id),
+  waAppt:o=>{const a=S._appointments.get(o.id);const c=S._customers.get(a.customerId);const ty=apType(a);const w=window.open(waLink(c.phone,`${ST().company||''}
+${T('السيد/','Dear')} ${a.customerName}
+${T('نذكّركم بموعد','Reminder of your appointment')}: ${T(ty[0],ty[1])}
+${dayName(a.date)} ${fdate(a.date)} — ${fTime(a.time)}${a.location?'\n'+a.location:''}${a.mapUrl?'\n'+a.mapUrl:''}`),'_blank');if(!w)toast(T('تعذر فتح واتساب','Could not open WhatsApp'))},
   navToggle:o=>{NAVOPEN[o.g]=!NAVOPEN[o.g];try{localStorage.setItem('navopen',JSON.stringify(NAVOPEN))}catch(_){}renderShell()},
   newReturn:o=>{const inv=S['_'+o.k].get(o.id);if(!inv)return;const rk=retKindOf(o.k);const k=KIND[rk];const lines=returnableLines(o.k,inv,null);if(!lines.length){toast(T('كل أصناف هذه الفاتورة مُرتجعة مسبقاً','All items of this invoice were already returned'),3500);return}const dd=newDocData(rk,inv.partyId);Object.assign(dd,{due:'',lines,vatOn:inv.vatOn,vatRate:inv.vatRate,discount:0,partyName:inv.partyName,partyId:inv.partyId,invoiceId:inv.id,invoiceNo:docNo(o.k,inv.no)});openEditor(rk,null,dd)},
   refundRet:o=>refundRet(o.k,o.id),
