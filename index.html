@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>نظام الإدارة والمحاسبة والمخزون</title>
 <link rel="icon" type="image/png" href="favicon-64.png">
 <meta name="theme-color" content="#13202e">
@@ -19,6 +19,8 @@
 *{box-sizing:border-box}
 html,body{overflow-x:hidden;overflow-x:clip;max-width:100%;margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans Arabic',system-ui,-apple-system,sans-serif;font-size:15px;letter-spacing:normal;-webkit-text-size-adjust:100%}
 button,input,select,textarea{font:inherit;color:inherit;letter-spacing:normal}
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media (max-width:900px){input,select,textarea{font-size:16px!important}}
 a{color:var(--pri)}
 #app{display:flex;min-height:100vh}
 #side{width:236px;background:var(--side);color:#c9d3df;flex-shrink:0;position:sticky;top:0;height:100vh;overflow:auto;padding:18px 10px}
@@ -2661,6 +2663,11 @@ async function syncPortal(cid,token){
 const portalQ=new Set();let portalT=null;
 function queuePortalSync(cid){if(!cid||RO)return;portalQ.add(cid);clearTimeout(portalT);portalT=setTimeout(async()=>{const ids=[...portalQ];portalQ.clear();for(const id of ids){const c=S._customers.get(id);if(c&&c.portalToken){try{await syncPortal(id)}catch(e){console.error('portal sync',e)}}}},1500)}
 // documents written by the Claude connector carry portalDirty: refresh that customer's portal once
+// no zoom on phones (pinch / double-tap); the photo cropper keeps its own pinch
+(()=>{const inCrop=t=>t&&t.closest&&t.closest('.crop-cv');
+  ['gesturestart','gesturechange','gestureend'].forEach(ev=>document.addEventListener(ev,e=>{if(!inCrop(e.target))e.preventDefault()},{passive:false}));
+  document.addEventListener('touchmove',e=>{if(e.touches&&e.touches.length>1&&!inCrop(e.target))e.preventDefault()},{passive:false});
+})();
 function onRemoteDirty(col,snap){
   if(RO||!['sales','quotes','sreturns','payments','customers'].includes(col))return;
   for(const ch of snap.docChanges()){
