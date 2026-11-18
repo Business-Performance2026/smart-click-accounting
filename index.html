@@ -1249,14 +1249,43 @@ function scanSerialsInto(btn){
 }
 
 /* ---------- stocktake ---------- */
-let STK=(()=>{try{return JSON.parse(localStorage.getItem('stocktake')||'{}')}catch(_){return {}}})();
-const saveSTK=()=>{try{localStorage.setItem('stocktake',JSON.stringify(STK))}catch(_){}};
+// Shared stocktake: counts live in Firestore (stocktake/current) so every device and employee works on the same count.
+let STK={},STK_META={},STK_READY=false;
+const saveSTK=()=>{};
+const stkRef=()=>window.FB.fns.doc(FB.fs,'stocktake/current');
+function stkWrite(data){
+  if(!db)return;const F=window.FB.fns;
+  const p=F.setDoc(stkRef(),{...data,updatedAt:nowIso(),updatedBy:MYID||''},{merge:true});
+  if(p&&p.catch)p.catch(e=>{console.error('stocktake',e);toast(e&&e.code==='permission-denied'?T('لا توجد صلاحية لحفظ الجرد. ارفع القواعد الجديدة (firebase deploy --only firestore:rules).','No permission to save the count. Deploy the new rules.'):T('تعذر حفظ الجرد','Could not save the count'),6000)});
+}
+const stkSet=(id,v)=>{STK[id]=Math.max(0,r3(v));stkWrite({counts:{[id]:STK[id]},who:{[id]:MYID||''}})};
+const stkAdd=(id,n)=>{STK[id]=Math.max(0,r3(num(STK[id])+n));stkWrite({counts:{[id]:n>0?window.FB.fns.increment(n):STK[id]},who:{[id]:MYID||''}})};
+function stkListen(){
+  if(!db||!can('products',1))return;
+  window.FB.fns.onSnapshot(stkRef(),snap=>{
+    const d=(snap.exists&&snap.exists())?snap.data():null;const remote=d&&d.counts||{};
+    // one-time move of a count that was kept on this device before
+    if(!STK_READY){STK_READY=true;let old={};try{old=JSON.parse(localStorage.getItem('stocktake')||'{}')}catch(_){}
+      const ids=Object.keys(old).filter(k=>num(old[k])>0&&remote[k]==null);
+      if(ids.length&&can('products',2)){stkWrite({counts:Object.fromEntries(ids.map(k=>[k,num(old[k])])),who:Object.fromEntries(ids.map(k=>[k,MYID||'']))});ids.forEach(k=>remote[k]=num(old[k]))}
+      try{localStorage.removeItem('stocktake')}catch(_){}}
+    const focused=document.activeElement&&document.activeElement.classList&&document.activeElement.classList.contains('stk-q')?document.activeElement.dataset.id:null;
+    const before=Object.keys(STK).sort().join(',');
+    const next={};for(const k in remote)if(remote[k]!=null)next[k]=num(remote[k]);
+    if(focused&&STK[focused]!=null)next[focused]=STK[focused];
+    STK=next;STK_META=d?{startedAt:d.startedAt,updatedAt:d.updatedAt,updatedBy:d.updatedBy,who:d.who||{}}:{};
+    if(sub&&sub.type==='stocktake'&&!E){
+      if(!focused&&!$('#scanner.open')&&Object.keys(STK).sort().join(',')!==before)render();
+      else{$$('.stk-q').forEach(i=>{if(i.dataset.id!==focused&&STK[i.dataset.id]!=null)i.value=fq(STK[i.dataset.id])});stkRefresh()}
+    }else if(route==='products'&&!sub&&!E)schedule();
+  },e=>console.warn('stocktake',e&&e.code));
+}
 VIEWS.stocktake=()=>{
   const st=derive().stock;const ids=Object.keys(STK).filter(id=>S._products.get(id));
   const rows=ids.map(id=>{const p=S._products.get(id);const sys=r3(st.get(id)||0),cnt=num(STK[id]);return {p,sys,cnt,diff:r3(cnt-sys)}}).sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff));
   const diffs=rows.filter(r=>Math.abs(r.diff)>0.0005);
   return `${loading()}<div class="head">${backBtn}<h2>📋 ${T('الجرد','Stocktake')}</h2></div>
-  <p class="muted" style="margin:-6px 0 12px;font-size:13px">${T('امسح كل قطعة بالكاميرا (كل مسحة = +1، أبعد الكاميرا بين القطع المتشابهة) أو اكتب الكمية. الجرد محفوظ على هذا الجهاز حتى تطبّقه.','Scan each piece (each scan = +1; move the camera away between identical items) or type the count. The count is kept on this device until you apply it.')}</p>
+  <p class="muted" style="margin:-6px 0 12px;font-size:13px">${T('امسح كل قطعة بالكاميرا (كل مسحة = +1، أبعد الكاميرا بين القطع المتشابهة) أو اكتب الكمية. الجرد محفوظ في قاعدة البيانات ومشترك: تقدر تكمله من أي جهاز، وأكثر من موظف يعدّون مع بعض والأرقام تتجمع.','Scan each piece (each scan = +1; move the camera away between identical items) or type the count. Everyone with stock access works on the same count, from any device.')}</p>
   <div class="btns" style="margin-bottom:12px"><button class="btn pri" data-act="stkScan" style="min-height:46px">📷 ${T('مسح بالكاميرا','Scan with camera')}</button><input id="stk-add" list="dl-products" placeholder="${T('أو أضف صنفاً بالاسم أو الكود…','or add an item by name or code…')}" style="flex:1;min-width:180px" autocomplete="off"></div>
   <div class="grid g3" style="margin-bottom:12px"><div class="stat"><div class="k">${T('أصناف تم عدّها','Items counted')}</div><div class="v num">${rows.length}</div></div><div class="stat"><div class="k">${T('أصناف بها فرق','Items with difference')}</div><div class="v num ${diffs.length?'neg':''}" id="stk-nd">${diffs.length}</div></div><div class="stat"><div class="k">${T('قيمة الفرق (بالتكلفة)','Difference value (cost)')}</div><div class="v" id="stk-val">${money(diffs.reduce((a,r)=>a+r.diff*(derive().avg.get(r.p.id)||0),0))}</div></div></div>
   <div class="list">${rows.length?rows.map(r=>`<div class="item" style="cursor:default"><div class="m"><div class="t" translate="no" dir="auto">${esc(dn(r.p))}</div><div class="d">${r.p.code?`<span class="num">${esc(r.p.code)}</span> · `:''}${T('النظام','System')}: <span class="num">${fq(r.sys)}</span> · ${T('الفرق','Diff')}: <b class="num stk-d ${r.diff<0?'neg':r.diff>0?'pos':''}" data-id="${r.p.id}">${r.diff>0?'+':''}${fq(r.diff)}</b></div></div>
@@ -1264,11 +1293,11 @@ VIEWS.stocktake=()=>{
   ${rows.length?`<div class="sticky-act"><div class="btns">${RO?'':`<button class="btn pri" id="stk-apply" data-act="stkApply" style="flex:1;min-height:46px" ${diffs.length?'':'disabled'}>✓ ${T('تطبيق التسوية','Apply adjustment')} (<span id="stk-n">${diffs.length}</span>)</button>`}<button class="btn red" data-act="stkClear" style="min-height:46px">${T('مسح الجرد','Clear count')}</button></div></div>`:''}`;
 };
 AFTER.stocktake=()=>{
-  const a=$('#stk-add');if(a)a.onchange=()=>{const f=lookupCode(a.value);if(f){STK[f.product.id]=num(STK[f.product.id])+1;saveSTK();render()}else if(a.value.trim())toast(T('غير موجود','Not found'))};
+  const a=$('#stk-add');if(a)a.onchange=()=>{const v=a.value;if(!v.trim())return;const f=lookupCode(v);if(f){a.value='';if(!can('products',2))return deny();stkAdd(f.product.id,1);render()}else toast(T('غير موجود','Not found'))};
   // update live while typing (no re-render, so a tap on the button right after typing isn't lost)
-  $$('.stk-q').forEach(i=>{i.oninput=()=>{if(i.value.trim()==='')return;STK[i.dataset.id]=num(i.value);saveSTK();stkRefresh()};i.onchange=()=>{STK[i.dataset.id]=num(i.value);saveSTK();stkRefresh()}});
+  $$('.stk-q').forEach(i=>{let t=null;i.oninput=()=>{if(i.value.trim()==='')return;STK[i.dataset.id]=num(i.value);stkRefresh();clearTimeout(t);t=setTimeout(()=>{if(can('products',2))stkSet(i.dataset.id,num(i.value))},600)};i.onchange=()=>{clearTimeout(t);if(!can('products',2))return deny();stkSet(i.dataset.id,num(i.value));stkRefresh()}});
 };
-function stkSync(){$$('.stk-q').forEach(i=>{if(i.value.trim()!=='')STK[i.dataset.id]=num(i.value)});saveSTK()}
+function stkSync(){$$('.stk-q').forEach(i=>{if(i.value.trim()!==''&&num(i.value)!==num(STK[i.dataset.id]))stkSet(i.dataset.id,num(i.value))})}
 function stkRefresh(){
   const st=derive().stock,avg=derive().avg;let n=0,val=0;
   Object.keys(STK).forEach(id=>{if(!S._products.get(id))return;const d=r3(num(STK[id])-r3(st.get(id)||0));if(Math.abs(d)>0.0005){n++;val+=d*(avg.get(id)||0)}
@@ -1285,7 +1314,8 @@ async function stkApply(){
   let ok=0;
   for(const c of ch){if(await W(()=>db.collection('products').doc(c.p.id).update({opening:r3(num(c.p.opening)+(c.cnt-c.sys)),updatedAt:nowIso(),lastAdjust:{date:today(),from:c.sys,to:c.cnt,by:MYID||'',via:'stocktake'}}))){ok++;c.done=true}}
   if(!ok){toast(T('لم يتم تعديل أي صنف. تأكد من الاتصال وصلاحية التعديل ثم حاول مرة أخرى','Nothing was adjusted. Check your connection and permissions, then try again'),5000);render();return}
-  if(ok===ch.length)STK={};else ch.forEach(c=>{if(c.done)delete STK[c.p.id]});saveSTK();toast(T(`تمت تسوية ${ok} صنف ✓`,`${ok} items adjusted ✓`)+(ok<ch.length?T(` — تعذر ${ch.length-ok}`,` — ${ch.length-ok} failed`):''),4000);render();
+  if(ok===ch.length){STK={};try{await window.FB.fns.deleteDoc(stkRef())}catch(e){console.warn(e)}}
+  else{const F=window.FB.fns;const del={};ch.forEach(c=>{if(c.done){delete STK[c.p.id];del[c.p.id]=F.deleteField()}});stkWrite({counts:del,who:del})}toast(T(`تمت تسوية ${ok} صنف ✓`,`${ok} items adjusted ✓`)+(ok<ch.length?T(` — تعذر ${ch.length-ok}`,` — ${ch.length-ok} failed`):''),4000);render();
 }
 
 /* ---------- dashboard quick actions ---------- */
@@ -2944,6 +2974,7 @@ function startData(){
   });
   db.doc('meta/settings').onSnapshot(s=>{const local=s.metadata&&s.metadata.hasPendingWrites;const prev=S.settings||{};S.settings=s.exists?s.data():{};S.settingsReady=true;schedule();const PF=['company','companyEn','crNo','vatNo','phone','email','address','city','postal','currency','terms','bank','logo','printLang','printImages','vatRate'];if(local&&!RO&&PF.some(k=>JSON.stringify(prev[k])!==JSON.stringify(S.settings[k]))){S.customers.filter(c=>c.portalToken).forEach(c=>queuePortalSync(c.id))}},onErr('settings'));
   if(ADMIN)db.collection('activity').recent('at',500,list=>{S.activity=list;if(route==='activity'&&!sub&&!E)schedule()},e=>{console.warn('activity',e&&e.code);S.activityErr=true;if(route==='activity')schedule()});
+  stkListen();
   db.collection('staff').onSnapshot(s=>{STF.staff=s.docs.map(x=>({...x.data(),id:x.id}));if(!ADMIN&&MYID&&!s.metadata.hasPendingWrites){const me=STF.staff.find(x=>x.id===MYID);if(!me){location.reload();return}const np=me.role==='admin'?'ADMIN':JSON.stringify(me.perms||null);if(np==='ADMIN'||np!==JSON.stringify(MYPERMS)||(me.role||'')!==ROLE){if(me.role==='admin'||ROLE==='admin'){location.reload();return}ROLE=me.role;MYPERMS=me.perms||null;RO=!MODS.some(m=>lvl(m[0])>=2);schedule()}}if((route==='settings'||route==='appointments')&&!E)schedule()},()=>{});
   if(ADMIN){
     db.collection('invites').onSnapshot(s=>{STF.invites=s.docs.map(x=>({...x.data(),id:x.id}));if((route==='staff'||route==='settings')&&!sub&&!E)schedule()},()=>{});
@@ -3213,10 +3244,10 @@ ${dayName(a.date)} ${fdate(a.date)} — ${fTime(a.time)}${a.location?'\n'+a.loca
   scanCode:()=>openScanner({title:T('مسح باركود الصنف','Scan item barcode'),onCode:c=>{const i=$('#i-code');if(i)i.value=c;return {ok:true,msg:c}}}),
   scanSearch:()=>openScanner({title:T('بحث بالباركود','Search by barcode'),onCode:c=>{const f=lookupCode(c);if(f){setTimeout(()=>openSub('product',f.product.id),300);return {ok:true,msg:f.product.name}}Q.products=c;setTimeout(render,300);return {ok:true,msg:T('غير موجود — تم وضعه في البحث','Not found — placed in search')}}}),
   scanWarranty:()=>openScanner({title:T('مسح الرقم التسلسلي','Scan serial number'),onCode:c=>{Q.warranty=c;setTimeout(render,300);return {ok:true,msg:c}}}),
-  stkScan:()=>openScanner({title:T('الجرد — امسح كل قطعة','Stocktake — scan each piece'),continuous:true,onClose:()=>{if(sub&&sub.type==='stocktake')render()},onCode:c=>{const f=lookupCode(c);if(!f)return {ok:false,msg:T('غير موجود: ','Not found: ')+c};STK[f.product.id]=num(STK[f.product.id])+1;saveSTK();return {ok:true,msg:`${f.product.name} — ${fq(STK[f.product.id])}`}}}),
-  stkInc:o=>{stkSync();STK[o.id]=Math.max(0,num(STK[o.id])+num(o.v));saveSTK();render()},
+  stkScan:()=>openScanner({title:T('الجرد — امسح كل قطعة','Stocktake — scan each piece'),continuous:true,onClose:()=>{if(sub&&sub.type==='stocktake')render()},onCode:c=>{const f=lookupCode(c);if(!f)return {ok:false,msg:T('غير موجود: ','Not found: ')+c};if(!can('products',2))return {ok:false,msg:T('ليس لديك صلاحية','No permission')};stkAdd(f.product.id,1);return {ok:true,msg:`${f.product.name} — ${fq(STK[f.product.id])}`}}}),
+  stkInc:o=>{if(!can('products',2))return deny();const i=$(`.stk-q[data-id="${o.id}"]`);if(i&&i.value.trim()!==''&&num(i.value)!==num(STK[o.id]))stkSet(o.id,num(i.value));if(num(o.v)<0&&num(STK[o.id])<=0)return;stkAdd(o.id,num(o.v));render()},
   stkApply:()=>stkApply(),
-  stkClear:async()=>{if(await ask(T('مسح كل الأعداد في هذا الجرد؟','Clear all counts in this stocktake?'),T('مسح','Clear'),true)){STK={};saveSTK();render()}},
+  stkClear:async()=>{if(await ask(T('مسح كل الأعداد في هذا الجرد؟','Clear all counts in this stocktake?'),T('مسح','Clear'),true)){if(!can('products',2))return deny();STK={};try{await window.FB.fns.deleteDoc(stkRef())}catch(e){console.warn(e)}render()}},
   pimgRemove:()=>{PIMG={remove:true};const id=null;$('#pimg-box').outerHTML=productImgField({});wirePimg({})},
   pvZoom:o=>{const src=PFULL.get(o.id)||(S._products.get(o.id)||{}).img;if(src)openModal(`<img src="${esc(src)}" style="width:100%;border-radius:12px;display:block"><div class="btns" style="margin-top:12px;justify-content:flex-end"><button class="btn" data-act="closeModal">${T('إغلاق','Close')}</button></div>`)},
   navToggle:o=>{const i=NAV.findIndex(x=>x[0]===o.g);const kids=[];for(let j=i+1;j<NAV.length&&NAV[j][3]==='s';j++)kids.push(NAV[j][0]);const cur=(o.g in NAVOPEN)?!!NAVOPEN[o.g]:kids.includes(route);NAVOPEN[o.g]=!cur;try{localStorage.setItem('navopen',JSON.stringify(NAVOPEN))}catch(_){}renderShell()},

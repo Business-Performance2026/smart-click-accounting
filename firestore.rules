@@ -79,6 +79,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Shared stocktake in progress (one document: stocktake/current)
+    match /stocktake/{id} {
+      allow read: if isStaff() && lvl('products') >= 1;
+      allow write: if isStaff() && lvl('products') >= 2;
+    }
+
     // Activity log: staff append entries about themselves; nobody can change or delete them.
     match /activity/{id} {
       allow read: if isAdmin();
