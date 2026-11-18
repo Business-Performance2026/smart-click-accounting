@@ -195,6 +195,17 @@ table.t td.num,table.t td.n{white-space:nowrap}
  .paperwrap .paper .sum table{width:100%}
  .paperwrap .paper th,.paperwrap .paper td{padding:6px 4px}
  .paperwrap .paper .ph{gap:10px}
+ /* phone: each item becomes a small card instead of a wide table row */
+ .paperwrap .paper table.lines tr.lh{display:none}
+ .paperwrap .paper table.lines tr{display:flex;flex-wrap:wrap;align-items:flex-start;border-bottom:1px solid #e3e3e3;padding:6px 0}
+ .paperwrap .paper table.lines td{border:0;padding:3px 4px}
+ .paperwrap .paper table.lines td.li{width:22px;color:#888}
+ .paperwrap .paper table.lines td.pimg{width:52px}
+ .paperwrap .paper table.lines td.lnm{flex:1 1 calc(100% - 90px);min-width:0;font-weight:600}
+ .paperwrap .paper table.lines td.ldesc{flex:1 1 100%;max-width:none;padding-inline-start:26px;font-size:11.5px}
+ .paperwrap .paper table.lines td.lc{flex:1 1 0;min-width:0;text-align:center!important;white-space:nowrap}
+ .paperwrap .paper table.lines td.lc::before{content:attr(data-l);display:block;font-size:10.5px;color:#888;font-weight:400}
+ .paperwrap .paper table.lines td.lt{font-weight:700}
 }
 .legend{display:flex;gap:14px;font-size:12.5px;color:var(--mute)}
 .legend i,#tip i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:5px;vertical-align:-1px}
@@ -1959,6 +1970,7 @@ function paperHead(){
 }
 let PORTAL_RENDER=false;const PORTAL_IMGS=new Set();
 function paperTitle(ar,en){const l=PLANG();return `<div class="ttl"><b>${l==='en'?en:ar}</b>${l==='both'?`<span>${en.toUpperCase()}</span>`:''}</div>`}
+const PLt=(a,e)=>esc(String(PL(a,e)).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim());
 function paperDoc(kind,d){
   const s=ST();const k=KIND[kind];
   const party=d.partyId?S['_'+k.party].get(d.partyId)||{}:{};
@@ -1975,8 +1987,8 @@ function paperDoc(kind,d){
    <div class="bx"><div><span>${pl}</span><b>${PN(d.partyName,party.nameEn)}</b></div>${party.phone?`<div><span>${PL('الهاتف','Phone')}</span><span class="num">${esc(party.phone)}</span></div>`:''}${party.vatNo?`<div><span>${PL('الرقم الضريبي','VATIN')}</span><span class="num">${esc(party.vatNo)}</span></div>`:''}${party.address?`<div><span>${PL('العنوان','Address')}</span><span>${esc(party.address)}</span></div>`:''}</div>
    <div class="bx"><div><span>${PL('الرقم','No.')}</span><b class="num">${docNo(kind,d.no)}</b></div><div><span>${PL('التاريخ','Date')}</span><span class="num">${fdate(d.date)}</span></div>${d.due?`<div><span>${kind==='quotes'?PL('صالح حتى','Valid until'):kind==='porders'?PL('تاريخ التوريد','Delivery date'):isWO(kind)?PL('تاريخ التنفيذ','Scheduled'):PL('تاريخ الاستحقاق','Due date')}</span><span class="num">${fdate(d.due)}</span></div>`:''}${d.ref?`<div><span>${isWO(kind)?PL('العمل','Job'):PL('المرجع','Ref.')}</span><span class="num">${esc(d.ref)}</span></div>`:''}${isRet(kind)&&d.invoiceNo?`<div><span>${PL('الفاتورة الأصلية','Original invoice')}</span><span class="num">${esc(d.invoiceNo)}</span></div>`:''}${isWO(kind)&&d.location?`<div><span>${PL('الموقع','Location')}</span><span>${esc(d.location)}</span></div>`:''}${isWO(kind)&&(d.techs||[]).length?`<div><span>${PL('الفني','Technician')}</span><span>${esc(d.techs.map(u=>(staffName(u)||'').split('@')[0]).join('، '))}</span></div>`:''}</div>
   </div>
-  <table><tr><th style="width:30px">#</th>${showImg?'<th class="pimg"></th>':''}<th>${hasDesc?PL('الصنف','Item',1):PL('الصنف / الوصف','Item / Description',1)}</th>${hasDesc?`<th>${PL('الوصف','Description',1)}</th>`:''}<th class="n">${PL('الكمية','Qty',1)}</th><th class="n">${PL('السعر','Price',1)}</th>${hasDisc?`<th class="n">${PL('الخصم','Discount',1)}</th>`:''}<th class="n">${PL('الإجمالي','Amount',1)}</th></tr>
-  ${(d.lines||[]).map((l,i)=>`<tr><td>${i+1}</td>${imgCell(l)}<td>${PN(l.name,lineEn(l))}${d.vatOn&&l.noVat?' <sup title="No VAT">*</sup>':''}${(l.serials||[]).length?`<div style="color:#555;font-size:11px" dir="ltr">S/N: ${esc(l.serials.join(', '))}</div>`:''}${num(l.warranty)&&(kind==='sales'||isWO(kind))?`<div style="color:#555;font-size:11px">${PL('الضمان','Warranty')}: ${fq(l.warranty)} ${PL('شهر','months')}${kind==='sales'?` — ${PL('حتى','until')} <span class="num">${fdate(addMonths(d.date,l.warranty))}</span>`:''}</div>`:''}</td>${hasDesc?`<td class="ldesc" dir="auto">${esc(l.desc||'')}</td>`:''}<td class="n num">${fq(l.qty)}</td><td class="n num">${fmt(l.price)}</td>${hasDisc?`<td class="n num">${discLabel(l)}</td>`:''}<td class="n num">${fmt(l.total)}</td></tr>`).join('')}</table>
+  <table class="lines"><tr class="lh"><th style="width:30px">#</th>${showImg?'<th class="pimg"></th>':''}<th>${hasDesc?PL('الصنف','Item',1):PL('الصنف / الوصف','Item / Description',1)}</th>${hasDesc?`<th>${PL('الوصف','Description',1)}</th>`:''}<th class="n">${PL('الكمية','Qty',1)}</th><th class="n">${PL('السعر','Price',1)}</th>${hasDisc?`<th class="n">${PL('الخصم','Discount',1)}</th>`:''}<th class="n">${PL('الإجمالي','Amount',1)}</th></tr>
+  ${(d.lines||[]).map((l,i)=>`<tr><td class="li">${i+1}</td>${imgCell(l)}<td class="lnm">${PN(l.name,lineEn(l))}${d.vatOn&&l.noVat?' <sup title="No VAT">*</sup>':''}${(l.serials||[]).length?`<div style="color:#555;font-size:11px" dir="ltr">S/N: ${esc(l.serials.join(', '))}</div>`:''}${num(l.warranty)&&(kind==='sales'||isWO(kind))?`<div style="color:#555;font-size:11px">${PL('الضمان','Warranty')}: ${fq(l.warranty)} ${PL('شهر','months')}${kind==='sales'?` — ${PL('حتى','until')} <span class="num">${fdate(addMonths(d.date,l.warranty))}</span>`:''}</div>`:''}</td>${hasDesc?`<td class="ldesc" dir="auto">${esc(l.desc||'')}</td>`:''}<td class="n num lc" data-l="${PLt('الكمية','Qty')}">${fq(l.qty)}</td><td class="n num lc" data-l="${PLt('السعر','Price')}">${fmt(l.price)}</td>${hasDisc?`<td class="n num lc" data-l="${PLt('الخصم','Discount')}">${discLabel(l)}</td>`:''}<td class="n num lc lt" data-l="${PLt('الإجمالي','Amount')}">${fmt(l.total)}</td></tr>`).join('')}</table>
   <div class="sum"><div class="notes">${esc(d.notes||'')}</div><table>
    ${(()=>{const gross=r3((d.lines||[]).reduce((a,l)=>a+num(l.qty)*num(l.price),0)),lineDisc=Math.max(0,r3(gross-num(d.sub))),totDisc=r3(lineDisc+num(d.discount));
      return `<tr><td>${PL('المجموع','Subtotal')}</td><td class="n num">${fmt(lineDisc>0.0005?gross:d.sub)}</td></tr>${totDisc>0.0005?`<tr><td>${PL('الخصم','Discount')}${lineDisc<=0.0005&&d.discType==='p'&&num(d.discPct)?` (${fq(d.discPct)}%)`:''}</td><td class="n num">-${fmt(totDisc)}</td></tr>`:''}`})()}

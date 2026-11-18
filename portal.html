@@ -91,7 +91,17 @@ button{font:inherit;color:inherit}
  .paperwrap .paper .sum table{width:100%}
  .paperwrap .paper th,.paperwrap .paper td{padding:6px 4px}
  .paperwrap .paper .ph{gap:10px}
-}
+ /* phone: each item becomes a small card instead of a wide table row */
+ .paperwrap .paper table.lines tr.lh{display:none}
+ .paperwrap .paper table.lines tr{display:flex;flex-wrap:wrap;align-items:flex-start;border-bottom:1px solid #e3e3e3;padding:6px 0}
+ .paperwrap .paper table.lines td{border:0;padding:3px 4px}
+ .paperwrap .paper table.lines td.li{width:22px;color:#888}
+ .paperwrap .paper table.lines td.pimg{width:52px}
+ .paperwrap .paper table.lines td.lnm{flex:1 1 calc(100% - 90px);min-width:0;font-weight:600}
+ .paperwrap .paper table.lines td.ldesc{flex:1 1 100%;max-width:none;padding-inline-start:26px;font-size:11.5px}
+ .paperwrap .paper table.lines td.lc{flex:1 1 0;min-width:0;text-align:center!important;white-space:nowrap}
+ .paperwrap .paper table.lines td.lc::before{content:attr(data-l);display:block;font-size:10.5px;color:#888;font-weight:400}
+ .paperwrap .paper table.lines td.lt{font-weight:700}
 </style>
 </head>
 <body>
