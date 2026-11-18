@@ -213,6 +213,22 @@ table.t td.num,table.t td.n{white-space:nowrap}
 .dsc input{flex:1;min-width:0;border-start-end-radius:0;border-end-end-radius:0;margin:0}
 .dsc-t{border:1px solid #d5dae2;border-inline-start:0;background:var(--pri2);color:var(--pri-d);font-weight:700;border-start-end-radius:9px;border-end-end-radius:9px;padding:0 8px;min-width:36px;cursor:pointer;font-size:12.5px;white-space:nowrap}
 .dsc-t:hover{background:#d3ebe7}
+.scan-wrap{position:fixed;inset:0;z-index:300;background:#000;display:flex;flex-direction:column;color:#fff}
+.scan-top{display:flex;align-items:center;gap:10px;padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top));background:rgba(0,0,0,.6)}
+.scan-top b{flex:1;font-size:16px}
+.scan-top button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:10px;min-height:40px;min-width:44px;font-size:18px;cursor:pointer}
+.scan-vid{position:relative;flex:1;overflow:hidden;background:#000}
+.scan-vid video{width:100%;height:100%;object-fit:cover}
+.scan-box{position:absolute;left:50%;top:45%;width:min(78vw,420px);height:min(34vw,180px);transform:translate(-50%,-50%);border:3px solid rgba(255,255,255,.9);border-radius:14px;box-shadow:0 0 0 2000px rgba(0,0,0,.35)}
+.scan-box::after{content:'';position:absolute;left:8%;right:8%;top:50%;height:2px;background:#ff4d4d;box-shadow:0 0 8px #ff4d4d;animation:scl 1.6s ease-in-out infinite}
+@keyframes scl{0%,100%{transform:translateY(-40px)}50%{transform:translateY(40px)}}
+.scan-box.hit{border-color:#3ddc84}
+.scan-bot{padding:12px 14px;padding-bottom:calc(14px + env(safe-area-inset-bottom));background:rgba(0,0,0,.7)}
+.scan-msg{min-height:22px;font-size:15px;text-align:center;margin-bottom:10px}
+.scan-bot form{display:flex;gap:8px}
+.scan-bot input{flex:1;background:#1c2230;border-color:#3a4458;color:#fff}
+.scan-log{max-height:96px;overflow:auto;font-size:13px;color:#cfd8e3;margin-bottom:8px}
+.btn.icon{min-width:40px;padding:0 10px}
 .spin{display:inline-block;width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--pri);border-radius:50%;animation:sp 1s linear infinite;vertical-align:middle}
 @keyframes sp{to{transform:rotate(360deg)}}
 .hide{display:none!important}
@@ -236,6 +252,7 @@ table.t td.num,table.t td.n{white-space:nowrap}
 </div>
 <div id="modal"><div class="box" id="mbox"></div></div>
 <div id="toast"></div>
+<div id="scanner" class="hide"></div>
 <div id="tip"></div>
 <datalist id="dl-customers"></datalist>
 <datalist id="dl-suppliers"></datalist>
@@ -584,6 +601,7 @@ function render(fromData){
   v.innerHTML=html;
   if(keepId){const el=$('#'+keepId);if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(_){}}}
   if(AFTER[route]&&!sub) AFTER[route]();
+  if(sub&&sub.type==='stocktake')AFTER.stocktake();
 }
 
 /* ================= views ================= */
@@ -890,7 +908,7 @@ VIEWS.warranty=()=>{
    ${x.supplier?`<span>${T('المورد','Supplier')}</span><span translate="no">${esc(x.supplier)} · <a href="#" data-act="openSub" data-type="doc" data-k="purchases" data-id="${x.purId}" class="num">${esc(x.purNo)}</a> · <span class="num">${fdate(x.purDate)}</span></span>`:''}
    ${x.returned?`<span>${T('مرتجع','Returned')}</span><span class="num">${esc(x.retNo)}</span>`:''}</div></div>`};
   return `${loading()}<div class="head"><h1>${T('الضمان والأرقام التسلسلية','Warranty & serial numbers')}</h1></div>
-  <div class="search"><input id="q-warranty" placeholder="${T('ابحث بالرقم التسلسلي أو اسم العميل…','Search serial number or customer…')}" value="${esc(Q.warranty||'')}" data-q="warranty" dir="auto" style="font-size:16px;min-height:46px"></div>
+  <div class="search"><input id="q-warranty" placeholder="${T('ابحث بالرقم التسلسلي أو اسم العميل…','Search serial number or customer…')}" value="${esc(Q.warranty||'')}" data-q="warranty" dir="auto" style="font-size:16px;min-height:46px"><button class="btn icon" data-act="scanWarranty" style="min-height:46px">📷</button></div>
   ${exact?card(exact):q&&!arr.length?`<div class="card"><div class="empty" style="padding:10px">${T('لا يوجد جهاز بهذا الرقم في المبيعات.','No sold device with this serial.')}</div></div>`:''}
   ${!q?`<div class="tabs">${[['active',T('ساري','Active')+' ('+cnt('active')+')'],['soon',T('ينتهي خلال 30 يوم','Expiring in 30 days')+' ('+cnt('soon')+')'],['expired',T('منتهي','Expired')+' ('+cnt('expired')+')'],['all',T('الكل','All')+' ('+idx.size+')']].map(([v,x])=>`<button class="${f===v?'on':''}" data-act="filt" data-k="war" data-v="${v}">${x}</button>`).join('')}</div>`:''}
   ${exact?'':`<div class="list">${arr.slice(0,300).map(snItem).join('')||`<div class="empty">${idx.size?T('لا توجد نتائج','No results'):T('لم تُسجَّل أرقام تسلسلية بعد. فعّل "يُتتبع بالرقم التسلسلي" أو مدة الضمان في الصنف، ثم أدخل الأرقام في الفاتورة.','No serial numbers yet. Turn on "Track serial numbers" or a warranty period on the item, then enter serials on the invoice.')}</div>`}</div>`}`;
@@ -899,6 +917,127 @@ function customerDevicesCard(cid){
   const list=[...serialIndex().values()].filter(x=>x.customerId===cid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   if(!list.length)return '';
   return `<div class="card"><h3>🛡️ ${T('الأجهزة والضمان','Devices & warranty')} <span class="muted" style="font-weight:400;font-size:13px">(${list.length})</span></h3><div class="list" style="border:0">${list.slice(0,30).map(snItem).join('')}</div></div>`;
+}
+
+/* ---------- camera barcode scanner ---------- */
+let SCAN=null;
+function beep(){try{const a=beep.ctx||(beep.ctx=new (window.AudioContext||window.webkitAudioContext)());const o=a.createOscillator(),g=a.createGain();o.frequency.value=1500;g.gain.value=.12;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.09)}catch(_){}try{navigator.vibrate&&navigator.vibrate(60)}catch(_){}}
+async function openScanner(opts){
+  // opts: {title, continuous, onCode(code)=>({ok,msg})}
+  closeScanner();
+  const el=$('#scanner');el.className='';
+  el.innerHTML=`<div class="scan-wrap"><div class="scan-top"><button data-act="scanClose" aria-label="close">✕</button><b>${esc(opts.title||T('مسح الباركود','Scan barcode'))}</b><button id="scan-torch" class="hide" data-act="scanTorch" aria-label="torch">🔦</button></div>
+   <div class="scan-vid"><video id="scan-v" playsinline muted autoplay></video><div class="scan-box" id="scan-box"></div></div>
+   <div class="scan-bot"><div class="scan-log" id="scan-log"></div><div class="scan-msg" id="scan-msg">${T('وجّه الكاميرا نحو الباركود','Point the camera at the barcode')}</div>
+   <form id="scan-f"><input id="scan-in" placeholder="${T('أو اكتب الكود يدوياً','or type the code')}" dir="ltr" autocomplete="off" inputmode="text"><button class="btn pri">${T('إضافة','Add')}</button></form></div></div>`;
+  const S2=SCAN={opts,last:'',lastAt:0,stream:null,timer:null,reader:null,done:false};
+  const msg=(t,ok)=>{const m=$('#scan-msg');if(m){m.textContent=t;m.style.color=ok===false?'#ffb4a2':ok?'#9ff0c4':'#fff'}};
+  const handle=(code,manual)=>{
+    code=String(code||'').trim();if(!code||S2.done)return;
+    // the same barcode counts again only after it has left the camera view for a moment
+    const now=Date.now();if(!manual&&code===S2.last&&now-S2.lastAt<1200){S2.lastAt=now;return}S2.last=code;S2.lastAt=now;
+    const r=opts.onCode(code)||{};
+    if(r.ok!==false){beep();const b=$('#scan-box');if(b){b.classList.add('hit');setTimeout(()=>b&&b.classList.remove('hit'),350)}}
+    msg(r.msg||code,r.ok);
+    if(r.ok!==false&&opts.continuous){const lg=$('#scan-log');if(lg){lg.insertAdjacentHTML('afterbegin',`<div>✓ ${esc(r.msg||code)}</div>`)}}
+    if(r.ok!==false&&!opts.continuous){S2.done=true;setTimeout(closeScanner,250)}
+  };
+  S2.handle=handle;
+  $('#scan-f').onsubmit=e=>{e.preventDefault();const i=$('#scan-in');handle(i.value,true);i.value=''};
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){msg(T('الكاميرا غير متاحة في هذا المتصفح. اكتب الكود يدوياً.','Camera not available in this browser. Type the code.'),false);return}
+  const v=$('#scan-v');
+  try{
+    S2.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+    if(SCAN!==S2){S2.stream.getTracks().forEach(t=>t.stop());return}
+    v.srcObject=S2.stream;await v.play().catch(()=>{});
+    const track=S2.stream.getVideoTracks()[0];try{const cap=track.getCapabilities&&track.getCapabilities();if(cap&&cap.torch)$('#scan-torch').classList.remove('hide')}catch(_){}
+  }catch(e){
+    console.warn(e);msg(e&&e.name==='NotAllowedError'?T('اسمح للمتصفح باستخدام الكاميرا من إعدادات الموقع، ثم حاول مرة أخرى.','Allow camera access in the site settings, then try again.'):T('تعذر تشغيل الكاميرا. يمكنك كتابة الكود يدوياً.','Could not start the camera. You can type the code.'),false);return;
+  }
+  const FORMATS=['ean_13','ean_8','code_128','code_39','code_93','upc_a','upc_e','itf','codabar','qr_code','data_matrix'];
+  let det=null;
+  if('BarcodeDetector' in window){try{const sup=await BarcodeDetector.getSupportedFormats();const f=FORMATS.filter(x=>sup.includes(x));if(f.length)det=new BarcodeDetector({formats:f})}catch(_){det=null}}
+  if(det){
+    const loop=async()=>{if(SCAN!==S2)return;try{if(v.readyState>=2){const r=await det.detect(v);if(r&&r.length)handle(r[0].rawValue)}}catch(_){}S2.timer=setTimeout(loop,180)};loop();
+  }else{
+    try{await lib('zxing')}catch(_){msg(T('تعذر تحميل قارئ الباركود. اكتب الكود يدوياً.','Could not load the scanner. Type the code.'),false);return}
+    if(SCAN!==S2)return;
+    const Z=window.ZXing;const hints=new Map();hints.set(Z.DecodeHintType.TRY_HARDER,true);
+    const reader=new Z.MultiFormatReader();reader.setHints(hints);const cv=document.createElement('canvas');const cx=cv.getContext('2d',{willReadFrequently:true});
+    const loop=()=>{if(SCAN!==S2)return;try{if(v.readyState>=2&&v.videoWidth){const sc=Math.min(1,900/v.videoWidth);cv.width=Math.round(v.videoWidth*sc);cv.height=Math.round(v.videoHeight*sc);cx.drawImage(v,0,0,cv.width,cv.height);
+      const bmp=new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(cv)));const res=reader.decodeWithState(bmp);if(res)handle(res.getText())}}catch(_){/* not found in this frame */}
+      S2.timer=setTimeout(loop,220)};loop();
+  }
+}
+function closeScanner(){
+  const S2=SCAN;SCAN=null;
+  if(S2){clearTimeout(S2.timer);try{S2.reader&&S2.reader.reset()}catch(_){}if(S2.stream)S2.stream.getTracks().forEach(t=>t.stop());if(S2.opts.onClose)try{S2.opts.onClose()}catch(_){}}
+  const el=$('#scanner');if(el){el.className='hide';el.innerHTML=''}
+}
+async function scanTorch(){const S2=SCAN;if(!S2||!S2.stream)return;const t=S2.stream.getVideoTracks()[0];S2.torch=!S2.torch;try{await t.applyConstraints({advanced:[{torch:S2.torch}]})}catch(_){}}
+// lookup a scanned code: product code/barcode, or a serial number recorded on a purchase
+function lookupCode(code){
+  const k=norm(code);
+  const p=S.products.find(x=>x.code&&norm(x.code)===k)||S.products.find(x=>norm(x.name)===k);
+  if(p)return {product:p};
+  for(const d of S.purchases)for(const l of d.lines||[])if(l.productId&&(l.serials||[]).some(sn=>norm(sn)===k)){const pp=S._products.get(l.productId);if(pp)return {product:pp,serial:code}}
+  return null;
+}
+function scanIntoEditor(){
+  if(!E)return;
+  openScanner({title:T('مسح الأصناف للفاتورة','Scan items into the document'),continuous:true,onCode:code=>{
+    if(!E)return {ok:false};
+    const f=lookupCode(code);
+    if(!f)return {ok:false,msg:T('غير موجود: ','Not found: ')+code};
+    const p=f.product;E.d.lines=readLines();
+    let l=E.d.lines.find(x=>x.productId===p.id);
+    if(l){if(f.serial){if((l.serials||[]).some(x=>norm(x)===norm(f.serial)))return {ok:false,msg:T('الرقم مضاف مسبقاً: ','Already added: ')+f.serial};l.serials=[...(l.serials||[]),f.serial]}l.qty=r3(num(l.qty)+1)}
+    else{
+      const price=KIND[E.kind].party==='suppliers'?num(p.cost):num(p.price);
+      l={productId:p.id,name:p.name,qty:1,price,disc:0,serials:f.serial?[f.serial]:[]};
+      const empty=E.d.lines.findIndex(x=>!x.name);if(empty>=0)E.d.lines.splice(empty,1,l);else E.d.lines.push(l);
+    }
+    if(!E.d.lines.some(x=>!x.name))E.d.lines.push({productId:'',name:'',qty:1,price:'',disc:0});
+    renderLines();updTotals();
+    return {ok:true,msg:`${p.name}${f.serial?' · '+f.serial:''} — ${T('الكمية','Qty')} ${fq(l.qty)}`};
+  }});
+}
+function scanSerialsInto(btn){
+  const ta=btn.closest('.r3')&&btn.closest('.r3').querySelector('.l-sn');if(!ta)return;
+  openScanner({title:T('مسح الأرقام التسلسلية','Scan serial numbers'),continuous:true,onCode:code=>{
+    const cur=splitSN(ta.value);if(cur.some(x=>norm(x)===norm(code)))return {ok:false,msg:T('مضاف مسبقاً: ','Already added: ')+code};
+    cur.push(code);ta.value=cur.join('\n');ta.rows=Math.min(6,cur.length);
+    const ln=ta.closest('.ln');const q=ln&&$('.l-qty',ln);if(q&&num(q.value)<cur.length){q.value=cur.length;updTotals()}
+    return {ok:true,msg:`${code} (${cur.length})`};
+  }});
+}
+
+/* ---------- stocktake ---------- */
+let STK=(()=>{try{return JSON.parse(localStorage.getItem('stocktake')||'{}')}catch(_){return {}}})();
+const saveSTK=()=>{try{localStorage.setItem('stocktake',JSON.stringify(STK))}catch(_){}};
+VIEWS.stocktake=()=>{
+  const st=derive().stock;const ids=Object.keys(STK).filter(id=>S._products.get(id));
+  const rows=ids.map(id=>{const p=S._products.get(id);const sys=r3(st.get(id)||0),cnt=num(STK[id]);return {p,sys,cnt,diff:r3(cnt-sys)}}).sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff));
+  const diffs=rows.filter(r=>Math.abs(r.diff)>0.0005);
+  return `${loading()}<div class="head">${backBtn}<h2>📋 ${T('الجرد','Stocktake')}</h2></div>
+  <p class="muted" style="margin:-6px 0 12px;font-size:13px">${T('امسح كل قطعة بالكاميرا (كل مسحة = +1، أبعد الكاميرا بين القطع المتشابهة) أو اكتب الكمية. الجرد محفوظ على هذا الجهاز حتى تطبّقه.','Scan each piece (each scan = +1; move the camera away between identical items) or type the count. The count is kept on this device until you apply it.')}</p>
+  <div class="btns" style="margin-bottom:12px"><button class="btn pri" data-act="stkScan" style="min-height:46px">📷 ${T('مسح بالكاميرا','Scan with camera')}</button><input id="stk-add" list="dl-products" placeholder="${T('أو أضف صنفاً بالاسم أو الكود…','or add an item by name or code…')}" style="flex:1;min-width:180px" autocomplete="off"></div>
+  <div class="grid g3" style="margin-bottom:12px"><div class="stat"><div class="k">${T('أصناف تم عدّها','Items counted')}</div><div class="v num">${rows.length}</div></div><div class="stat"><div class="k">${T('أصناف بها فرق','Items with difference')}</div><div class="v num ${diffs.length?'neg':''}">${diffs.length}</div></div><div class="stat"><div class="k">${T('قيمة الفرق (بالتكلفة)','Difference value (cost)')}</div><div class="v">${money(diffs.reduce((a,r)=>a+r.diff*(derive().avg.get(r.p.id)||0),0))}</div></div></div>
+  <div class="list">${rows.length?rows.map(r=>`<div class="item" style="cursor:default"><div class="m"><div class="t" translate="no" dir="auto">${esc(dn(r.p))}</div><div class="d">${r.p.code?`<span class="num">${esc(r.p.code)}</span> · `:''}${T('النظام','System')}: <span class="num">${fq(r.sys)}</span> · ${T('الفرق','Diff')}: <b class="num ${r.diff<0?'neg':r.diff>0?'pos':''}">${r.diff>0?'+':''}${fq(r.diff)}</b></div></div>
+    <button class="btn sm icon" data-act="stkInc" data-id="${r.p.id}" data-v="-1">−</button><input class="stk-q" data-id="${r.p.id}" inputmode="decimal" value="${fq(r.cnt)}" style="width:64px;text-align:center;min-height:36px;padding:4px"><button class="btn sm icon" data-act="stkInc" data-id="${r.p.id}" data-v="1">+</button></div>`).join(''):`<div class="empty">${T('لم يتم عدّ أي صنف بعد','Nothing counted yet')}</div>`}</div>
+  ${rows.length?`<div class="sticky-act"><div class="btns">${RO?'':`<button class="btn pri" data-act="stkApply" style="flex:1;min-height:46px" ${diffs.length?'':'disabled'}>✓ ${T('تطبيق التسوية','Apply adjustment')} (${diffs.length})</button>`}<button class="btn red" data-act="stkClear" style="min-height:46px">${T('مسح الجرد','Clear count')}</button></div></div>`:''}`;
+};
+AFTER.stocktake=()=>{
+  const a=$('#stk-add');if(a)a.onchange=()=>{const f=lookupCode(a.value);if(f){STK[f.product.id]=num(STK[f.product.id])+1;saveSTK();render()}else if(a.value.trim())toast(T('غير موجود','Not found'))};
+  $$('.stk-q').forEach(i=>i.onchange=()=>{STK[i.dataset.id]=num(i.value);saveSTK();render()});
+};
+async function stkApply(){
+  const st=derive().stock;const ch=Object.keys(STK).map(id=>{const p=S._products.get(id);if(!p)return null;const sys=r3(st.get(id)||0),cnt=num(STK[id]);return Math.abs(cnt-sys)>0.0005?{p,sys,cnt}:null}).filter(Boolean);
+  if(!ch.length)return;
+  if(!(await ask(T(`تعديل كميات ${ch.length} صنف لتطابق الجرد الفعلي؟`,`Adjust ${ch.length} items to match the physical count?`),T('تطبيق','Apply'))))return;
+  let ok=0;
+  for(const c of ch){if(await W(()=>db.collection('products').doc(c.p.id).update({opening:r3(num(c.p.opening)+(c.cnt-c.sys)),updatedAt:nowIso(),lastAdjust:{date:today(),from:c.sys,to:c.cnt,by:MYID||'',via:'stocktake'}})))ok++}
+  STK={};saveSTK();toast(T(`تمت تسوية ${ok} صنف ✓`,`${ok} items adjusted ✓`));render();
 }
 
 /* ---------- dashboard quick actions ---------- */
@@ -1072,8 +1211,8 @@ VIEWS.products=()=>{
   if(f==='low') arr=arr.filter(p=>!p.service&&(d.stock.get(p.id)||0)<=Math.max(num(p.minQty),0));
   if(f==='in') arr=arr.filter(p=>(d.stock.get(p.id)||0)>0);
   const val=arr.reduce((a,p)=>a+Math.max(d.stock.get(p.id)||0,0)*(d.avg.get(p.id)||0),0);
-  return `${loading()}<div class="head"><h1>الأصناف والمخزون</h1>${addBtn('editProduct','صنف')}</div>
-  <div class="search"><input id="q-products" placeholder="بحث بالاسم أو الكود أو الباركود…" value="${esc(Q.products||'')}" data-q="products"></div>
+  return `${loading()}<div class="head"><h1>الأصناف والمخزون</h1><button class="btn" data-act="openSub" data-type="stocktake" data-id="x">📋 ${T('جرد','Stocktake')}${Object.keys(STK).length?` <span class="badge b-amber">${Object.keys(STK).length}</span>`:''}</button>${addBtn('editProduct','صنف')}</div>
+  <div class="search"><input id="q-products" placeholder="بحث بالاسم أو الكود أو الباركود…" value="${esc(Q.products||'')}" data-q="products"><button class="btn icon" data-act="scanSearch" title="${T('مسح باركود','Scan barcode')}">📷</button></div>
   <div class="tabs">${[['all','الكل'],['in','متوفر'],['low','نافد / تحت الحد']].map(([v,t])=>`<button class="${f===v?'on':''}" data-act="filt" data-k="products" data-v="${v}">${t}</button>`).join('')}<span class="muted" style="margin-inline-start:auto;font-size:13px;align-self:center">${arr.length} صنف · قيمة المخزون ${fmt(val)}</span></div>
   <div class="list">${arr.length?arr.slice(0,400).map(p=>{const s=d.stock.get(p.id)||0;const low=!p.service&&s<=num(p.minQty);return `<div class="item" data-act="openSub" data-type="product" data-id="${p.id}"><div class="m"><div class="t" translate="no" dir="auto">${esc(dn(p))}</div><div class="d">${p.code?`<span class="num">${esc(p.code)}</span> · `:''}سعر البيع ${fmt(p.price)}${p.category?' · '+esc(p.category):''}</div></div><div class="a">${p.service?'<span class="badge">خدمة</span>':`<span class="num ${s<=0?'neg':low?'neg':''}">${fq(s)}</span> <span class="muted" style="font-weight:400;font-size:12px">${esc(p.unit||'')}</span>`}</div></div>`}).join(''):`<div class="empty">لا توجد أصناف ${q?'مطابقة':'بعد'}</div>`}</div>
   ${arr.length>400?`<p class="muted">يتم عرض أول 400، استخدم البحث.</p>`:''}`;
@@ -1334,6 +1473,7 @@ function renderSub(){
   if(sub.type==='pay') return payView(sub.id);
   if(sub.type==='account') return accountView(sub.id);
   if(sub.type==='appt') return apptView(sub.id);
+  if(sub.type==='stocktake') return VIEWS.stocktake();
   if(sub.type==='editor') return '';
   return '';
 }
@@ -1557,7 +1697,7 @@ function openEditor(kind,id,data,opts={}){
    ${!RET&&!isWO(kind)?'':''}${RET?`<label>${T('الفاتورة الأصلية (اختياري)','Original invoice (optional)')}<select id="e-inv"><option value="">— ${T('بدون','None')} —</option>${invOpts().map(x=>`<option value="${x.id}" ${x.id===d.invoiceId?'selected':''}>${docNo(k.ret,x.no)} · ${x.date} · ${fmt(x.total)}</option>`).join('')}</select><input type="hidden" id="e-due" value=""></label>`:isWO(kind)?'':`<label>${kind==='quotes'?'صالح حتى':'تاريخ الاستحقاق'}<input type="date" id="e-due" value="${esc(d.due||'')}"></label>`}
    <label ${isWO(kind)?'style="grid-column:1/-1"':''}>${isWO(kind)?T('وصف العمل','Job description'):kind==='purchases'?'رقم فاتورة المورد':'المرجع / رقم أمر الشراء'}<input id="e-ref" value="${esc(d.ref||'')}" ${isWO(kind)?`placeholder="${T('مثال: تركيب 8 كاميرات ونظام تسجيل','e.g. Install 8 cameras and NVR')}"`:''}></label>
   </div><div id="e-partyinfo" class="muted" style="font-size:12.5px;margin-top:6px"></div></div>
-  <div class="card"><h3>${isWO(kind)?T('المواد والخدمات','Materials & services'):'الأصناف'}</h3>${isWO(kind)?`<p class="muted" style="margin:-4px 0 10px;font-size:12.5px">${T('المواد تُخصم من المخزون عند إنهاء أمر العمل، وتنتقل إلى الفاتورة بدون خصم مرة ثانية.','Materials leave stock when the job is completed and carry into the invoice without a second deduction.')}</p>`:''}<div id="e-lines"></div><button class="btn" data-act="addLine">+ إضافة سطر</button></div>
+  <div class="card"><h3>${isWO(kind)?T('المواد والخدمات','Materials & services'):'الأصناف'}</h3>${isWO(kind)?`<p class="muted" style="margin:-4px 0 10px;font-size:12.5px">${T('المواد تُخصم من المخزون عند إنهاء أمر العمل، وتنتقل إلى الفاتورة بدون خصم مرة ثانية.','Materials leave stock when the job is completed and carry into the invoice without a second deduction.')}</p>`:''}<div id="e-lines"></div><div class="btns"><button class="btn" data-act="addLine">+ إضافة سطر</button><button class="btn" data-act="scanLines">📷 ${T('مسح باركود','Scan barcode')}</button></div></div>
   <div class="grid g2 f">
    <div class="card"><label>ملاحظات (تظهر في المستند)<textarea id="e-notes">${esc(d.notes||'')}</textarea></label>
    ${isNew&&RET?`<div style="margin-top:12px"><div style="font-size:13px;color:var(--mute);font-weight:500;margin-bottom:6px">${T('التسوية','Settlement')}</div>
@@ -1603,7 +1743,7 @@ function snRow(l,p){
   if(!need)return '';
   const war=E.kind==='sales'||isWO(E.kind);
   const w=l.warranty!=null&&l.warranty!==''?l.warranty:(p&&num(p.warrantyMonths)?p.warrantyMonths:'');
-  return `<div class="r3" style="display:grid;grid-template-columns:${war?'1fr 90px':'1fr'};gap:8px;margin-top:8px"><label style="min-width:0">${T('الأرقام التسلسلية (سطر لكل رقم)','Serial numbers (one per line)')}<textarea class="l-sn" rows="${Math.max(1,Math.min(4,(l.serials||[]).length||1))}" dir="ltr" style="min-height:40px;font-family:ui-monospace,monospace;font-size:13px">${esc((l.serials||[]).join('\n'))}</textarea></label>${war?`<label>${T('الضمان (شهر)','Warranty (mo)')}<input class="l-war" inputmode="numeric" value="${esc(w)}" placeholder="0"></label>`:''}</div>`;
+  return `<div class="r3" style="display:grid;grid-template-columns:${war?'1fr 90px':'1fr'};gap:8px;margin-top:8px"><label style="min-width:0">${T('الأرقام التسلسلية (سطر لكل رقم)','Serial numbers (one per line)')} <button type="button" class="btn sm ghost" data-act="scanSN" style="min-height:24px;padding:0 6px;font-size:13px">📷 ${T('مسح','Scan')}</button><textarea class="l-sn" rows="${Math.max(1,Math.min(4,(l.serials||[]).length||1))}" dir="ltr" style="min-height:40px;font-family:ui-monospace,monospace;font-size:13px">${esc((l.serials||[]).join('\n'))}</textarea></label>${war?`<label>${T('الضمان (شهر)','Warranty (mo)')}<input class="l-war" inputmode="numeric" value="${esc(w)}" placeholder="0"></label>`:''}</div>`;
 }
 function renderLines(){
   const st=derive().stock;
@@ -1812,7 +1952,7 @@ function editProduct(id){
   openModal(`<div data-keep><h3>${id?'تعديل صنف':'إضافة صنف'}</h3><div class="grid g2 f">
   <label>اسم الصنف *<input id="i-name" value="${esc(p.name||'')}"></label>
   <label>الاسم بالإنجليزية (اختياري)<input id="i-nameEn" value="${esc(p.nameEn||'')}" dir="ltr"></label>
-  <label>الكود / الباركود<input id="i-code" value="${esc(p.code||'')}" dir="ltr"></label>
+  <label>الكود / الباركود<span class="dsc"><input id="i-code" value="${esc(p.code||'')}" dir="ltr"><button type="button" class="dsc-t" data-act="scanCode">📷</button></span></label>
   <label>الوحدة<input id="i-unit" value="${esc(p.unit||'')}" placeholder="حبة، كرتون، متر…"></label>
   <label>سعر البيع *<input id="i-price" inputmode="decimal" value="${p.price!=null?fmt(p.price).replace(/,/g,''):''}"></label>
   <label>سعر الشراء (التكلفة)<input id="i-cost" inputmode="decimal" value="${p.cost!=null?fmt(p.cost).replace(/,/g,''):''}"></label>
@@ -1923,7 +2063,7 @@ async function convertQuote(id){
 }
 
 /* ================= PDF / Excel ================= */
-const LIBS={html2canvas:'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',jspdf:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'};
+const LIBS={zxing:'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js',html2canvas:'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',jspdf:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'};
 const libP={};
 function lib(name){return libP[name]||(libP[name]=new Promise((res,rej)=>{const s=document.createElement('script');s.src=LIBS[name];s.onload=res;s.onerror=()=>{delete libP[name];rej(new Error('lib'))};document.head.appendChild(s)}))}
 const TOUCH=matchMedia('(pointer:coarse)').matches;
@@ -2471,6 +2611,16 @@ ${dayName(a.date)} ${fdate(a.date)} — ${fTime(a.time)}${a.location?'\n'+a.loca
   saveWoDone:async o=>{const r=$('#wo-res').value.trim();if(await W(()=>db.collection('workorders').doc(o.id).update({status:'done',result:r,doneAt:nowIso(),doneBy:MYID||''}),T('تم إنهاء العمل ✓','Job completed ✓')))closeModal()},
   woInvoice:o=>woInvoice(o.id),
   snOpen:o=>{Q.warranty=o.sn;go('warranty')},
+  scanClose:()=>closeScanner(),scanTorch:()=>scanTorch(),
+  scanLines:()=>scanIntoEditor(),
+  scanSN:(o,el)=>scanSerialsInto(el),
+  scanCode:()=>openScanner({title:T('مسح باركود الصنف','Scan item barcode'),onCode:c=>{const i=$('#i-code');if(i)i.value=c;return {ok:true,msg:c}}}),
+  scanSearch:()=>openScanner({title:T('بحث بالباركود','Search by barcode'),onCode:c=>{const f=lookupCode(c);if(f){setTimeout(()=>openSub('product',f.product.id),300);return {ok:true,msg:f.product.name}}Q.products=c;setTimeout(render,300);return {ok:true,msg:T('غير موجود — تم وضعه في البحث','Not found — placed in search')}}}),
+  scanWarranty:()=>openScanner({title:T('مسح الرقم التسلسلي','Scan serial number'),onCode:c=>{Q.warranty=c;setTimeout(render,300);return {ok:true,msg:c}}}),
+  stkScan:()=>openScanner({title:T('الجرد — امسح كل قطعة','Stocktake — scan each piece'),continuous:true,onClose:()=>{if(sub&&sub.type==='stocktake')render()},onCode:c=>{const f=lookupCode(c);if(!f)return {ok:false,msg:T('غير موجود: ','Not found: ')+c};STK[f.product.id]=num(STK[f.product.id])+1;saveSTK();return {ok:true,msg:`${f.product.name} — ${fq(STK[f.product.id])}`}}}),
+  stkInc:o=>{STK[o.id]=Math.max(0,num(STK[o.id])+num(o.v));saveSTK();render()},
+  stkApply:()=>stkApply(),
+  stkClear:async()=>{if(await ask(T('مسح كل الأعداد في هذا الجرد؟','Clear all counts in this stocktake?'),T('مسح','Clear'),true)){STK={};saveSTK();render()}},
   navToggle:o=>{const i=NAV.findIndex(x=>x[0]===o.g);const kids=[];for(let j=i+1;j<NAV.length&&NAV[j][3]==='s';j++)kids.push(NAV[j][0]);const cur=(o.g in NAVOPEN)?!!NAVOPEN[o.g]:kids.includes(route);NAVOPEN[o.g]=!cur;try{localStorage.setItem('navopen',JSON.stringify(NAVOPEN))}catch(_){}renderShell()},
   newReturn:o=>{const inv=S['_'+o.k].get(o.id);if(!inv)return;const rk=retKindOf(o.k);const k=KIND[rk];const lines=returnableLines(o.k,inv,null);if(!lines.length){toast(T('كل أصناف هذه الفاتورة مُرتجعة مسبقاً','All items of this invoice were already returned'),3500);return}const dd=newDocData(rk,inv.partyId);Object.assign(dd,{due:'',lines,vatOn:inv.vatOn,vatRate:inv.vatRate,discount:0,partyName:inv.partyName,partyId:inv.partyId,invoiceId:inv.id,invoiceNo:docNo(o.k,inv.no)});openEditor(rk,null,dd)},
   refundRet:o=>refundRet(o.k,o.id),
@@ -2503,6 +2653,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&E&&e.target.classList&&e.target.classList.contains('l-name')){e.preventDefault();onLineProduct(e.target)}
+  if(e.key==='Escape'&&SCAN){closeScanner();return}
   if(e.key==='Escape'&&$('#modal').classList.contains('open'))closeModal();
 });
 window.addEventListener('beforeunload',e=>{if(E){e.preventDefault();e.returnValue=''}});

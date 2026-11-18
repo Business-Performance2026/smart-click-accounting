@@ -1,7 +1,7 @@
 // Service worker: app shell works offline; always tries the network first so updates show immediately.
-const CACHE = 'sc-accounting-v1';
+const CACHE = 'sc-accounting-v2';
 const CORE = ['./', './index.html', './fb.js', './firebase-config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
-const LIB_HOSTS = /^(www\.gstatic\.com|cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)$/;
+const LIB_HOSTS = /^(www\.gstatic\.com|cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com)$/;
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
