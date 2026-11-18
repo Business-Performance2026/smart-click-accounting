@@ -19,6 +19,10 @@ service cloud.firestore {
       allow create: if signedIn() && !exists(ownerDoc()) && request.resource.data.uid == request.auth.uid;
       allow update, delete: if false;
     }
+    // Claude connector key (admins only; read by the Cloud Function with admin rights)
+    match /meta/mcp {
+      allow read, write: if isAdmin();
+    }
     match /meta/settings {
       allow read: if isStaff();
       allow write: if isAdmin();

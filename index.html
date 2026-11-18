@@ -648,7 +648,7 @@ const AR_DAYS=['الأحد','الإثنين','الثلاثاء','الأربعا�
 const dayName=d=>{const x=new Date(d+'T00:00:00');return (LANG==='en'?EN_DAYS:AR_DAYS)[x.getDay()]};
 const fTime=t=>{if(!t)return '';const [h,m]=t.split(':').map(Number);const h12=((h+11)%12)+1;return `${h12}:${String(m).padStart(2,'0')} ${h<12?T('ص','AM'):T('م','PM')}`};
 const apType=a=>AP_TYPES[a.type]||AP_TYPES.other;
-const staffName=uid=>{if(!uid)return '';const x=STF.staff.find(s=>s.id===uid);return x?(x.name||x.email||''):(uid===MYID&&AUTHU?AUTHU.email:'')};
+const staffName=uid=>{if(!uid)return '';if(uid==='claude')return 'Claude';const x=STF.staff.find(s=>s.id===uid);return x?(x.name||x.email||''):(uid===MYID&&AUTHU?AUTHU.email:'')};
 const mapsLink=a=>a.mapUrl||(a.location?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.location)}`:'');
 function apStatus(a){
   if(a.status==='done')return [T('تمت','Done'),'b-green'];
@@ -876,6 +876,26 @@ async function pushOn(){
 async function pushSave(){if(!PUSH)return;PUSH.prefs=pushPrefsFromUI();savePUSH();try{const F=window.FB.fns;await F.updateDoc(F.doc(FB.fs,'pushTokens/'+PUSH.id),{prefs:PUSH.prefs,updatedAt:nowIso()});toast(T('تم الحفظ ✓','Saved ✓'))}catch(e){console.error(e);toast(T('تعذر الحفظ','Could not save'))}}
 async function pushOff(){if(!PUSH)return;try{const F=window.FB.fns;await F.deleteDoc(F.doc(FB.fs,'pushTokens/'+PUSH.id))}catch(_){}try{const m=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js');await m.deleteToken(m.getMessaging(FB.app))}catch(_){}PUSH=null;savePUSH();toast(T('تم الإيقاف','Turned off'));render()}
 async function pushTest(){try{const F=window.FB.fns;await F.setDoc(F.doc(F.collection(FB.fs,'notify')),{uid:MYID,at:nowIso()});toast(T('أُرسل طلب الإشعار التجريبي… يصلك خلال ثوانٍ','Test requested… it should arrive in a few seconds'),5000)}catch(e){toast(T('تعذر الإرسال — تأكد من رفع القواعد والوظائف','Could not send — make sure rules and functions are deployed'),5000)}}
+
+/* ---------- Claude connector (MCP) ---------- */
+let MCPK={loaded:false,key:''};
+const mcpUrl=k=>`https://me-central1-${(FB&&FB.app&&FB.app.options.projectId)||'smartclick-acounting'}.cloudfunctions.net/mcp/${k}`;
+function mcpCard(){
+  if(!ADMIN)return '';
+  if(!MCPK.loaded&&db){MCPK.loaded=true;window.FB.fns.getDoc(window.FB.fns.doc(FB.fs,'meta/mcp')).then(g=>{MCPK.key=g.exists()?(g.data().key||''):'';if(route==='settings'&&!sub&&!E)render()}).catch(()=>{})}
+  return `<div class="card"><h3>🤖 ${T('موصّل Claude','Claude connector')}</h3>
+   <p class="muted" style="margin:2px 0 10px;font-size:13px">${T('يخلّي Claude يسوي ويعدّل ويحذف عروض الأسعار والفواتير وأوامر الشراء ويسجّل الدفعات من المحادثة، وكل عملية كتابة تحتاج موافقتك. يعمل بعد رفع الوظائف (README).','Lets Claude create, edit and delete quotes, invoices and purchase orders and record payments from chat; every write needs your approval. Works after deploying the functions (README).')}</p>
+   ${MCPK.key?`<label>${T('رابط الموصّل — سري، لا تشاركه','Connector URL — secret, do not share')}<input id="mcp-url" readonly dir="ltr" value="${esc(mcpUrl(MCPK.key))}" onclick="this.select()"></label>
+   <div class="btns" style="margin-top:8px"><button class="btn pri" data-act="mcpCopy">📋 ${T('نسخ الرابط','Copy URL')}</button><button class="btn red" data-act="mcpNew">${T('تغيير الرابط (يلغي القديم)','Change URL (revokes the old one)')}</button></div>
+   <div class="muted" style="font-size:12.5px;margin-top:8px">${T('في claude.ai: الإعدادات ← Connectors ← Add custom connector ← الاسم SMART CLICK والصق الرابط.','In claude.ai: Settings → Connectors → Add custom connector → name it SMART CLICK and paste the URL.')}</div>`
+   :`<button class="btn pri" data-act="mcpNew">🔑 ${T('إنشاء رابط الموصّل','Create connector URL')}</button>`}
+  </div>`;
+}
+async function mcpNew(){
+  if(MCPK.key&&!(await ask(T('الرابط الحالي سيتوقف عن العمل، وتحتاج تحديثه في claude.ai. متابعة؟','The current URL will stop working and must be updated in claude.ai. Continue?'),T('تغيير','Change'),true)))return;
+  const k=newToken()+newToken();
+  if(await W(()=>window.FB.fns.setDoc(window.FB.fns.doc(FB.fs,'meta/mcp'),{key:k,createdAt:nowIso(),by:MYID||''}),T('تم ✓','Done ✓'))){MCPK.key=k;render()}
+}
 
 /* ---------- low stock ---------- */
 function lowStockItems(){
@@ -1713,6 +1733,7 @@ VIEWS.settings=()=>{
   const eiss=einvIssues('sales',{lines:[]});
   return `<div class="head"><h1>الإعدادات والاستيراد</h1></div>
   ${pushCard()}
+  ${mcpCard()}
   <div class="card" style="border-color:#bfd7f5;background:#f5f9ff"><h3>🧾 ${T('الفوترة الإلكترونية (فوترة)','E-invoicing (Fawtara)')}</h3>
    <p style="margin:4px 0 8px;font-size:13.5px">${T('حسب قرار جهاز الضرائب 189/2026: الشركات التي توريداتها السنوية 5 ملايين ر.ع. أو أقل تبدأ الإلزام في <b>1 أكتوبر 2027</b> (والأكبر في 1 أبريل 2027). الإرسال يتم عبر مزوّد خدمة معتمد من الجهاز، وبعدها لا تُقبل فواتير PDF كفاتورة ضريبية.','Per OTA Decision 189/2026: businesses with annual supplies of OMR 5M or less must comply from <b>1 October 2027</b> (larger ones from 1 April 2027). Invoices go through an OTA-accredited service provider; after that, PDF invoices no longer count as tax invoices.')}</p>
    <div style="font-size:13px;margin-bottom:8px">${T('جاهزية بيانات الشركة','Company data readiness')}: ${eiss.length?`<span style="color:var(--amber);font-weight:600">⚠ ${T('ناقص','Missing')}: ${esc(eiss.join('، '))}</span>`:`<span style="color:#17803d;font-weight:600">✓ ${T('مكتملة','Complete')}</span>`}</div>
@@ -2636,6 +2657,16 @@ async function syncPortal(cid,token){
 }
 const portalQ=new Set();let portalT=null;
 function queuePortalSync(cid){if(!cid||RO)return;portalQ.add(cid);clearTimeout(portalT);portalT=setTimeout(async()=>{const ids=[...portalQ];portalQ.clear();for(const id of ids){const c=S._customers.get(id);if(c&&c.portalToken){try{await syncPortal(id)}catch(e){console.error('portal sync',e)}}}},1500)}
+// documents written by the Claude connector carry portalDirty: refresh that customer's portal once
+function onRemoteDirty(col,snap){
+  if(RO||!['sales','quotes','sreturns','payments','customers'].includes(col))return;
+  for(const ch of snap.docChanges()){
+    if(ch.type==='removed'||ch.doc.metadata.hasPendingWrites)continue;const x=ch.doc.data()||{};if(!x.portalDirty)continue;
+    const cid=col==='customers'?ch.doc.id:(col==='payments'&&x.partyType!=='customer')?'':x.partyId;
+    if(cid)queuePortalSync(cid);
+    try{const F=window.FB.fns;const pr=F.updateDoc(F.doc(FB.fs,col+'/'+ch.doc.id),{portalDirty:false});pr&&pr.catch&&pr.catch(()=>{})}catch(_){}
+  }
+}
 function onLocalChanges(col,snap){
   if(!snap.metadata.hasPendingWrites||RO)return;
   for(const ch of snap.docChanges()){
@@ -2743,7 +2774,7 @@ function startData(){
     db.collection(c).onSnapshot(snap=>{
       S[c]=snap.docs.map(x=>({...x.data(),id:x.id}));S['_'+c]=new Map(S[c].map(x=>[x.id,x]));
       if(!snap.metadata.fromCache){S.ready.add(c);if(allReady()){clearTimeout(slowT);S.slow=false}}
-      onLocalChanges(c,snap);
+      onLocalChanges(c,snap);onRemoteDirty(c,snap);
       schedule();
     },e=>{if(c==='sreturns'||c==='preturns'||c==='appointments'||c==='workorders'||c==='porders'){console.warn(c,e);S.ready.add(c);S.rulesOld=true;renderShell();schedule();return}onErr(c)(e)});
   });
@@ -2924,7 +2955,7 @@ const ACT={
   filt:o=>{Q[o.k+'_f']=o.v;render()},
   showLate:()=>{Q.sales_f='late';go('sales')},
   lang:()=>{closeSide();setLang(LANG==='en'?'ar':'en');if(!ROLE&&AUTHU!==undefined)resolveAccess()},
-  emailPdf:()=>emailPdf(),supBalPdf:()=>supBalPdf(),pushOn:()=>pushOn(),pushOff:()=>pushOff(),pushSave:()=>pushSave(),pushTest:()=>pushTest(),saveVapid:async()=>{const v=$('#s-vapid').value.trim();if(await W(()=>db.doc('meta/settings').update({vapidKey:v}),T('تم الحفظ ✓','Saved ✓')))render()},xmlDoc:o=>xmlDoc(o.k,o.id),lowStockPO:()=>lowStockPO(),custBalPdf:()=>custBalPdf(),exportJson:()=>exportJson(),
+  emailPdf:()=>emailPdf(),supBalPdf:()=>supBalPdf(),pushOn:()=>pushOn(),mcpNew:()=>mcpNew(),mcpCopy:async()=>{const v=$('#mcp-url').value;try{await navigator.clipboard.writeText(v);toast(T('تم النسخ ✓','Copied ✓'))}catch(_){$('#mcp-url').select();toast(T('انسخ الرابط يدوياً','Copy the URL manually'))}},pushOff:()=>pushOff(),pushSave:()=>pushSave(),pushTest:()=>pushTest(),saveVapid:async()=>{const v=$('#s-vapid').value.trim();if(await W(()=>db.doc('meta/settings').update({vapidKey:v}),T('تم الحفظ ✓','Saved ✓')))render()},xmlDoc:o=>xmlDoc(o.k,o.id),lowStockPO:()=>lowStockPO(),custBalPdf:()=>custBalPdf(),exportJson:()=>exportJson(),
   portalWa:o=>portalWa(o.id),
   portalCopy:async o=>{try{const l=await portalLink(o.id);await navigator.clipboard.writeText(l);toast(T('تم نسخ الرابط ✓','Link copied ✓'))}catch(e){toast(T('تعذر النسخ','Could not copy'))}},
   portalOpen:o=>{const w=window.open('','_blank');portalLink(o.id).then(l=>{if(w)w.location.href=l}).catch(()=>w&&w.close())},

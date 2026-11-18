@@ -9,6 +9,10 @@ admin.initializeApp();
 const db = admin.firestore();
 setGlobalOptions({ region: 'me-central1', maxInstances: 3 });
 
+// 🤖 Claude connector (MCP). URL: https://me-central1-<project>.cloudfunctions.net/mcp/<KEY>
+const { onRequest } = require('firebase-functions/v2/https');
+exports.mcp = onRequest({ invoker: 'public', timeoutSeconds: 60, memory: '256MiB' }, (req, res) => require('./mcp').mcpHandler(req, res));
+
 const TZ = 'Asia/Muscat';
 const APP_URL = ''; // links are resolved by the service worker relative to the app's own address
 const PREFIX = { sales: 'INV', quotes: 'QT', purchases: 'PUR', payments_in: 'RV', payments_out: 'PV' };
