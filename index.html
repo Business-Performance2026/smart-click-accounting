@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>نظام الإدارة والمحاسبة والمخزون</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧾</text></svg>">
+<link rel="icon" type="image/png" href="favicon-64.png">
 <meta name="theme-color" content="#13202e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -23,6 +23,8 @@ a{color:var(--pri)}
 #app{display:flex;min-height:100vh}
 #side{width:236px;background:var(--side);color:#c9d3df;flex-shrink:0;position:sticky;top:0;height:100vh;overflow:auto;padding:18px 10px}
 #side .brand{color:#fff;font-weight:700;font-size:16px;padding:4px 12px 16px;line-height:1.4}
+#side .brand .blogo{display:block;max-width:150px;max-height:56px;object-fit:contain;background:#fff;border-radius:10px;padding:6px 8px;margin-bottom:10px}
+#tb-logo{height:30px;max-width:90px;object-fit:contain;border-radius:6px;background:#fff;padding:2px 4px;margin-inline-start:6px}
 #side .brand small{display:block;color:#8ea0b4;font-weight:400;font-size:12px}
 #side a{display:flex;gap:10px;align-items:center;padding:9px 12px;border-radius:9px;color:inherit;text-decoration:none;margin-bottom:2px;font-size:14.5px}
 #side a:hover{background:#1b2d3f}
@@ -262,7 +264,7 @@ table.t td.num,table.t td.n{white-space:nowrap}
   <aside id="side"></aside>
   <div id="scrim" data-act="closeSide"></div>
   <main>
-    <div id="topbar"><button class="btn ghost" data-act="openSide" aria-label="القائمة">☰</button><b id="tb-title"></b><span style="width:44px"></span></div>
+    <div id="topbar"><button class="btn ghost" data-act="openSide" aria-label="القائمة">☰</button><b id="tb-title"></b><span style="min-width:44px;display:flex;justify-content:flex-end"><img id="tb-logo" alt="" hidden></span></div>
     <div id="banner"></div>
     <div id="view"></div>
   </main>
@@ -602,8 +604,9 @@ function navHtml(cur){
 }
 function renderShell(){
   const cur=route;
-  $('#side').innerHTML=`<div class="brand">${esc(ST().company||'نظام الإدارة والمحاسبة')}<small>المبيعات · المشتريات · المخزون</small></div>`+navHtml(cur)+`${canInstall()?`<a href="#" data-act="install" style="margin-top:14px;background:#1d3347;color:#fff"><span class="ic">📲</span>${T('تثبيت التطبيق','Install app')}</a>`:''}<a href="#" data-act="lang" translate="no" style="margin-top:14px;border-top:1px solid #24384c;border-radius:0;padding-top:14px"><span class="ic">🌐</span>${LANG==='en'?'العربية':'English'}</a>`;
+  $('#side').innerHTML=`<div class="brand">${ST().logo?`<img class="blogo" src="${esc(ST().logo)}" alt="">`:''}${esc(ST().company||'نظام الإدارة والمحاسبة')}<small>المبيعات · المشتريات · المخزون</small></div>`+navHtml(cur)+`${canInstall()?`<a href="#" data-act="install" style="margin-top:14px;background:#1d3347;color:#fff"><span class="ic">📲</span>${T('تثبيت التطبيق','Install app')}</a>`:''}<a href="#" data-act="lang" translate="no" style="margin-top:14px;border-top:1px solid #24384c;border-radius:0;padding-top:14px"><span class="ic">🌐</span>${LANG==='en'?'العربية':'English'}</a>`;
   $('#bottom').innerHTML=BOTTOM.map(([k,t,i])=>k==='more'?`<a href="#" data-act="openSide"><span>${i}</span>${t}</a>`:`<a href="#${k}" class="${cur===k?'on':''}" data-act="nav" data-r="${k}"><span>${i}</span>${t}</a>`).join('');
+  {const tl=$('#tb-logo');if(tl){const lg=ST().logo||'';if(lg){if(tl.getAttribute('src')!==lg)tl.src=lg;tl.hidden=false}else tl.hidden=true}}
   const n=NAV.find(x=>x[0]===cur);$('#tb-title').textContent=isRet(cur)?KIND[cur].many:n?n[1]:'';
   let b='';
   if(NODB) b=`<div class="banner">${T('تعذر الاتصال بـ Firebase. تحقق من ملف firebase-config.js والاتصال بالإنترنت.','Could not connect to Firebase. Check firebase-config.js and your connection.')}</div>`;
