@@ -175,6 +175,7 @@ table.t td.num,table.t td.n{white-space:nowrap}
 .paper th .pe{color:#d6efe9}
 .paper .num{display:inline-block;direction:ltr;unicode-bidi:normal}
 .paper td.num{display:table-cell}
+.paper[dir=rtl] td.n.num{text-align:left}
 .paper .sum{display:flex;justify-content:space-between;gap:20px;margin-top:14px}
 .paper .sum .notes{flex:1;font-size:12px;color:#333;white-space:pre-wrap}
 .paper .sum table{width:300px}
@@ -295,7 +296,7 @@ const norm=s=>String(s??'').trim().toLowerCase();
 const nowIso=()=>new Date().toISOString();
 
 let db=null,RO=false,ADMIN=false,MYID=null,ROLE=null,AUTHU=null,NODB=false;const MCP=true,downloads=true;
-const COLS=['customers','suppliers','products','quotes','sales','purchases','payments','sreturns','preturns','appointments','workorders'];
+const COLS=['customers','suppliers','products','quotes','sales','purchases','payments','sreturns','preturns','appointments','workorders','porders'];
 const S={settings:{},ready:new Set(),settingsReady:false,err:null,slow:false};
 COLS.forEach(c=>{S[c]=[];S['_'+c]=new Map()});
 let ver=0;
@@ -351,7 +352,7 @@ const EN={
 'اسم جديد — سيُضاف كعميل جديد عند الحفظ':'New name — will be added as a new customer on save','اسم جديد — سيُضاف كمورد جديد عند الحفظ':'New name — will be added as a new supplier on save','الرصيد الحالي':'Current balance','التوقيع':'Signature','الختم':'Stamp',
 'يتم عرض أحدث 300، استخدم البحث للوصول للأقدم.':'Showing the latest 300; use search for older ones.','يتم عرض أول 400، استخدم البحث.':'Showing the first 400; use search.','قبض':'Receipt','تحديث السجلات الموجودة بنفس الاسم':'Update existing records with the same name','أو الكود':'or code','تم العثور على':'Found','صف. طابق الأعمدة:':'rows. Map the columns:',
 'الكمية غير كافية في المخزون لـ:':'Not enough stock for:','هل تريد الحفظ رغم ذلك؟':'Save anyway?','الإجمالي الجديد':'The new total','أقل من المبلغ المدفوع على الفاتورة':'is less than the amount paid on the invoice','هل تريد تخفيض الدفعة ليساوي الإجمالي؟ إذا اخترت الإبقاء، يُحسب الفرق':'Reduce the payment to match the total? If you keep it, the difference','رصيداً لصالح':'stays as credit for','المبلغ المدفوع':'The amount paid','أكبر من إجمالي الفاتورة':'is more than the invoice total','تعديل المدفوع ليساوي الإجمالي؟':'Change paid to equal the total?','تعديل إلى':'Change to','المبلغ':'The amount','أكبر من المتبقي على الفاتورة':'is more than the balance due','سيُحسب رصيداً زائداً. عدّل المبلغ أو اضغط':'will count as overpayment. Edit the amount or press','مبلغ زائد (رصيد لصالح العميل)':'Overpaid (customer credit)','مبلغ زائد (رصيد لصالح المورد)':'Overpaid (supplier credit)','الفرق':'the difference',
-'سند قبض ':'Receipt ','أوامر العمل والتركيب':'Work orders','الضمان والأرقام التسلسلية':'Warranty & serials','أمر عمل':'Work order','أمر عمل جديد':'New work order','تعديل أمر عمل':'Edit work order','سجل التعديلات':'Activity log','فواتير المرتجعات':'Returns','إدارة العملاء':'Manage customers','إدارة الموردين':'Manage suppliers','أرصدة الموردين':'Supplier balances','لهم رصيد فقط':'With balance only','إجمالي المستحق للموردين':'Total payables','آخر فاتورة':'Last invoice','المرتجعات':'Returns','المواعيد والزيارات':'Appointments & visits','مرتجع المبيعات':'Sales returns','مرتجع المشتريات':'Purchase returns','مرتجعات المبيعات':'Sales returns','مرتجعات المشتريات':'Purchase returns','مرتجع مبيعات':'Sales return','مرتجع مشتريات':'Purchase return','مرتجع مبيعات جديد':'New sales return','مرتجع مشتريات جديد':'New purchase return','تعديل مرتجع مبيعات':'Edit sales return','تعديل مرتجع مشتريات':'Edit purchase return','خصم من الرصيد':'Credited','تم رد المبلغ':'Refunded','المالية':'Finance','الخزائن والبنوك':'Cash & banks','سندات القبض':'Receipts','سندات الصرف':'Payments','المصروفات':'Expenses','الفواتير':'Invoices','السندات':'Vouchers','ر.ع.':'OMR','من زر المشاركة (Share) في أعلى صفحة البرنامج على claude.ai، ادعُ كل موظف ببريده الإلكتروني بصلاحية':'Use the Share button at the top of the app page on claude.ai to invite each employee by email as','محرر (Editor)':'Editor','ليتمكن من إضافة الفواتير. من تتم دعوته بصلاحية':'so they can add invoices. Anyone invited as','مشاهد (Viewer)':'Viewer','يمكنه الاطلاع فقط.':'can only view.','إرفاق تفاصيل كل الفواتير مع الكشف':'Attach every invoice\'s details with the statement','الملف كبير جداً للإرسال. جرّب كشفاً بدون تفاصيل الفواتير.':'The file is too large to send. Try the statement without invoice details.','رفض Gmail الإرسال: ':'Gmail refused to send: ','إعدادات مؤسستك تمنع الإرسال عبر Gmail من هنا.':'Your organization\'s policy blocks sending via Gmail here.','📧 آخر إرسال بالإيميل:':'📧 Last emailed:','سند صرف ':'Payment ','رصيد حسابكم':'Your account balance','السيد/':'Dear',
+'سند قبض ':'Receipt ','أوامر العمل والتركيب':'Work orders','الضمان والأرقام التسلسلية':'Warranty & serials','أمر عمل':'Work order','أمر عمل جديد':'New work order','تعديل أمر عمل':'Edit work order','سجل التعديلات':'Activity log','فواتير المرتجعات':'Returns','إدارة العملاء':'Manage customers','إدارة الموردين':'Manage suppliers','أوامر الشراء':'Purchase orders','أمر شراء':'Purchase order','أمر شراء جديد':'New purchase order','تعديل أمر شراء':'Edit purchase order','تم الاستلام':'Received','متأخر التوريد':'Delivery overdue','مستلمة':'Received','ملغي':'Cancelled','أرصدة الموردين':'Supplier balances','أرصدة العملاء':'Customer balances','أعمار الديون':'Debt aging','لم تستحق':'Not due','أخرى':'Other','إجمالي المستحق على العملاء':'Total receivables','لهم رصيد فقط':'With balance only','إجمالي المستحق للموردين':'Total payables','آخر فاتورة':'Last invoice','المرتجعات':'Returns','المواعيد والزيارات':'Appointments & visits','مرتجع المبيعات':'Sales returns','مرتجع المشتريات':'Purchase returns','مرتجعات المبيعات':'Sales returns','مرتجعات المشتريات':'Purchase returns','مرتجع مبيعات':'Sales return','مرتجع مشتريات':'Purchase return','مرتجع مبيعات جديد':'New sales return','مرتجع مشتريات جديد':'New purchase return','تعديل مرتجع مبيعات':'Edit sales return','تعديل مرتجع مشتريات':'Edit purchase return','خصم من الرصيد':'Credited','تم رد المبلغ':'Refunded','المالية':'Finance','الخزائن والبنوك':'Cash & banks','سندات القبض':'Receipts','سندات الصرف':'Payments','المصروفات':'Expenses','الفواتير':'Invoices','السندات':'Vouchers','ر.ع.':'OMR','من زر المشاركة (Share) في أعلى صفحة البرنامج على claude.ai، ادعُ كل موظف ببريده الإلكتروني بصلاحية':'Use the Share button at the top of the app page on claude.ai to invite each employee by email as','محرر (Editor)':'Editor','ليتمكن من إضافة الفواتير. من تتم دعوته بصلاحية':'so they can add invoices. Anyone invited as','مشاهد (Viewer)':'Viewer','يمكنه الاطلاع فقط.':'can only view.','إرفاق تفاصيل كل الفواتير مع الكشف':'Attach every invoice\'s details with the statement','الملف كبير جداً للإرسال. جرّب كشفاً بدون تفاصيل الفواتير.':'The file is too large to send. Try the statement without invoice details.','رفض Gmail الإرسال: ':'Gmail refused to send: ','إعدادات مؤسستك تمنع الإرسال عبر Gmail من هنا.':'Your organization\'s policy blocks sending via Gmail here.','📧 آخر إرسال بالإيميل:':'📧 Last emailed:','سند صرف ':'Payment ','رصيد حسابكم':'Your account balance','السيد/':'Dear',
 'اربط Gmail أولاً: من claude.ai ← الإعدادات ← Connectors.':'Connect Gmail first: claude.ai → Settings → Connectors.','انتهت صلاحية ربط Gmail. أعد ربطه من claude.ai ← الإعدادات ← Connectors.':'Gmail connection expired. Reconnect it in claude.ai → Settings → Connectors.','الإرسال يحتاج موافقتك على استخدام Gmail. افتح البرنامج في claude.ai ووافق عند الطلب.':'Sending needs your approval to use Gmail. Open the app in claude.ai and allow it when asked.','لم يتأكد الإرسال. تحقق من مجلد المرسل في Gmail قبل المحاولة مرة أخرى.':'Sending was not confirmed. Check your Gmail Sent folder before trying again.','أدخل بريداً إلكترونياً صحيحاً':'Enter a valid email address','الإيميل غير متاح في هذا العرض':'Email is not available in this view','تعذر الإرسال':'Could not send','آخر إرسال بالإيميل:':'Last emailed:',
 };
 // Arabic-letter-aware phrase replacement (longest first)
@@ -403,10 +404,12 @@ const NAV=[
  ['quotes','عروض الأسعار','📝','s'],
  ['purg','المشتريات','📥','h'],
  ['purchases','فواتير المشتريات','🧾','s'],
+ ['porders','أوامر الشراء','📋','s'],
  ['preturns','فواتير المرتجعات','↪️','s'],
  ['custg','العملاء','👥','h'],
  ['customers','إدارة العملاء','📇','s'],
  ['+customer','إضافة عميل','➕','s'],
+ ['custbal','أرصدة العملاء','⚖️','s'],
  ['appointments','المواعيد والزيارات','📅','s'],
  ['workorders','أوامر العمل والتركيب','🛠️','s'],
  ['warranty','الضمان والأرقام التسلسلية','🛡️','s'],
@@ -426,6 +429,7 @@ const NAV=[
 const BOTTOM=[['dashboard','الرئيسية','🏠'],['sales','المبيعات','🧾'],['products','المخزون','📦'],['customers','العملاء','👥'],['more','المزيد','☰']];
 const KIND={
  quotes:{one:'عرض سعر',many:'عروض الأسعار',prefix:'QT',party:'customers',partyLbl:'العميل'},
+ porders:{one:'أمر شراء',many:'أوامر الشراء',prefix:'PO',party:'suppliers',partyLbl:'المورد'},
  sales:{one:'فاتورة مبيعات',many:'فواتير المبيعات',prefix:'INV',party:'customers',partyLbl:'العميل'},
  purchases:{one:'فاتورة مشتريات',many:'فواتير المشتريات',prefix:'PUR',party:'suppliers',partyLbl:'المورد'},
  sreturns:{one:'مرتجع مبيعات',many:'مرتجعات المبيعات',prefix:'SR',party:'customers',partyLbl:'العميل',ret:'sales'},
@@ -438,6 +442,7 @@ const SN_KINDS=new Set(['sales','sreturns','purchases','preturns','workorders'])
 const addMonths=(d,m)=>{const x=new Date(d+'T00:00:00');const day=x.getDate();x.setMonth(x.getMonth()+num(m));if(x.getDate()<day)x.setDate(0);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)};
 const splitSN=v=>String(v||'').split(/[\n,،;]+/).map(x=>x.trim()).filter(Boolean);
 const isRet=k=>!!(KIND[k]&&KIND[k].ret);
+const isQuo=k=>k==='quotes'||k==='porders';
 const retKindOf=inv=>inv==='sales'?'sreturns':'preturns';
 const METHODS={cash:'نقداً',bank:'تحويل بنكي',card:'بطاقة',cheque:'شيك'};
 const docNo=(kind,no)=>KIND[kind].prefix+'-'+String(no||0).padStart(5,'0');
@@ -509,6 +514,12 @@ function overdueSales(){
 function invStatus(kind,d){
   if(isWO(kind)){const x=WO_ST[d.status]||WO_ST.new;return [x[0],x[2]]}
   if(isRet(kind)){const rf=S.payments.some(p=>p.returnId===d.id);return rf?['تم رد المبلغ','b-green']:['خصم من الرصيد','b-pri']}
+  if(kind==='porders'){
+    if(d.status==='received') return ['تم الاستلام','b-green'];
+    if(d.status==='cancelled') return ['ملغي','b-red'];
+    if(d.due&&d.due<today()) return ['متأخر التوريد','b-amber'];
+    return ['مفتوح','b-pri'];
+  }
   if(kind==='quotes'){
     if(d.status==='converted') return ['تم تحويله لفاتورة','b-green'];
     if(d.status==='rejected') return ['مرفوض','b-red'];
@@ -767,7 +778,7 @@ function todayApptsBlock(){
 }
 
 /* ---------- activity view ---------- */
-const COL_NAMES={sales:['فاتورة مبيعات','Sales invoice'],purchases:['فاتورة مشتريات','Purchase invoice'],quotes:['عرض سعر','Quotation'],sreturns:['مرتجع مبيعات','Sales return'],preturns:['مرتجع مشتريات','Purchase return'],payments:['سند','Voucher'],customers:['عميل','Customer'],suppliers:['مورد','Supplier'],products:['صنف','Item'],appointments:['موعد','Appointment'],workorders:['أمر عمل','Work order'],meta:['الإعدادات','Settings'],staff:['مستخدم','User'],invites:['دعوة','Invite'],mail:['إيميل','Email']};
+const COL_NAMES={sales:['فاتورة مبيعات','Sales invoice'],purchases:['فاتورة مشتريات','Purchase invoice'],quotes:['عرض سعر','Quotation'],porders:['أمر شراء','Purchase order'],sreturns:['مرتجع مبيعات','Sales return'],preturns:['مرتجع مشتريات','Purchase return'],payments:['سند','Voucher'],customers:['عميل','Customer'],suppliers:['مورد','Supplier'],products:['صنف','Item'],appointments:['موعد','Appointment'],workorders:['أمر عمل','Work order'],meta:['الإعدادات','Settings'],staff:['مستخدم','User'],invites:['دعوة','Invite'],mail:['إيميل','Email']};
 const ACT_INFO={create:['➕','أضاف','added','b-green'],update:['✏️','عدّل','edited','b-pri'],delete:['🗑️','حذف','deleted','b-red'],import:['⬆️','استورد','imported','b-amber'],email:['📧','أرسل','sent','b-pri']};
 function activityOpen(a){
   if(a.action==='delete'||!a.docId)return '';
@@ -1258,8 +1269,8 @@ function dashCharts(){
 
 function docItem(kind,x){
   const [st,cls]=invStatus(kind,x);
-  const paid=kind!=='quotes'?derive().paid.get(x.id)||0:0;
-  return `<div class="item" data-act="openSub" data-type="doc" data-k="${kind}" data-id="${x.id}"><div class="m"><div class="t" translate="no" dir="auto">${esc(x.partyName||'—')}</div><div class="d"><span class="num">${docNo(kind,x.no)}</span> · ${esc(isWO(kind)?(x.due||x.date||''):(x.date||''))}${isWO(kind)&&x.ref?` · <span translate="no">${esc(x.ref)}</span>`:''}${isRet(kind)&&x.invoiceNo?` · <span class="num">${esc(x.invoiceNo)}</span>`:''} <span class="badge ${cls}">${st}</span></div></div><div class="a">${money(x.total)}${!isRet(kind)&&!isWO(kind)&&kind!=='quotes'&&paid>0&&paid<num(x.total)-0.0005?`<div class="d muted">باقي ${fmt(num(x.total)-paid)}</div>`:''}</div></div>`;
+  const paid=!isQuo(kind)?derive().paid.get(x.id)||0:0;
+  return `<div class="item" data-act="openSub" data-type="doc" data-k="${kind}" data-id="${x.id}"><div class="m"><div class="t" translate="no" dir="auto">${esc(x.partyName||'—')}</div><div class="d"><span class="num">${docNo(kind,x.no)}</span> · ${esc(isWO(kind)?(x.due||x.date||''):(x.date||''))}${isWO(kind)&&x.ref?` · <span translate="no">${esc(x.ref)}</span>`:''}${isRet(kind)&&x.invoiceNo?` · <span class="num">${esc(x.invoiceNo)}</span>`:''} <span class="badge ${cls}">${st}</span></div></div><div class="a">${money(x.total)}${!isRet(kind)&&!isWO(kind)&&!isQuo(kind)&&paid>0&&paid<num(x.total)-0.0005?`<div class="d muted">باقي ${fmt(num(x.total)-paid)}</div>`:''}</div></div>`;
 }
 function docListView(kind){
   const k=KIND[kind];
@@ -1271,7 +1282,7 @@ function docListView(kind){
     else if(isWO(kind)&&f!=='all') arr=arr.filter(x=>f==='open'?!['done','invoiced','cancelled'].includes(x.status):['done','invoiced'].includes(x.status));
     else if(f!=='all') arr=arr.filter(x=>{const c=invStatus(kind,x)[1];return f==='open'?c!=='b-green':c==='b-green'});
     const tot=arr.reduce((a,x)=>a+num(x.total),0);
-    const filters=isWO(kind)?[['all','الكل'],['open','مفتوحة'],['done','منجزة']]:isRet(kind)?[['all','الكل']]:kind==='quotes'?[['all','الكل'],['open','مفتوحة'],['done','محوّلة']]:[['all','الكل'],['open','غير مدفوعة'],...(kind==='sales'?[['late','متأخرة']]:[]),['done','مدفوعة']];
+    const filters=isWO(kind)?[['all','الكل'],['open','مفتوحة'],['done','منجزة']]:isRet(kind)?[['all','الكل']]:kind==='quotes'?[['all','الكل'],['open','مفتوحة'],['done','محوّلة']]:kind==='porders'?[['all','الكل'],['open','مفتوحة'],['done','مستلمة']]:[['all','الكل'],['open','غير مدفوعة'],...(kind==='sales'?[['late','متأخرة']]:[]),['done','مدفوعة']];
     return `${loading()}<div class="head"><h1>${k.many}</h1>${addBtn('newDoc',k.one,`data-k="${kind}"`)}</div>
     ${isRet(kind)?`<p class="muted" style="margin:-6px 0 12px;font-size:13px">${T('المرتجع يعيد الأصناف للمخزون'+(kind==='preturns'?' (يخرجها)':'')+' ويخصم من رصيد '+(kind==='sreturns'?'العميل':'المورد')+'. يمكن إنشاؤه من داخل الفاتورة الأصلية أيضاً.',kind==='sreturns'?'A return puts items back into stock and reduces the customer balance. You can also create it from the original invoice.':'A purchase return takes items out of stock and reduces the supplier balance. You can also create it from the original invoice.')}</p>`:''}
     <div class="search"><input id="${fid}" placeholder="بحث بالاسم أو الرقم…" value="${esc(Q[kind]||'')}" data-q="${kind}"></div>
@@ -1280,7 +1291,7 @@ function docListView(kind){
     ${arr.length>300?`<p class="muted">يتم عرض أحدث 300، استخدم البحث للوصول للأقدم.</p>`:''}`;
   };
 }
-VIEWS.sales=docListView('sales');VIEWS.quotes=docListView('quotes');VIEWS.purchases=docListView('purchases');VIEWS.sreturns=docListView('sreturns');VIEWS.workorders=docListView('workorders');VIEWS.preturns=docListView('preturns');
+VIEWS.porders=docListView('porders');VIEWS.sales=docListView('sales');VIEWS.quotes=docListView('quotes');VIEWS.purchases=docListView('purchases');VIEWS.sreturns=docListView('sreturns');VIEWS.workorders=docListView('workorders');VIEWS.preturns=docListView('preturns');
 
 function partyListView(col){
   const isC=col==='customers';
@@ -1297,6 +1308,49 @@ function partyListView(col){
   };
 }
 VIEWS.customers=partyListView('customers');VIEWS.suppliers=partyListView('suppliers');
+const AGE_B=[['لم تستحق','Not due'],['1–30','1–30'],['31–60','31–60'],['61–90','61–90'],['+90','90+']];
+function custAgeRows(){
+  const d=derive(),t=today(),m=new Map(S.customers.map(c=>[c.id,{p:c,b:[0,0,0,0,0],other:0,bal:r3(d.cust.get(c.id)||0),oldest:0}]));
+  S.sales.forEach(x=>{const r=m.get(x.partyId);if(!r)return;const rem=num(x.total)-(d.paid.get(x.id)||0);if(rem<=0.0005)return;const due=effDue(x);const late=due&&due<t?daysBetween(due,t):0;
+    r.b[late<=0?0:late<=30?1:late<=60?2:late<=90?3:4]+=rem;if(late>r.oldest)r.oldest=late});
+  for(const r of m.values()){r.b=r.b.map(r3);r.other=r3(r.bal-r.b.reduce((a,v)=>a+v,0))}
+  return [...m.values()];
+}
+function custAgeFiltered(){
+  const q=norm(Q.custbal);const f=Q.custbal_f||'due';
+  let arr=custAgeRows();
+  if(f==='due')arr=arr.filter(r=>r.bal>0.0005);else if(f==='late')arr=arr.filter(r=>r.b[1]+r.b[2]+r.b[3]+r.b[4]>0.0005);else if(f==='credit')arr=arr.filter(r=>r.bal<-0.0005);else arr=arr.filter(r=>Math.abs(r.bal)>0.0005||r.b.some(v=>v>0.0005));
+  if(q)arr=arr.filter(r=>norm(r.p.name).includes(q)||norm(r.p.nameEn).includes(q)||norm(r.p.phone).includes(q));
+  return arr.sort((a,b)=>f==='credit'?a.bal-b.bal:(b.b[4]-a.b[4])||(b.bal-a.bal));
+}
+VIEWS.custbal=()=>{
+  const arr=custAgeFiltered();const f=Q.custbal_f||'due';
+  const sumB=i=>arr.reduce((a,r)=>a+r.b[i],0),tot=arr.reduce((a,r)=>a+r.bal,0),oth=arr.reduce((a,r)=>a+r.other,0);
+  const hasOther=arr.some(r=>Math.abs(r.other)>0.0005);
+  const AGC=['','#b45309','#c2410c','#b91c1c','#7f1d1d'];
+  return `${loading()}<div class="head"><h1>${T('أرصدة العملاء','Customer balances')}</h1><button class="btn" data-act="custBalPdf">⬇︎ PDF</button></div>
+  <div class="grid g3" style="margin-bottom:12px"><div class="stat"><div class="k">${T('إجمالي المستحق على العملاء','Total receivables')}</div><div class="v ${tot>0.0005?'neg':''}">${money(tot)}</div><div class="s">${arr.filter(r=>r.bal>0.0005).length} ${T('عميل','customers')}</div></div>
+   <div class="stat"><div class="k">${T('متأخرة السداد','Overdue')}</div><div class="v neg">${money(sumB(1)+sumB(2)+sumB(3)+sumB(4))}</div><div class="s">${T('لم تستحق بعد','Not yet due')}: ${fmt(sumB(0))}</div></div>
+   <div class="stat"><div class="k">${T('أكثر من 90 يوم','Over 90 days')}</div><div class="v ${sumB(4)>0.0005?'neg':''}">${money(sumB(4))}</div></div></div>
+  <div class="card"><h3>${T('أعمار الديون','Debt aging')}</h3><div style="display:flex;height:14px;border-radius:7px;overflow:hidden;background:#eef0f3;margin:6px 0 8px">${[0,1,2,3,4].map(i=>{const v=sumB(i),all=[0,1,2,3,4].reduce((a,j)=>a+sumB(j),0);return v>0.0005&&all>0?`<div title="${AGE_B[i][0]}" style="width:${v/all*100}%;background:${['#9ec5f4','#5598e7','#2a78d6','#1c5cab','#0d366b'][i]}"></div>`:''}).join('')}</div>
+   <div style="display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px">${[0,1,2,3,4].map(i=>`<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${['#9ec5f4','#5598e7','#2a78d6','#1c5cab','#0d366b'][i]};margin-inline-end:5px"></span>${T(i?AGE_B[i][0]+' يوم':'لم تستحق',i?AGE_B[i][1]+' days':'Not due')}: <b class="num">${fmt(sumB(i))}</b></span>`).join('')}</div></div>
+  <div class="search"><input id="q-custbal" placeholder="${T('بحث بالاسم أو الهاتف…','Search by name or phone…')}" value="${esc(Q.custbal||'')}" data-q="custbal"></div>
+  <div class="tabs">${[['due',T('عليهم رصيد','With balance')],['late',T('متأخرون','Overdue')],['credit',T('لهم رصيد دائن','In credit')],['all',T('الكل','All')]].map(([v,tx])=>`<button class="${f===v?'on':''}" data-act="filt" data-k="custbal" data-v="${v}">${tx}</button>`).join('')}</div>
+  <div class="card" style="padding:0"><div class="tw"><table class="t"><tr><th>${T('العميل','Customer')}</th>${AGE_B.map((b,i)=>`<th class="n">${T(i?b[0]+' يوم':'لم تستحق',i?b[1]+' d':'Not due')}</th>`).join('')}${hasOther?`<th class="n" title="${T('رصيد افتتاحي أو دفعات ومرتجعات غير مرتبطة بفاتورة','Opening balance or payments/returns not linked to an invoice')}">${T('أخرى','Other')} ⓘ</th>`:''}<th class="n">${T('الرصيد','Balance')}</th></tr>
+  ${arr.map(r=>`<tr data-act="openSub" data-type="party" data-col="customers" data-id="${r.p.id}" style="cursor:pointer"><td><span translate="no" dir="auto">${esc(dn(r.p))}</span>${r.p.phone?`<div class="muted" style="font-size:12px"><span class="num">${esc(r.p.phone)}</span></div>`:''}</td>${r.b.map((v,i)=>`<td class="n num" style="${i&&v>0.0005?'color:'+AGC[i]+';font-weight:600':''}">${v>0.0005?fmt(v):''}</td>`).join('')}${hasOther?`<td class="n num">${Math.abs(r.other)>0.0005?fmt(r.other):''}</td>`:''}<td class="n num ${r.bal>0.0005?'neg':r.bal<-0.0005?'pos':''}"><b>${fmt(r.bal)}</b></td></tr>`).join('')||`<tr><td colspan="8" class="muted" style="text-align:center;padding:20px">${T('لا توجد أرصدة','No balances')}</td></tr>`}
+  ${arr.length?`<tr style="background:#f6f7f9"><td><b>${T('الإجمالي','Total')}</b></td>${[0,1,2,3,4].map(i=>`<td class="n num">${fmt(sumB(i))}</td>`).join('')}${hasOther?`<td class="n num">${fmt(oth)}</td>`:''}<td class="n num"><b>${fmt(tot)}</b></td></tr>`:''}</table></div></div>
+  ${hasOther?`<p class="muted" style="font-size:12.5px">ⓘ ${T('«أخرى»: رصيد افتتاحي أو دفعات مقدمة ومرتجعات غير مرتبطة بفاتورة محددة (بالسالب = دفعة مقدمة).','"Other": opening balance, or advance payments and returns not linked to a specific invoice (negative = advance payment).')}</p>`:''}`;
+};
+async function custBalPdf(){
+  const arr=custAgeFiltered();const sumB=i=>arr.reduce((a,r)=>a+r.b[i],0),tot=arr.reduce((a,r)=>a+r.bal,0);
+  const hasOther=arr.some(r=>Math.abs(r.other)>0.0005);
+  const html=`${paperHead()}${paperTitle('أرصدة العملاء وأعمار الديون','Customer Balances & Aging')}
+  <div class="meta"><div class="bx"><div><span>${PL('التاريخ','Date')}</span><span class="num">${fdate(today())}</span></div></div><div class="bx"><div><span>${PL('إجمالي المستحق','Total receivable')}</span><b class="num">${fmt(tot)}</b></div></div></div>
+  <table><tr><th style="width:26px">#</th><th>${PL('العميل','Customer',1)}</th>${AGE_B.map((b,i)=>`<th class="n">${PL(i?b[0]+' يوم':'لم تستحق',i?b[1]+' days':'Not due',1)}</th>`).join('')}${hasOther?`<th class="n">${PL('أخرى','Other',1)}</th>`:''}<th class="n">${PL('الرصيد','Balance',1)}</th></tr>
+  ${arr.map((r,i)=>`<tr><td>${i+1}</td><td>${PN(r.p.name,r.p.nameEn)}</td>${r.b.map(v=>`<td class="n num">${v>0.0005?fmt(v):''}</td>`).join('')}${hasOther?`<td class="n num">${Math.abs(r.other)>0.0005?fmt(r.other):''}</td>`:''}<td class="n num"><b>${fmt(r.bal)}</b></td></tr>`).join('')}
+  <tr><td></td><td><b>${PL('الإجمالي','Total')}</b></td>${[0,1,2,3,4].map(i=>`<td class="n num">${fmt(sumB(i))}</td>`).join('')}${hasOther?`<td class="n num">${fmt(arr.reduce((a,r)=>a+r.other,0))}</td>`:''}<td class="n num"><b>${fmt(tot)}</b></td></tr></table>`;
+  await htmlToPdf(html,`${T('أرصدة العملاء','Customer balances')} ${today()}.pdf`);
+}
 function supBalRows(){
   const d=derive();const m=new Map(S.suppliers.map(x=>[x.id,{p:x,op:num(x.opening),pur:0,ret:0,last:''}]));
   S.purchases.forEach(x=>{const r=m.get(x.partyId);if(r){r.pur+=num(x.total);if(x.date>r.last)r.last=x.date}});
@@ -1614,28 +1668,31 @@ function docView(kind,id){
   const k=KIND[kind];const [st,cls]=invStatus(kind,d);
   if(isRet(kind))return retView(kind,d);
   if(isWO(kind))return woView(d);
-  const paid=kind!=='quotes'?derive().paid.get(id)||0:0;const rem=r3(num(d.total)-paid);
+  const paid=!isQuo(kind)?derive().paid.get(id)||0:0;const rem=r3(num(d.total)-paid);
   const cashPaid=derive().cash.get(id)||0,retAmt=derive().ret.get(id)||0;
   const party=d.partyId?S['_'+k.party].get(d.partyId):null;
   const pays=S.payments.filter(p=>p.invoiceId===id);
-  const rets=kind==='quotes'?[]:S[retKindOf(kind)].filter(r=>r.invoiceId===id);
-  const wa=waLink(party&&party.phone,`${ST().company||''}\n${kind==='quotes'?'عرض سعر':'فاتورة'} رقم ${docNo(kind,d.no)}\nالتاريخ: ${d.date}\nالإجمالي: ${fmt(d.total)} ${ST().currency}${kind!=='quotes'&&rem>0.0005?`\nالمتبقي: ${fmt(rem)} ${ST().currency}`:''}`);
+  const rets=isQuo(kind)?[]:S[retKindOf(kind)].filter(r=>r.invoiceId===id);
+  const wa=waLink(party&&party.phone,`${ST().company||''}\n${kind==='quotes'?'عرض سعر':kind==='porders'?'أمر شراء':'فاتورة'} رقم ${docNo(kind,d.no)}\nالتاريخ: ${d.date}\nالإجمالي: ${fmt(d.total)} ${ST().currency}${!isQuo(kind)&&rem>0.0005?`\nالمتبقي: ${fmt(rem)} ${ST().currency}`:''}`);
   return `<div class="head">${backBtn}<h2>${k.one} <span class="num">${docNo(kind,d.no)}</span></h2><span class="badge ${cls}">${st}</span></div>
   <div class="btns" style="margin-bottom:12px">
    ${RO?'':`<button class="btn" data-act="editDoc" data-k="${kind}" data-id="${id}">✏️ تعديل</button>`}
    ${downloads?`<button class="btn pri" data-act="pdfDoc" data-k="${kind}" data-id="${id}">⬇︎ PDF</button>`:''}
    ${MCP?`<button class="btn" data-act="emailDoc" data-k="${kind}" data-id="${id}">📧 إيميل</button>`:''}
    ${k.party==='customers'&&d.partyId?`<button class="btn" data-act="waDoc" data-k="${kind}" data-id="${id}">واتساب</button>`:wa?`<a class="btn" href="${wa}" target="_blank" rel="noopener">واتساب</a>`:''}
-   ${!RO&&kind!=='quotes'&&rem>0.0005?`<button class="btn" data-act="newPay" data-t="${kind==='sales'?'in':'out'}" data-inv="${id}" data-k="${kind}">💵 تسجيل دفعة</button>`:''}
+   ${!RO&&!isQuo(kind)&&rem>0.0005?`<button class="btn" data-act="newPay" data-t="${kind==='sales'?'in':'out'}" data-inv="${id}" data-k="${kind}">💵 تسجيل دفعة</button>`:''}
    ${!RO&&kind==='quotes'?`<button class="btn" data-act="newWO" data-quote="${id}">🛠️ ${T('أمر عمل','Work order')}</button>`:''}
    ${!RO&&kind==='quotes'&&d.status!=='converted'?`<button class="btn pri" data-act="convert" data-id="${id}">تحويل إلى فاتورة</button><button class="btn" data-act="quoteStatus" data-id="${id}" data-v="${d.status==='rejected'?'open':'rejected'}">${d.status==='rejected'?'إعادة فتح':'تعليم كمرفوض'}</button>`:''}
    ${kind==='quotes'&&d.invoiceId?`<button class="btn" data-act="openSub" data-type="doc" data-k="sales" data-id="${d.invoiceId}">عرض الفاتورة</button>`:''}
+   ${!RO&&kind==='porders'&&d.status!=='received'?`<button class="btn pri" data-act="convertPO" data-id="${id}">📥 ${T('استلام وتحويل إلى فاتورة مشتريات','Receive & convert to purchase invoice')}</button><button class="btn" data-act="poStatus" data-id="${id}" data-v="${d.status==='cancelled'?'open':'cancelled'}">${d.status==='cancelled'?T('إعادة فتح','Reopen'):T('إلغاء الأمر','Cancel order')}</button>`:''}
+   ${kind==='porders'&&d.invoiceId&&S._purchases.get(d.invoiceId)?`<button class="btn" data-act="openSub" data-type="doc" data-k="purchases" data-id="${d.invoiceId}">${T('عرض فاتورة المشتريات','View purchase invoice')}</button>`:''}
+   ${d.poId&&S._porders.get(d.poId)?`<button class="btn" data-act="openSub" data-type="doc" data-k="porders" data-id="${d.poId}">${T('عرض أمر الشراء','View purchase order')}</button>`:''}
    ${d.quoteId?`<button class="btn" data-act="openSub" data-type="doc" data-k="quotes" data-id="${d.quoteId}">عرض السعر الأصلي</button>`:''}
-   ${!RO&&kind!=='quotes'?`<button class="btn" data-act="newReturn" data-k="${kind}" data-id="${id}">${kind==='sales'?'↩️':'↪️'} ${T('مرتجع','Return')}</button>`:''}
+   ${!RO&&!isQuo(kind)?`<button class="btn" data-act="newReturn" data-k="${kind}" data-id="${id}">${kind==='sales'?'↩️':'↪️'} ${T('مرتجع','Return')}</button>`:''}
    ${RO?'':`<button class="btn" data-act="dupDoc" data-k="${kind}" data-id="${id}">نسخ</button>`}
    ${!RO&&ADMIN?`<button class="btn red" data-act="delDoc" data-k="${kind}" data-id="${id}">حذف</button>`:''}
   </div>
-  ${kind!=='quotes'?`<div class="grid g3" style="margin-bottom:12px"><div class="stat"><div class="k">الإجمالي</div><div class="v">${money(d.total)}</div></div><div class="stat"><div class="k">المدفوع</div><div class="v pos">${money(cashPaid)}</div>${retAmt>0.0005?`<div class="s">${T('مرتجع','Returned')}: ${fmt(retAmt)}</div>`:''}</div>${rem<-0.0005?`<div class="stat" style="border-color:var(--amber)"><div class="k">مبلغ زائد (رصيد لصالح ${kind==='sales'?'العميل':'المورد'})</div><div class="v" style="color:var(--amber)">${money(-rem)}</div><div class="s">المدفوع أكثر من الإجمالي</div></div>`:`<div class="stat"><div class="k">المتبقي</div><div class="v ${rem>0.0005?'neg':''}">${money(rem)}</div></div>`}</div>`:''}
+  ${!isQuo(kind)?`<div class="grid g3" style="margin-bottom:12px"><div class="stat"><div class="k">الإجمالي</div><div class="v">${money(d.total)}</div></div><div class="stat"><div class="k">المدفوع</div><div class="v pos">${money(cashPaid)}</div>${retAmt>0.0005?`<div class="s">${T('مرتجع','Returned')}: ${fmt(retAmt)}</div>`:''}</div>${rem<-0.0005?`<div class="stat" style="border-color:var(--amber)"><div class="k">مبلغ زائد (رصيد لصالح ${kind==='sales'?'العميل':'المورد'})</div><div class="v" style="color:var(--amber)">${money(-rem)}</div><div class="s">المدفوع أكثر من الإجمالي</div></div>`:`<div class="stat"><div class="k">المتبقي</div><div class="v ${rem>0.0005?'neg':''}">${money(rem)}</div></div>`}</div>`:''}
   ${d.createdBy||d.updatedBy?`<div class="muted" style="font-size:12.5px;margin:-4px 0 6px">👤 ${T('أنشأها','Created by')} <span translate="no" dir="auto">${esc(staffName(d.createdBy)||'—')}</span>${d.updatedBy&&d.updatedBy!==d.createdBy?` · ${T('آخر تعديل','Last edit')} <span translate="no" dir="auto">${esc(staffName(d.updatedBy))}</span>`:''}${ADMIN?` · <a href="#" data-act="docHistory" data-id="${id}">${T('السجل','History')}</a>`:''}</div>`:''}
   ${d.lastEmail?`<div class="muted" style="font-size:12.5px;margin:-4px 0 10px">📧 آخر إرسال بالإيميل: <span translate="no" dir="ltr">${esc(d.lastEmail.to)}</span> · ${fdate((d.lastEmail.at||'').slice(0,10))}</div>`:''}
   ${pays.length?`<div class="card"><h3>الدفعات</h3><div class="list" style="border:0">${pays.map(payItem).join('')}</div></div>`:''}
@@ -1686,7 +1743,7 @@ function paperTitle(ar,en){const l=PLANG();return `<div class="ttl"><b>${l==='en
 function paperDoc(kind,d){
   const s=ST();const k=KIND[kind];
   const party=d.partyId?S['_'+k.party].get(d.partyId)||{}:{};
-  const title=kind==='quotes'?['عرض سعر','Quotation']:kind==='sales'?(d.vatOn?['فاتورة ضريبية','Tax Invoice']:['فاتورة','Invoice']):kind==='sreturns'?['إشعار دائن — مرتجع مبيعات','Credit Note']:kind==='preturns'?['إشعار مدين — مرتجع مشتريات','Debit Note']:kind==='workorders'?['أمر عمل','Work Order']:['فاتورة مشتريات','Purchase Invoice'];
+  const title=kind==='quotes'?['عرض سعر','Quotation']:kind==='porders'?['أمر شراء','Purchase Order']:kind==='sales'?(d.vatOn?['فاتورة ضريبية','Tax Invoice']:['فاتورة','Invoice']):kind==='sreturns'?['إشعار دائن — مرتجع مبيعات','Credit Note']:kind==='preturns'?['إشعار مدين — مرتجع مشتريات','Debit Note']:kind==='workorders'?['أمر عمل','Work Order']:['فاتورة مشتريات','Purchase Invoice'];
   const isInv=kind==='sales'||kind==='purchases';
   const paid=isInv?derive().cash.get(d.id)||0:0,retA=isInv?derive().ret.get(d.id)||0:0,settled=isInv?derive().paid.get(d.id)||0:0;
   const hasDisc=(d.lines||[]).some(l=>num(l.disc)>0);const hasDesc=(d.lines||[]).some(l=>String(l.desc||'').trim());
@@ -1697,7 +1754,7 @@ function paperDoc(kind,d){
   ${paperTitle(title[0],title[1])}
   <div class="meta">
    <div class="bx"><div><span>${pl}</span><b>${PN(d.partyName,party.nameEn)}</b></div>${party.phone?`<div><span>${PL('الهاتف','Phone')}</span><span class="num">${esc(party.phone)}</span></div>`:''}${party.vatNo?`<div><span>${PL('الرقم الضريبي','VATIN')}</span><span class="num">${esc(party.vatNo)}</span></div>`:''}${party.address?`<div><span>${PL('العنوان','Address')}</span><span>${esc(party.address)}</span></div>`:''}</div>
-   <div class="bx"><div><span>${PL('الرقم','No.')}</span><b class="num">${docNo(kind,d.no)}</b></div><div><span>${PL('التاريخ','Date')}</span><span class="num">${fdate(d.date)}</span></div>${d.due?`<div><span>${kind==='quotes'?PL('صالح حتى','Valid until'):isWO(kind)?PL('تاريخ التنفيذ','Scheduled'):PL('تاريخ الاستحقاق','Due date')}</span><span class="num">${fdate(d.due)}</span></div>`:''}${d.ref?`<div><span>${isWO(kind)?PL('العمل','Job'):PL('المرجع','Ref.')}</span><span class="num">${esc(d.ref)}</span></div>`:''}${isRet(kind)&&d.invoiceNo?`<div><span>${PL('الفاتورة الأصلية','Original invoice')}</span><span class="num">${esc(d.invoiceNo)}</span></div>`:''}${isWO(kind)&&d.location?`<div><span>${PL('الموقع','Location')}</span><span>${esc(d.location)}</span></div>`:''}${isWO(kind)&&(d.techs||[]).length?`<div><span>${PL('الفني','Technician')}</span><span>${esc(d.techs.map(u=>(staffName(u)||'').split('@')[0]).join('، '))}</span></div>`:''}</div>
+   <div class="bx"><div><span>${PL('الرقم','No.')}</span><b class="num">${docNo(kind,d.no)}</b></div><div><span>${PL('التاريخ','Date')}</span><span class="num">${fdate(d.date)}</span></div>${d.due?`<div><span>${kind==='quotes'?PL('صالح حتى','Valid until'):kind==='porders'?PL('تاريخ التوريد','Delivery date'):isWO(kind)?PL('تاريخ التنفيذ','Scheduled'):PL('تاريخ الاستحقاق','Due date')}</span><span class="num">${fdate(d.due)}</span></div>`:''}${d.ref?`<div><span>${isWO(kind)?PL('العمل','Job'):PL('المرجع','Ref.')}</span><span class="num">${esc(d.ref)}</span></div>`:''}${isRet(kind)&&d.invoiceNo?`<div><span>${PL('الفاتورة الأصلية','Original invoice')}</span><span class="num">${esc(d.invoiceNo)}</span></div>`:''}${isWO(kind)&&d.location?`<div><span>${PL('الموقع','Location')}</span><span>${esc(d.location)}</span></div>`:''}${isWO(kind)&&(d.techs||[]).length?`<div><span>${PL('الفني','Technician')}</span><span>${esc(d.techs.map(u=>(staffName(u)||'').split('@')[0]).join('، '))}</span></div>`:''}</div>
   </div>
   <table><tr><th style="width:30px">#</th>${showImg?'<th class="pimg"></th>':''}<th>${hasDesc?PL('الصنف','Item',1):PL('الصنف / الوصف','Item / Description',1)}</th>${hasDesc?`<th>${PL('الوصف','Description',1)}</th>`:''}<th class="n">${PL('الكمية','Qty',1)}</th><th class="n">${PL('السعر','Price',1)}</th>${hasDisc?`<th class="n">${PL('الخصم','Discount',1)}</th>`:''}<th class="n">${PL('الإجمالي','Amount',1)}</th></tr>
   ${(d.lines||[]).map((l,i)=>`<tr><td>${i+1}</td>${imgCell(l)}<td>${PN(l.name,lineEn(l))}${(l.serials||[]).length?`<div style="color:#555;font-size:11px" dir="ltr">S/N: ${esc(l.serials.join(', '))}</div>`:''}${num(l.warranty)&&(kind==='sales'||isWO(kind))?`<div style="color:#555;font-size:11px">${PL('الضمان','Warranty')}: ${fq(l.warranty)} ${PL('شهر','months')}${kind==='sales'?` — ${PL('حتى','until')} <span class="num">${fdate(addMonths(d.date,l.warranty))}</span>`:''}</div>`:''}</td>${hasDesc?`<td class="ldesc" dir="auto">${esc(l.desc||'')}</td>`:''}<td class="n num">${fq(l.qty)}</td><td class="n num">${fmt(l.price)}</td>${hasDisc?`<td class="n num">${discLabel(l)}</td>`:''}<td class="n num">${fmt(l.total)}</td></tr>`).join('')}</table>
@@ -1719,10 +1776,10 @@ function partyView(col,id){
   const rows=statement(col,id);
   const wa=waLink(p.phone,`${ST().company||''}\nالسيد/ ${p.name}\nرصيد حسابكم: ${fmt(bal)} ${ST().currency}`);
   const docs=isC?S.sales.filter(x=>x.partyId===id):S.purchases.filter(x=>x.partyId===id);
-  const quotes=isC?S.quotes.filter(x=>x.partyId===id):[];
+  const quotes=isC?S.quotes.filter(x=>x.partyId===id):S.porders.filter(x=>x.partyId===id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   return `<div class="head">${backBtn}<h2 translate="no">${esc(p.name)}${p.nameEn?` <span class="muted" style="font-size:14px;font-weight:400" dir="ltr">${esc(p.nameEn)}</span>`:''}</h2></div>
   <div class="btns" style="margin-bottom:12px">
-   ${RO?'':isC?`<button class="btn pri" data-act="newDoc" data-k="sales" data-party="${id}">+ فاتورة</button><button class="btn" data-act="newDoc" data-k="quotes" data-party="${id}">+ عرض سعر</button><button class="btn" data-act="newPay" data-t="in" data-party="${id}" data-pt="customer">+ سند قبض</button>`:`<button class="btn pri" data-act="newDoc" data-k="purchases" data-party="${id}">+ فاتورة مشتريات</button><button class="btn" data-act="newPay" data-t="out" data-party="${id}" data-pt="supplier">+ سند صرف</button>`}
+   ${RO?'':isC?`<button class="btn pri" data-act="newDoc" data-k="sales" data-party="${id}">+ فاتورة</button><button class="btn" data-act="newDoc" data-k="quotes" data-party="${id}">+ عرض سعر</button><button class="btn" data-act="newPay" data-t="in" data-party="${id}" data-pt="customer">+ سند قبض</button>`:`<button class="btn pri" data-act="newDoc" data-k="purchases" data-party="${id}">+ فاتورة مشتريات</button><button class="btn" data-act="newDoc" data-k="porders" data-party="${id}">+ ${T('أمر شراء','Purchase order')}</button><button class="btn" data-act="newPay" data-t="out" data-party="${id}" data-pt="supplier">+ سند صرف</button>`}
    ${RO?'':`<button class="btn" data-act="editParty" data-col="${col}" data-id="${id}">✏️ تعديل</button>`}
    ${downloads?`<button class="btn" data-act="pdfStatement" data-col="${col}" data-id="${id}">⬇︎ كشف حساب PDF</button><button class="btn" data-act="pdfStatementDetail" data-col="${col}" data-id="${id}">⬇︎ كشف مفصّل PDF</button>`:''}
    ${MCP?`<button class="btn" data-act="emailStatement" data-col="${col}" data-id="${id}" data-detail="1">📧 إرسال الكشف</button>`:''}
@@ -1741,7 +1798,7 @@ function partyView(col,id){
   </table></div></div>
   ${isC?apptCustomerCard(id):''}
   ${isC?customerDevicesCard(id):''}
-  ${quotes.length?`<div class="card"><h3>عروض الأسعار</h3><div class="list" style="border:0">${quotes.map(x=>docItem('quotes',x)).join('')}</div></div>`:''}`;
+  ${quotes.length?`<div class="card"><h3>${isC?'عروض الأسعار':T('أوامر الشراء','Purchase orders')}</h3><div class="list" style="border:0">${quotes.map(x=>docItem(isC?'quotes':'porders',x)).join('')}</div></div>`:''}`;
 }
 function statement(col,id){
   const isC=col==='customers';const p=S['_'+col].get(id)||{};
@@ -1809,7 +1866,7 @@ function paperPay(p){
 /* ================= editors ================= */
 function newDocData(kind,partyId){
   const s=ST();const t=today();
-  const d={date:t,due:kind==='quotes'?addDays(t,num(s.quoteDays)||15):(num(s.dueDays)?addDays(t,num(s.dueDays)):''),partyId:partyId||'',partyName:'',ref:'',lines:[{productId:'',name:'',qty:1,price:'',disc:0}],discount:0,vatOn:true,vatRate:num(s.vatRate),notes:''};
+  const d={date:t,due:kind==='quotes'?addDays(t,num(s.quoteDays)||15):kind==='porders'?'':(num(s.dueDays)?addDays(t,num(s.dueDays)):''),partyId:partyId||'',partyName:'',ref:'',lines:[{productId:'',name:'',qty:1,price:'',disc:0}],discount:0,vatOn:true,vatRate:num(s.vatRate),notes:''};
   if(partyId){const p=S['_'+KIND[kind].party].get(partyId);if(p)d.partyName=p.name}
   return d;
 }
@@ -1822,12 +1879,12 @@ function openEditor(kind,id,data,opts={}){
   const invOpts=()=>{const pr=d.partyId?{id:d.partyId}:partyByName(k.party,d.partyName);if(!pr)return [];return S[k.ret].filter(x=>x.partyId===pr.id).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,100)};
   $('#view').innerHTML=`<div class="head"><button class="btn ghost" data-act="cancelEdit" style="padding-inline:6px">→ إلغاء</button><h2>${isNew?k.one+' جديد'+(kind==='sales'||kind==='purchases'?'ة':''):'تعديل '+k.one+' '+docNo(kind,d.no)}</h2></div>
   <div class="card"><div class="grid g2 f">
-   <label>${k.partyLbl}<input id="e-party" list="dl-${k.party}" value="${esc(d.partyName)}" placeholder="${T('اكتب الاسم أو اختر… (فارغ = '+(kind==='purchases'?'مورد نقدي':'عميل نقدي')+')','Type or pick a name… (empty = '+(kind==='purchases'?'cash supplier':'cash customer')+')')}" dir="auto" autocomplete="off"></label>
+   <label>${k.partyLbl}<input id="e-party" list="dl-${k.party}" value="${esc(d.partyName)}" placeholder="${T('اكتب الاسم أو اختر… (فارغ = '+(KIND[kind].party==='suppliers'?'مورد نقدي':'عميل نقدي')+')','Type or pick a name… (empty = '+(KIND[kind].party==='suppliers'?'cash supplier':'cash customer')+')')}" dir="auto" autocomplete="off"></label>
    <label>التاريخ<input type="date" id="e-date" value="${esc(d.date)}"></label>
    ${isWO(kind)?`<label>${T('تاريخ التنفيذ','Scheduled date')}<input type="date" id="e-due" value="${esc(d.due||'')}"></label><label>${T('الوقت','Time')}<input type="time" id="e-time" value="${esc(d.time||'')}"></label>
    <label style="grid-column:1/-1">${T('الموقع / العنوان','Location / address')}<input id="e-loc" value="${esc(d.location||'')}" dir="auto"></label>
    <label style="grid-column:1/-1">${T('الفنيون المكلّفون','Assigned technicians')}<div id="e-techs" style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px">${(STF.staff.length?STF.staff:[{id:MYID,email:AUTHU&&AUTHU.email||''}]).map(x=>`<label style="display:flex;gap:6px;align-items:center;color:var(--ink);font-size:14px"><input type="checkbox" value="${esc(x.id)}" ${(d.techs||[]).includes(x.id)?'checked':''}> <span translate="no" dir="auto">${esc((x.name||x.email||x.id).split('@')[0])}</span></label>`).join('')}</div></label>`:''}
-   ${!RET&&!isWO(kind)?'':''}${RET?`<label>${T('الفاتورة الأصلية (اختياري)','Original invoice (optional)')}<select id="e-inv"><option value="">— ${T('بدون','None')} —</option>${invOpts().map(x=>`<option value="${x.id}" ${x.id===d.invoiceId?'selected':''}>${docNo(k.ret,x.no)} · ${x.date} · ${fmt(x.total)}</option>`).join('')}</select><input type="hidden" id="e-due" value=""></label>`:isWO(kind)?'':`<label>${kind==='quotes'?'صالح حتى':'تاريخ الاستحقاق'}<input type="date" id="e-due" value="${esc(d.due||'')}"></label>`}
+   ${!RET&&!isWO(kind)?'':''}${RET?`<label>${T('الفاتورة الأصلية (اختياري)','Original invoice (optional)')}<select id="e-inv"><option value="">— ${T('بدون','None')} —</option>${invOpts().map(x=>`<option value="${x.id}" ${x.id===d.invoiceId?'selected':''}>${docNo(k.ret,x.no)} · ${x.date} · ${fmt(x.total)}</option>`).join('')}</select><input type="hidden" id="e-due" value=""></label>`:isWO(kind)?'':`<label>${kind==='quotes'?'صالح حتى':kind==='porders'?T('تاريخ التوريد المتوقع','Expected delivery'):'تاريخ الاستحقاق'}<input type="date" id="e-due" value="${esc(d.due||'')}"></label>`}
    <label ${isWO(kind)?'style="grid-column:1/-1"':''}>${isWO(kind)?T('وصف العمل','Job description'):kind==='purchases'?'رقم فاتورة المورد':'المرجع / رقم أمر الشراء'}<input id="e-ref" value="${esc(d.ref||'')}" ${isWO(kind)?`placeholder="${T('مثال: تركيب 8 كاميرات ونظام تسجيل','e.g. Install 8 cameras and NVR')}"`:''}></label>
   </div><div id="e-partyinfo" class="muted" style="font-size:12.5px;margin-top:6px"></div></div>
   <div class="card"><h3>${isWO(kind)?T('المواد والخدمات','Materials & services'):'الأصناف'}</h3>${isWO(kind)?`<p class="muted" style="margin:-4px 0 10px;font-size:12.5px">${T('المواد تُخصم من المخزون عند إنهاء أمر العمل، وتنتقل إلى الفاتورة بدون خصم مرة ثانية.','Materials leave stock when the job is completed and carry into the invoice without a second deduction.')}</p>`:''}<div id="e-lines"></div><div class="btns"><button class="btn" data-act="addLine">+ إضافة سطر</button><button class="btn" data-act="scanLines">📷 ${T('مسح باركود','Scan barcode')}</button></div></div>
@@ -2009,13 +2066,13 @@ async function saveDoc(then){
     let party=null;
     if(d.partyName){party=await ensureParty(k.party,d.partyName)}
     const c=calc(d);
-    const body={date:d.date,due:d.due||'',partyId:party?party.id:'',partyName:party?party.name:(kind==='purchases'?'مورد نقدي':'عميل نقدي'),ref:d.ref,
+    const body={date:d.date,due:d.due||'',partyId:party?party.id:'',partyName:party?party.name:(k.party==='suppliers'?'مورد نقدي':'عميل نقدي'),ref:d.ref,
       lines:d.lines.map(l=>({productId:l.productId||'',name:l.name,nameEn:l.nameEn||'',...(l.desc?{desc:l.desc}:{}),qty:r3(l.qty),price:r3(l.price),disc:r3(l.disc),discType:l.discType==='a'?'a':'p',...((l.serials||[]).length?{serials:l.serials}:{}),...(num(l.warranty)>0?{warranty:num(l.warranty)}:{}),...(l.noStock&&l.productId?{noStock:true}:{}),total:r3(l.total)})),
       discount:c.discount,discType:d.discType==='p'?'p':'a',discPct:d.discType==='p'?Math.round(num(d.discPct)*1e6)/1e6:0,vatOn:!!d.vatOn,vatRate:d.vatRate,sub:c.sub,vat:c.vat,total:c.total,notes:d.notes||'',updatedAt:nowIso(),updatedBy:MYID||''};
     let id=E.id,no;
     if(isRet(kind)){body.invoiceId=d.invoiceId||'';body.invoiceNo=d.invoiceNo||'';body.due=''}
     if(isWO(kind)){Object.assign(body,{time:d.time||'',location:d.location||'',techs:d.techs||[]})}
-    if(id){const old=S['_'+kind].get(id)||{};Object.assign(body,{no:old.no,createdAt:old.createdAt||nowIso(),createdBy:old.createdBy||'',status:old.status||(isWO(kind)?'new':'open'),quoteId:old.quoteId||''});if(isWO(kind))Object.assign(body,{result:old.result||'',invoiceId:old.invoiceId||'',apptId:old.apptId||''});if(!isRet(kind))body.invoiceId=old.invoiceId||'';else body.settle=old.settle||'credit';
+    if(id){const old=S['_'+kind].get(id)||{};Object.assign(body,{no:old.no,createdAt:old.createdAt||nowIso(),createdBy:old.createdBy||'',status:old.status||(isWO(kind)?'new':'open'),quoteId:old.quoteId||''});if(old.poId)body.poId=old.poId;if(old.woId)body.woId=old.woId;if(isWO(kind))Object.assign(body,{result:old.result||'',invoiceId:old.invoiceId||'',apptId:old.apptId||''});if(!isRet(kind))body.invoiceId=old.invoiceId||'';else body.settle=old.settle||'credit';
       await db.collection(kind).doc(id).set(body);no=old.no;
       // keep linked vouchers consistent with the edited document
       if((old.partyId||'')!==(body.partyId||'')||(old.partyName||'')!==body.partyName){
@@ -2029,9 +2086,11 @@ async function saveDoc(then){
       Object.assign(body,{no,createdAt:nowIso(),createdBy:MYID||'',status:isWO(kind)?(d.due?'scheduled':'new'):'open',quoteId:E.quoteId||''});
       if(isWO(kind)){body.apptId=E.apptId||'';body.result=''}
       if(kind==='sales'&&E.woId)body.woId=E.woId;
+      if(kind==='purchases'&&E.poId)body.poId=E.poId;
       if(!isRet(kind))body.invoiceId='';else body.settle=settle;
       await r.ref.set(body);
       if(isRet(kind)&&settle==='refund'&&body.total>0)await createRefund(kind,id,no,body,method,accId);
+      if(kind==='purchases'&&E.poId&&S._porders.get(E.poId)){await db.collection('porders').doc(E.poId).update({status:'received',invoiceId:id,invoiceNo:docNo('purchases',no),updatedAt:nowIso()})}
       if(E.quoteId&&!isWO(kind)){await db.collection('quotes').doc(E.quoteId).update({status:'converted',invoiceId:id,updatedAt:nowIso()})}
       if(kind==='sales'&&E.woId&&S._workorders.get(E.woId)){await db.collection('workorders').doc(E.woId).update({status:'invoiced',invoiceId:id,invoiceNo:docNo('sales',no),updatedAt:nowIso()})}
       if(paidAmt>0&&(kind==='sales'||kind==='purchases')){
@@ -2088,7 +2147,7 @@ async function saveParty(col,id){
   const ok=await W(()=>ref.set(body),'تم الحفظ ✓');
   if(ok){closeModal();
     // propagate rename to documents is not needed for balances (by id); update display names
-    if(id&&old.name!==name){const ks=col==='customers'?['sales','quotes']:['purchases'];for(const k of ks)for(const d of S[k].filter(x=>x.partyId===id))await W(()=>db.collection(k).doc(d.id).update({partyName:name}));for(const p of S.payments.filter(x=>x.partyId===id))await W(()=>db.collection('payments').doc(p.id).update({partyName:name}))}
+    if(id&&old.name!==name){const ks=col==='customers'?['sales','quotes','sreturns','workorders']:['purchases','preturns','porders'];for(const k of ks)for(const d of S[k].filter(x=>x.partyId===id))await W(()=>db.collection(k).doc(d.id).update({partyName:name}));for(const p of S.payments.filter(x=>x.partyId===id))await W(()=>db.collection('payments').doc(p.id).update({partyName:name}))}
     if(!id){openSub('party',ref.id,{col})}
   }
 }
@@ -2207,6 +2266,12 @@ async function savePay(id){
 }
 
 /* ---------- conversions ---------- */
+function convertPO(id){
+  const q=S._porders.get(id);if(!q)return;
+  const d=newDocData('purchases',q.partyId);
+  Object.assign(d,{partyName:q.partyName,lines:JSON.parse(JSON.stringify(q.lines||[])),discount:q.discount,discType:q.discType,discPct:q.discPct,vatOn:q.vatOn,vatRate:q.vatRate,notes:q.notes,ref:q.ref||''});
+  openEditor('purchases',null,d,{poId:id});
+}
 async function convertQuote(id){
   const q=S._quotes.get(id);if(!q)return;
   const d=newDocData('sales',q.partyId);
@@ -2275,7 +2340,7 @@ async function backup(){
   add('العملاء',S.customers.map(c=>({id:c.id,الاسم:c.name,الهاتف:c.phone,البريد:c.email,العنوان:c.address,الرقم_الضريبي:c.vatNo,رصيد_افتتاحي:num(c.opening),الرصيد_الحالي:r3(d.cust.get(c.id)||0)})));
   add('الموردين',S.suppliers.map(c=>({id:c.id,الاسم:c.name,الهاتف:c.phone,البريد:c.email,العنوان:c.address,الرقم_الضريبي:c.vatNo,رصيد_افتتاحي:num(c.opening),الرصيد_الحالي:r3(d.sup.get(c.id)||0)})));
   add('الأصناف',S.products.map(p=>({id:p.id,الاسم:p.name,الكود:p.code,الوحدة:p.unit,سعر_البيع:num(p.price),التكلفة:num(p.cost),كمية_افتتاحية:num(p.opening),الكمية_الحالية:r3(d.stock.get(p.id)||0),متوسط_التكلفة:r3(d.avg.get(p.id)||0),الحد_الأدنى:num(p.minQty),التصنيف:p.category,خدمة:p.service?'نعم':''})));
-  for(const k of ['sales','purchases','quotes','sreturns','preturns','workorders']){
+  for(const k of ['sales','purchases','quotes','sreturns','preturns','workorders','porders']){
     add(KIND[k].many,S[k].map(x=>({id:x.id,الرقم:docNo(k,x.no),التاريخ:x.date,الاستحقاق:x.due,الطرف:x.partyName,المجموع:num(x.sub),الخصم:num(x.discount),الضريبة:num(x.vat),الإجمالي:num(x.total),المدفوع:k==='quotes'?'':r3(d.paid.get(x.id)||0),الحالة:invStatus(k,x)[0]})));
     add('بنود '+KIND[k].many,S[k].flatMap(x=>(x.lines||[]).map(l=>({الرقم:docNo(k,x.no),التاريخ:x.date,الطرف:x.partyName,الصنف:l.name,الوصف:l.desc||'',الكمية:num(l.qty),السعر:num(l.price),الخصم_نسبة:num(l.disc),الإجمالي:num(l.total)}))));
   }
@@ -2318,10 +2383,10 @@ async function emailStart(o){
   if(o.kind){
     const d=S['_'+o.kind].get(o.id);if(!d)return;partyCol=KIND[o.kind].party;party=d.partyId?S['_'+partyCol].get(d.partyId):null;
     if(partyCol==='customers')link=await custLink(d.partyId);
-    const no=docNo(o.kind,d.no);const kAr={workorders:'أمر العمل',sreturns:'مرفق إشعار دائن (مرتجع مبيعات)',preturns:'مرفق إشعار مدين (مرتجع مشتريات)',quotes:'مرفق عرض السعر',sales:d.vatOn?'مرفق الفاتورة الضريبية':'مرفق الفاتورة',purchases:'فاتورة المشتريات'}[o.kind],kEn={workorders:'work order',sreturns:'please find credit note',preturns:'please find debit note',quotes:'please find our quotation',sales:d.vatOn?'please find tax invoice':'please find invoice',purchases:'purchase invoice'}[o.kind];
+    const no=docNo(o.kind,d.no);const kAr={porders:'مرفق أمر الشراء',workorders:'أمر العمل',sreturns:'مرفق إشعار دائن (مرتجع مبيعات)',preturns:'مرفق إشعار مدين (مرتجع مشتريات)',quotes:'مرفق عرض السعر',sales:d.vatOn?'مرفق الفاتورة الضريبية':'مرفق الفاتورة',purchases:'فاتورة المشتريات'}[o.kind],kEn={porders:'please find our purchase order',workorders:'work order',sreturns:'please find credit note',preturns:'please find debit note',quotes:'please find our quotation',sales:d.vatOn?'please find tax invoice':'please find invoice',purchases:'purchase invoice'}[o.kind];
     const rem=(o.kind==='sales'||o.kind==='purchases')?num(d.total)-(derive().paid.get(d.id)||0):0;
     sections=[paperDoc(o.kind,d)];filename=`${no}.pdf`;
-    subject=(L==='en'?`${{workorders:'Work order',quotes:'Quotation',sreturns:'Credit note',preturns:'Debit note'}[o.kind]||'Invoice'} ${no}`:`${{workorders:'أمر عمل',quotes:'عرض سعر',sreturns:'إشعار دائن',preturns:'إشعار مدين'}[o.kind]||'فاتورة'} ${no}`)+(co?` — ${co}`:'');
+    subject=(L==='en'?`${{porders:'Purchase order',workorders:'Work order',quotes:'Quotation',sreturns:'Credit note',preturns:'Debit note'}[o.kind]||'Invoice'} ${no}`:`${{porders:'أمر شراء',workorders:'أمر عمل',quotes:'عرض سعر',sreturns:'إشعار دائن',preturns:'إشعار مدين'}[o.kind]||'فاتورة'} ${no}`)+(co?` — ${co}`:'');
     body=emailText(kAr,kEn,no,d.date,num(d.total),rem,d.partyName,party&&party.nameEn,link);
   }else if(o.pay){
     const p=S._payments.get(o.pay);if(!p)return;partyCol=p.partyType==='customer'?'customers':'suppliers';party=p.partyId?S['_'+partyCol].get(p.partyId):null;
@@ -2558,7 +2623,7 @@ function startData(){
       if(!snap.metadata.fromCache){S.ready.add(c);if(allReady()){clearTimeout(slowT);S.slow=false}}
       onLocalChanges(c,snap);
       schedule();
-    },e=>{if(c==='sreturns'||c==='preturns'||c==='appointments'||c==='workorders'){console.warn(c,e);S.ready.add(c);S.rulesOld=true;renderShell();schedule();return}onErr(c)(e)});
+    },e=>{if(c==='sreturns'||c==='preturns'||c==='appointments'||c==='workorders'||c==='porders'){console.warn(c,e);S.ready.add(c);S.rulesOld=true;renderShell();schedule();return}onErr(c)(e)});
   });
   db.doc('meta/settings').onSnapshot(s=>{const local=s.metadata&&s.metadata.hasPendingWrites;S.settings=s.exists?s.data():{};S.settingsReady=true;schedule();if(local&&!RO){S.customers.filter(c=>c.portalToken).forEach(c=>queuePortalSync(c.id))}},onErr('settings'));
   if(ADMIN)db.collection('activity').recent('at',500,list=>{S.activity=list;if(route==='activity'&&!sub&&!E)schedule()},e=>{console.warn('activity',e&&e.code);S.activityErr=true;if(route==='activity')schedule()});
@@ -2737,7 +2802,7 @@ const ACT={
   filt:o=>{Q[o.k+'_f']=o.v;render()},
   showLate:()=>{Q.sales_f='late';go('sales')},
   lang:()=>{closeSide();setLang(LANG==='en'?'ar':'en');if(!ROLE&&AUTHU!==undefined)resolveAccess()},
-  emailPdf:()=>emailPdf(),supBalPdf:()=>supBalPdf(),exportJson:()=>exportJson(),
+  emailPdf:()=>emailPdf(),supBalPdf:()=>supBalPdf(),custBalPdf:()=>custBalPdf(),exportJson:()=>exportJson(),
   portalWa:o=>portalWa(o.id),
   portalCopy:async o=>{try{const l=await portalLink(o.id);await navigator.clipboard.writeText(l);toast(T('تم نسخ الرابط ✓','Link copied ✓'))}catch(e){toast(T('تعذر النسخ','Could not copy'))}},
   portalOpen:o=>{const w=window.open('','_blank');portalLink(o.id).then(l=>{if(w)w.location.href=l}).catch(()=>w&&w.close())},
@@ -2767,14 +2832,16 @@ const ACT={
   delDoc:async o=>{
     const d=S['_'+o.k].get(o.id);if(!d)return;
     if(S.payments.some(p=>p.invoiceId===o.id||p.returnId===o.id)){toast(isRet(o.k)?T('احذف سند الرد المرتبط بهذا المرتجع أولاً','Delete this return\'s refund voucher first'):'احذف الدفعات المرتبطة بهذه الفاتورة أولاً',4000);return}
-    if(!isRet(o.k)&&!isWO(o.k)&&o.k!=='quotes'&&S[retKindOf(o.k)].some(r=>r.invoiceId===o.id)){toast(T('احذف المرتجعات المرتبطة بهذه الفاتورة أولاً','Delete this invoice\'s returns first'),4000);return}
+    if(!isRet(o.k)&&!isWO(o.k)&&!isQuo(o.k)&&S[retKindOf(o.k)].some(r=>r.invoiceId===o.id)){toast(T('احذف المرتجعات المرتبطة بهذه الفاتورة أولاً','Delete this invoice\'s returns first'),4000);return}
     if(!(await ask(`حذف ${KIND[o.k].one} ${docNo(o.k,d.no)} نهائياً؟`,'حذف',true)))return;
     if(await W(()=>db.collection(o.k).doc(o.id).delete(),'تم الحذف')){
       if(o.k==='sales'&&d.quoteId&&S._quotes.get(d.quoteId))await W(()=>db.collection('quotes').doc(d.quoteId).update({status:'open',invoiceId:''}));
+      if(o.k==='purchases'&&d.poId&&S._porders.get(d.poId))await W(()=>db.collection('porders').doc(d.poId).update({status:'open',invoiceId:'',invoiceNo:'',updatedAt:nowIso()}));
       if(o.k==='sales'&&d.woId&&S._workorders.get(d.woId))await W(()=>db.collection('workorders').doc(d.woId).update({status:'done',invoiceId:'',invoiceNo:'',updatedAt:nowIso()}));
       back()}
   },
-  convert:o=>convertQuote(o.id),
+  convert:o=>convertQuote(o.id),convertPO:o=>convertPO(o.id),
+  poStatus:o=>W(()=>db.collection('porders').doc(o.id).update({status:o.v,updatedAt:nowIso()}),T('تم','Done')),
   quoteStatus:o=>W(()=>db.collection('quotes').doc(o.id).update({status:o.v,updatedAt:nowIso()}),'تم'),
   pdfDoc:o=>{const d=S['_'+o.k].get(o.id);htmlToPdf(paperDoc(o.k,d),`${docNo(o.k,d.no)} - ${d.partyName||''}.pdf`)},
   pdfPay:o=>{const p=S._payments.get(o.id);htmlToPdf(paperPay(p),`${payNo(p)}.pdf`)},
@@ -2783,7 +2850,7 @@ const ACT={
   saveParty:o=>saveParty(o.col,o.id||null),
   delParty:async o=>{
     const p=S['_'+o.col].get(o.id);
-    const used=(o.col==='customers'?[...S.sales,...S.quotes,...S.sreturns,...S.workorders]:[...S.purchases,...S.preturns]).some(x=>x.partyId===o.id)||S.payments.some(x=>x.partyId===o.id)||(o.col==='customers'&&S.appointments.some(x=>x.customerId===o.id&&x.status!=='cancelled'));
+    const used=(o.col==='customers'?[...S.sales,...S.quotes,...S.sreturns,...S.workorders]:[...S.purchases,...S.preturns,...S.porders]).some(x=>x.partyId===o.id)||S.payments.some(x=>x.partyId===o.id)||(o.col==='customers'&&S.appointments.some(x=>x.customerId===o.id&&x.status!=='cancelled'));
     if(used){toast('لا يمكن الحذف: توجد فواتير أو سندات مرتبطة',4000);return}
     if(await ask(`حذف ${p.name}؟`,'حذف',true)&&await W(()=>db.collection(o.col).doc(o.id).delete(),'تم الحذف')){if(p.portalToken)await W(()=>db.collection('portal').doc(p.portalToken).delete());back()}
   },
@@ -2792,7 +2859,7 @@ const ACT={
   adjustStock:o=>adjustStock(o.id),saveAdjust:o=>saveAdjust(o.id),
   delProduct:async o=>{
     const p=S._products.get(o.id);
-    if([...S.sales,...S.purchases,...S.quotes,...S.sreturns,...S.preturns,...S.workorders].some(x=>(x.lines||[]).some(l=>l.productId===o.id))){toast('لا يمكن الحذف: الصنف مستخدم في فواتير',4000);return}
+    if([...S.sales,...S.purchases,...S.quotes,...S.sreturns,...S.preturns,...S.workorders,...S.porders].some(x=>(x.lines||[]).some(l=>l.productId===o.id))){toast('لا يمكن الحذف: الصنف مستخدم في فواتير',4000);return}
     if(await ask(`حذف الصنف ${p.name}؟`,'حذف',true)&&await W(()=>db.collection('products').doc(o.id).delete(),'تم الحذف'))back();
   },
   newPay:o=>editPay({type:o.t,partyId:o.party,partyType:o.pt,invId:o.inv,invKind:o.k,exp:o.exp,acc:o.acc}),

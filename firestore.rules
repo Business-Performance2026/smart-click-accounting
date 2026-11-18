@@ -68,9 +68,9 @@ service cloud.firestore {
 
     // Business data
     match /{col}/{id} {
-      allow read: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages'];
-      allow create, update: if canWrite() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages'];
-      allow delete: if col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages']
+      allow read: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders'];
+      allow create, update: if canWrite() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders'];
+      allow delete: if col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders']
         && (isAdmin() || (col in ['payments', 'appointments', 'pimages'] && canWrite()));
     }
   }
