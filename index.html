@@ -457,11 +457,12 @@ function derive(){
   if(Dver===ver&&D) return D;
   const stock=new Map(),cq=new Map(),cv=new Map(),avg=new Map(),paid=new Map(),cust=new Map(),sup=new Map();
   for(const p of S.products){const o=num(p.opening);stock.set(p.id,o);cq.set(p.id,o);cv.set(p.id,o*num(p.cost));}
-  for(const d of S.purchases){for(const l of d.lines||[]){if(!l.productId||!stock.has(l.productId))continue;const q=num(l.qty);stock.set(l.productId,stock.get(l.productId)+q);cq.set(l.productId,cq.get(l.productId)+q);cv.set(l.productId,cv.get(l.productId)+num(l.total));}}
+  const dRatio=d=>num(d.sub)>0?(num(d.sub)-num(d.discount))/num(d.sub):1;
+  for(const d of S.purchases){const rt=dRatio(d);for(const l of d.lines||[]){if(!l.productId||!stock.has(l.productId))continue;const q=num(l.qty);stock.set(l.productId,stock.get(l.productId)+q);cq.set(l.productId,cq.get(l.productId)+q);cv.set(l.productId,cv.get(l.productId)+num(l.total)*rt);}}
   for(const d of S.sales){for(const l of d.lines||[]){if(!l.productId||l.noStock||!stock.has(l.productId))continue;stock.set(l.productId,stock.get(l.productId)-num(l.qty));}}
   for(const d of S.workorders){if(d.status!=='done'&&d.status!=='invoiced')continue;for(const l of d.lines||[]){if(!l.productId||!stock.has(l.productId))continue;stock.set(l.productId,stock.get(l.productId)-num(l.qty));}}
   for(const d of S.sreturns){for(const l of d.lines||[]){if(!l.productId||!stock.has(l.productId))continue;stock.set(l.productId,stock.get(l.productId)+num(l.qty));}}
-  for(const d of S.preturns){for(const l of d.lines||[]){if(!l.productId||!stock.has(l.productId))continue;const q=num(l.qty);stock.set(l.productId,stock.get(l.productId)-q);cq.set(l.productId,cq.get(l.productId)-q);cv.set(l.productId,cv.get(l.productId)-num(l.total));}}
+  for(const d of S.preturns){const rt=dRatio(d);for(const l of d.lines||[]){if(!l.productId||!stock.has(l.productId))continue;const q=num(l.qty);stock.set(l.productId,stock.get(l.productId)-q);cq.set(l.productId,cq.get(l.productId)-q);cv.set(l.productId,cv.get(l.productId)-num(l.total)*rt);}}
   for(const p of S.products){const q=cq.get(p.id);avg.set(p.id,q>0?cv.get(p.id)/q:num(p.cost));}
   for(const c of S.customers) cust.set(c.id,num(c.opening));
   for(const s of S.suppliers) sup.set(s.id,num(s.opening));
@@ -1508,7 +1509,7 @@ VIEWS.reports=()=>{
   const sT=sales.reduce((a,x)=>a+num(x.total),0)-sRT,sV=sales.reduce((a,x)=>a+num(x.vat),0)-sRet.reduce((a,x)=>a+num(x.vat),0),sN=sT-sV;
   const pT=pur.reduce((a,x)=>a+num(x.total),0)-pRT,pV=pur.reduce((a,x)=>a+num(x.vat),0)-pRet.reduce((a,x)=>a+num(x.vat),0);
   const exp=pays.filter(p=>p.partyType==='expense').reduce((a,p)=>a+num(p.amount),0);
-  const col=pays.filter(p=>p.type==='in').reduce((a,p)=>a+num(p.amount),0);
+  const col=pays.filter(p=>p.type==='in'&&p.partyType==='customer').reduce((a,p)=>a+num(p.amount),0);
   let cogs=0;const prod=new Map();
   for(const s of sales){const ratio=num(s.sub)>0?(num(s.sub)-num(s.discount))/num(s.sub):1;for(const l of s.lines||[]){const key=l.productId||('x:'+l.name);const e=prod.get(key)||{name:l.productId&&S._products.get(l.productId)?dn(S._products.get(l.productId)):l.name,qty:0,val:0,cost:0};const c=l.productId?num(l.qty)*(d.avg.get(l.productId)||0):0;e.qty+=num(l.qty);e.val+=num(l.total)*ratio;e.cost+=c;cogs+=c;prod.set(key,e)}}
   for(const s of sRet){const ratio=num(s.sub)>0?(num(s.sub)-num(s.discount))/num(s.sub):1;for(const l of s.lines||[]){const key=l.productId||('x:'+l.name);const e=prod.get(key);const c=l.productId?num(l.qty)*(d.avg.get(l.productId)||0):0;cogs-=c;if(e){e.qty-=num(l.qty);e.val-=num(l.total)*ratio;e.cost-=c}}}
@@ -1751,7 +1752,7 @@ function statement(col,id){
     ev.push({date:x.date,s:x.createdAt||'',desc:d,dr:isC?(x.type==='out'?a:0):(x.type==='out'?a:0),cr:isC?(x.type==='in'?a:0):(x.type==='in'?a:0),open:{type:'pay',id:x.id}})});
   ev.sort((a,b)=>(a.date+a.s).localeCompare(b.date+b.s));
   // customers: balance = dr - cr ; suppliers: balance = cr - dr
-  let bal=num(p.opening);const rows=[{date:'',desc:'رصيد افتتاحي',dr:isC&&bal>0?bal:0,cr:!isC&&bal>0?bal:0,bal}];
+  let bal=num(p.opening);const rows=[{date:'',desc:'رصيد افتتاحي',dr:isC?Math.max(bal,0):Math.max(-bal,0),cr:isC?Math.max(-bal,0):Math.max(bal,0),bal}];
   for(const e of ev){bal+=isC?(e.dr-e.cr):(e.cr-e.dr);e.bal=bal;rows.push(e)}
   return rows;
 }
@@ -1923,7 +1924,9 @@ function fillFromInvoice(invId){
   readEditor();
   const lines=returnableLines(k.ret,inv,E.id);
   if(!lines.length){toast(T('كل أصناف هذه الفاتورة مُرتجعة مسبقاً','All items of this invoice were already returned'),3500);return}
-  Object.assign(E.d,{lines,vatOn:inv.vatOn,vatRate:inv.vatRate,discount:0,partyName:inv.partyName,partyId:inv.partyId,invoiceId:invId,invoiceNo:docNo(k.ret,inv.no)});
+  const ipct=num(inv.sub)>0&&num(inv.discount)>0?num(inv.discount)/num(inv.sub)*100:0;
+  Object.assign(E.d,{lines,vatOn:inv.vatOn,vatRate:inv.vatRate,discount:0,discType:ipct?'p':'a',discPct:Math.round(ipct*1e6)/1e6,partyName:inv.partyName,partyId:inv.partyId,invoiceId:invId,invoiceNo:docNo(k.ret,inv.no)});
+  {const di=$('#e-discount'),dt=$('#e-disc-t');if(di)di.value=E.d.discType==='p'?(num(E.d.discPct)||''):'';if(dt){dt.dataset.t=E.d.discType;dt.textContent=E.d.discType==='p'?'%':curSym()}}
   $('#e-party').value=inv.partyName;renderLines();updTotals();partyInfo();
 }
 function updTotals(){
@@ -1954,7 +1957,11 @@ async function saveDoc(then){
   d.lines=d.lines.filter(l=>l.name);
   if(!d.lines.length){toast('أضف صنفاً واحداً على الأقل');return}
   if(d.lines.some(l=>l.qty<=0)){toast('الكمية يجب أن تكون أكبر من صفر');return}
-  const paidNow=$('#e-paid')?num($('#e-paid').value):0;
+  if(d.lines.some(l=>l.price<0||l.disc<0)){toast(T('السعر والخصم لا يمكن أن يكونا بالسالب','Price and discount cannot be negative'),3500);return}
+  {const bad=d.lines.find(l=>l.discType==='a'?l.disc>r3(l.qty*l.price)+0.0005:l.disc>100);if(bad){toast(T(`الخصم أكبر من قيمة السطر: ${bad.name}`,`Discount exceeds the line value: ${bad.name}`),3500);return}}
+  {const c0=calc(JSON.parse(JSON.stringify(d)));if(c0.discount<0||(d.discType==='p'&&num(d.discPct)>100)||c0.discount>c0.sub+0.0005){toast(T('خصم الفاتورة غير صحيح: يجب أن يكون بين صفر والمجموع','Invoice discount must be between zero and the subtotal'),3500);return}
+   if(num(d.vatRate)<0||num(d.vatRate)>100){toast(T('نسبة الضريبة غير صحيحة','Invalid VAT rate'));return}}
+  const paidNow=$('#e-paid')?Math.max(0,num($('#e-paid').value)):0;
   const method=$('#e-method')?$('#e-method').value:'cash';const accId=$('#e-acc')?$('#e-acc').value:defAcc(method);
   // returns: qty vs original invoice
   if(isRet(kind)&&d.invoiceId){
@@ -2004,12 +2011,18 @@ async function saveDoc(then){
     const c=calc(d);
     const body={date:d.date,due:d.due||'',partyId:party?party.id:'',partyName:party?party.name:(kind==='purchases'?'مورد نقدي':'عميل نقدي'),ref:d.ref,
       lines:d.lines.map(l=>({productId:l.productId||'',name:l.name,nameEn:l.nameEn||'',...(l.desc?{desc:l.desc}:{}),qty:r3(l.qty),price:r3(l.price),disc:r3(l.disc),discType:l.discType==='a'?'a':'p',...((l.serials||[]).length?{serials:l.serials}:{}),...(num(l.warranty)>0?{warranty:num(l.warranty)}:{}),...(l.noStock&&l.productId?{noStock:true}:{}),total:r3(l.total)})),
-      discount:c.discount,discType:d.discType==='p'?'p':'a',discPct:d.discType==='p'?r3(d.discPct):0,vatOn:!!d.vatOn,vatRate:d.vatRate,sub:c.sub,vat:c.vat,total:c.total,notes:d.notes||'',updatedAt:nowIso(),updatedBy:MYID||''};
+      discount:c.discount,discType:d.discType==='p'?'p':'a',discPct:d.discType==='p'?Math.round(num(d.discPct)*1e6)/1e6:0,vatOn:!!d.vatOn,vatRate:d.vatRate,sub:c.sub,vat:c.vat,total:c.total,notes:d.notes||'',updatedAt:nowIso(),updatedBy:MYID||''};
     let id=E.id,no;
     if(isRet(kind)){body.invoiceId=d.invoiceId||'';body.invoiceNo=d.invoiceNo||'';body.due=''}
     if(isWO(kind)){Object.assign(body,{time:d.time||'',location:d.location||'',techs:d.techs||[]})}
     if(id){const old=S['_'+kind].get(id)||{};Object.assign(body,{no:old.no,createdAt:old.createdAt||nowIso(),createdBy:old.createdBy||'',status:old.status||(isWO(kind)?'new':'open'),quoteId:old.quoteId||''});if(isWO(kind))Object.assign(body,{result:old.result||'',invoiceId:old.invoiceId||'',apptId:old.apptId||''});if(!isRet(kind))body.invoiceId=old.invoiceId||'';else body.settle=old.settle||'credit';
       await db.collection(kind).doc(id).set(body);no=old.no;
+      // keep linked vouchers consistent with the edited document
+      if((old.partyId||'')!==(body.partyId||'')||(old.partyName||'')!==body.partyName){
+        for(const x of S.payments.filter(x=>x.invoiceId===id||x.returnId===id))await db.collection('payments').doc(x.id).update({partyId:body.partyId,partyName:body.partyName,updatedAt:nowIso()});
+        if(!isRet(kind)&&!isWO(kind)&&kind!=='quotes')for(const r of S[retKindOf(kind)].filter(r=>r.invoiceId===id))await db.collection(retKindOf(kind)).doc(r.id).update({partyId:body.partyId,partyName:body.partyName,updatedAt:nowIso()});
+      }
+      if(isRet(kind)){const rf=S.payments.filter(x=>x.returnId===id);if(rf.length===1&&Math.abs(num(rf[0].amount)-body.total)>0.0005){if(body.total>0.0005)await db.collection('payments').doc(rf[0].id).update({amount:r3(body.total),updatedAt:nowIso()})}}
       if(adjustPays)for(const [pid,amt] of adjustPays){if(amt<=0.0005)await db.collection('payments').doc(pid).delete();else await db.collection('payments').doc(pid).update({amount:amt,updatedAt:nowIso()})}
     } else {
       const r=await nextRef(kind,k.prefix);id=r.id;no=r.no;
@@ -2177,14 +2190,14 @@ async function savePay(id){
   if(exp&&!$('#y-cat').value.trim()){toast('اكتب بند المصروف');return}
   const invId=exp?'':$('#y-inv').value;const ik=$('#y-inv').dataset.k;
   const V={date:$('#y-date').value||today(),cat:$('#y-cat').value.trim(),method:$('#y-method').value,acc:$('#y-acc').value,notes:$('#y-notes').value.trim()};
-  if(invId){const inv=S['_'+ik].get(invId);if(inv){const other=S.payments.filter(x=>x.invoiceId===invId&&x.id!==id).reduce((a,x)=>a+num(x.amount),0);const rem=r3(num(inv.total)-other);
+  if(invId){const inv=S['_'+ik].get(invId);if(inv){const oldP=id?S._payments.get(id):null;const other=(derive().paid.get(invId)||0)-(oldP&&oldP.invoiceId===invId?num(oldP.amount):0);const rem=r3(num(inv.total)-other);
     const sb=$('[data-act=savePay]');const key=invId+'|'+amount;
     if(amount>rem+0.0005&&sb.dataset.ok!==key){sb.dataset.ok=key;sb.textContent='حفظ رغم ذلك';$('#y-warn').innerHTML=`<div class="banner" style="margin:12px 0 0">المبلغ (${fmt(amount)}) أكبر من المتبقي على الفاتورة (${fmt(rem)}). الفرق ${fmt(amount-rem)} سيُحسب رصيداً زائداً. عدّل المبلغ أو اضغط «حفظ رغم ذلك».</div>`;return}}}
   const ok=await W(async()=>{
     let party=null;if(!exp){party=await ensureParty(pt==='customer'?'customers':'suppliers',pname)}
     const inv=invId?S['_'+ik].get(invId):null;
     const body={type,date:V.date,partyType:pt,partyId:party?party.id:'',partyName:party?party.name:pname,category:exp?V.cat:'',invoiceKind:inv?ik:'',invoiceId:inv?invId:'',invoiceNo:inv?docNo(ik,inv.no):'',amount,method:V.method,accountId:V.acc,notes:V.notes,updatedAt:nowIso()};
-    if(id){const old=S._payments.get(id)||{};body.no=old.no;body.createdAt=old.createdAt||nowIso();body.createdBy=old.createdBy||'';
+    if(id){const old=S._payments.get(id)||{};body.no=old.no;body.createdAt=old.createdAt||nowIso();body.createdBy=old.createdBy||'';if(old.returnId)Object.assign(body,{returnId:old.returnId,returnKind:old.returnKind||'',returnNo:old.returnNo||''});
       if(old.type!==type){const r=await nextRef('payments',type==='in'?'RV':'PV',x=>x.type===type);body.no=r.no}
       await db.collection('payments').doc(id).set(body);return id}
     const r=await nextRef('payments',type==='in'?'RV':'PV',x=>x.type===type);
@@ -2758,6 +2771,7 @@ const ACT={
     if(!(await ask(`حذف ${KIND[o.k].one} ${docNo(o.k,d.no)} نهائياً؟`,'حذف',true)))return;
     if(await W(()=>db.collection(o.k).doc(o.id).delete(),'تم الحذف')){
       if(o.k==='sales'&&d.quoteId&&S._quotes.get(d.quoteId))await W(()=>db.collection('quotes').doc(d.quoteId).update({status:'open',invoiceId:''}));
+      if(o.k==='sales'&&d.woId&&S._workorders.get(d.woId))await W(()=>db.collection('workorders').doc(d.woId).update({status:'done',invoiceId:'',invoiceNo:'',updatedAt:nowIso()}));
       back()}
   },
   convert:o=>convertQuote(o.id),
@@ -2769,16 +2783,16 @@ const ACT={
   saveParty:o=>saveParty(o.col,o.id||null),
   delParty:async o=>{
     const p=S['_'+o.col].get(o.id);
-    const used=(o.col==='customers'?[...S.sales,...S.quotes]:S.purchases).some(x=>x.partyId===o.id)||S.payments.some(x=>x.partyId===o.id);
+    const used=(o.col==='customers'?[...S.sales,...S.quotes,...S.sreturns,...S.workorders]:[...S.purchases,...S.preturns]).some(x=>x.partyId===o.id)||S.payments.some(x=>x.partyId===o.id)||(o.col==='customers'&&S.appointments.some(x=>x.customerId===o.id&&x.status!=='cancelled'));
     if(used){toast('لا يمكن الحذف: توجد فواتير أو سندات مرتبطة',4000);return}
-    if(await ask(`حذف ${p.name}؟`,'حذف',true)&&await W(()=>db.collection(o.col).doc(o.id).delete(),'تم الحذف'))back();
+    if(await ask(`حذف ${p.name}؟`,'حذف',true)&&await W(()=>db.collection(o.col).doc(o.id).delete(),'تم الحذف')){if(p.portalToken)await W(()=>db.collection('portal').doc(p.portalToken).delete());back()}
   },
   editProduct:o=>editProduct(o.id),
   saveProduct:o=>saveProduct(o.id||null),
   adjustStock:o=>adjustStock(o.id),saveAdjust:o=>saveAdjust(o.id),
   delProduct:async o=>{
     const p=S._products.get(o.id);
-    if([...S.sales,...S.purchases,...S.quotes].some(x=>(x.lines||[]).some(l=>l.productId===o.id))){toast('لا يمكن الحذف: الصنف مستخدم في فواتير',4000);return}
+    if([...S.sales,...S.purchases,...S.quotes,...S.sreturns,...S.preturns,...S.workorders].some(x=>(x.lines||[]).some(l=>l.productId===o.id))){toast('لا يمكن الحذف: الصنف مستخدم في فواتير',4000);return}
     if(await ask(`حذف الصنف ${p.name}؟`,'حذف',true)&&await W(()=>db.collection('products').doc(o.id).delete(),'تم الحذف'))back();
   },
   newPay:o=>editPay({type:o.t,partyId:o.party,partyType:o.pt,invId:o.inv,invKind:o.k,exp:o.exp,acc:o.acc}),
@@ -2815,7 +2829,7 @@ ${dayName(a.date)} ${fdate(a.date)} — ${fTime(a.time)}${a.location?'\n'+a.loca
   pimgRemove:()=>{PIMG={remove:true};const id=null;$('#pimg-box').outerHTML=productImgField({});wirePimg({})},
   pvZoom:o=>{const src=PFULL.get(o.id)||(S._products.get(o.id)||{}).img;if(src)openModal(`<img src="${esc(src)}" style="width:100%;border-radius:12px;display:block"><div class="btns" style="margin-top:12px;justify-content:flex-end"><button class="btn" data-act="closeModal">${T('إغلاق','Close')}</button></div>`)},
   navToggle:o=>{const i=NAV.findIndex(x=>x[0]===o.g);const kids=[];for(let j=i+1;j<NAV.length&&NAV[j][3]==='s';j++)kids.push(NAV[j][0]);const cur=(o.g in NAVOPEN)?!!NAVOPEN[o.g]:kids.includes(route);NAVOPEN[o.g]=!cur;try{localStorage.setItem('navopen',JSON.stringify(NAVOPEN))}catch(_){}renderShell()},
-  newReturn:o=>{const inv=S['_'+o.k].get(o.id);if(!inv)return;const rk=retKindOf(o.k);const k=KIND[rk];const lines=returnableLines(o.k,inv,null);if(!lines.length){toast(T('كل أصناف هذه الفاتورة مُرتجعة مسبقاً','All items of this invoice were already returned'),3500);return}const dd=newDocData(rk,inv.partyId);Object.assign(dd,{due:'',lines,vatOn:inv.vatOn,vatRate:inv.vatRate,discount:0,partyName:inv.partyName,partyId:inv.partyId,invoiceId:inv.id,invoiceNo:docNo(o.k,inv.no)});openEditor(rk,null,dd)},
+  newReturn:o=>{const inv=S['_'+o.k].get(o.id);if(!inv)return;const rk=retKindOf(o.k);const k=KIND[rk];const lines=returnableLines(o.k,inv,null);if(!lines.length){toast(T('كل أصناف هذه الفاتورة مُرتجعة مسبقاً','All items of this invoice were already returned'),3500);return}const dd=newDocData(rk,inv.partyId);const ipct=num(inv.sub)>0&&num(inv.discount)>0?Math.round(num(inv.discount)/num(inv.sub)*100*1e6)/1e6:0;Object.assign(dd,{due:'',lines,vatOn:inv.vatOn,vatRate:inv.vatRate,discount:0,discType:ipct?'p':'a',discPct:ipct,partyName:inv.partyName,partyId:inv.partyId,invoiceId:inv.id,invoiceNo:docNo(o.k,inv.no)});openEditor(rk,null,dd)},
   refundRet:o=>refundRet(o.k,o.id),
   saveRefund:async o=>{const d=S['_'+o.k].get(o.id);const m=$('#rf-method').value,a=$('#rf-acc').value;if(await W(()=>createRefund(o.k,o.id,d.no,d,m,a),T('تم الحفظ ✓','Saved ✓')))closeModal()},saveTransfer:o=>saveTransfer(o.id||null),
   editAccount:o=>editAccount(o.id),saveAccount:o=>saveAccount(o.id||null),
