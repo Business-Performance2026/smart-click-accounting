@@ -2002,12 +2002,41 @@ async function importJson(e){
 }
 
 /* ---------- import ---------- */
+// field: [key, label, exact aliases (normalized: lowercase, no spaces/_/-), fallback regex]
 const IMPORT_FIELDS={
- products:[['name','اسم الصنف *',/^(name|product|item|اسم|الاسم|اسم المنتج|اسم الصنف|المنتج|الصنف)/i],['nameEn','الاسم بالإنجليزية',/(english|name.?en|en.?name|بالإنجليزي|انجليزي)/i],['code','الكود / الباركود',/(code|sku|barcode|كود|رمز|باركود)/i],['price','سعر البيع',/(unit.?price|selling|sale.?price|سعر البيع|سعر الوحدة|^price$|^السعر$)/i],['cost','سعر الشراء',/(cost|buy|purchase|التكلفة|سعر الشراء|تكلفة)/i],['opening','الكمية الحالية',/(stock|qty|quantity|الكمية|المخزون|الرصيد|كمية)/i],['unit','الوحدة',/(unit$|uom|الوحدة)/i],['category','التصنيف',/(category|التصنيف|الفئة|القسم)/i],['minQty','الحد الأدنى',/(min|الحد الأدنى|حد الطلب)/i]],
- customers:[['name','الاسم *',/^(name|client|customer|business|الاسم|اسم العميل|العميل|الاسم التجاري)/i],['nameEn','الاسم بالإنجليزية',/(english|name.?en|en.?name|بالإنجليزي|انجليزي)/i],['phone','الهاتف',/(phone|mobile|tel|هاتف|جوال|موبايل|الهاتف)/i],['email','البريد',/(mail|البريد)/i],['address','العنوان',/(address|city|العنوان|المدينة)/i],['vatNo','الرقم الضريبي',/(tax|vat|trn|الضريبي)/i],['opening','الرصيد المستحق',/(balance|due|الرصيد|المستحق)/i]],
+ products:[
+  ['name','اسم الصنف *',['name','productname','itemname','product','item','title','اسمالمنتج','اسمالصنف','الاسم','المنتج','الصنف'],/(name|اسم)/i],
+  ['nameEn','الاسم بالإنجليزية',['nameen','englishname','الاسمبالانجليزية','الاسمبالإنجليزية'],/(english|انجليزي|إنجليزي)/i],
+  ['code','الكود / الباركود',['productcode','code','sku','barcode','itemcode','الكود','الباركود','رمزالمنتج'],/(code|sku|barcode|كود|باركود)/i],
+  ['price','سعر البيع',['unitprice','sellingprice','saleprice','price','سعرالبيع','سعرالوحدة','السعر'],/(unit.?price|selling|سعر البيع)/i],
+  ['cost','سعر الشراء',['buyprice','purchaseprice','costprice','cost','averageprice','سعرالشراء','التكلفة'],/(buy|purchase|cost|شراء|تكلفة)/i],
+  ['opening','الكمية الحالية',['stock','stockbalance','quantity','qty','currentstock','instock','الكمية','المخزون','الرصيد'],/(stock|qty|quantity|كمية|مخزون)/i],
+  ['unit','الوحدة',['unit','uom','unitname','الوحدة'],/^(unit|uom|الوحدة)$/i],
+  ['category','التصنيف',['category','categories','التصنيف','الفئة','القسم'],/(categor|تصنيف|فئة)/i],
+  ['minQty','الحد الأدنى',['minqty','minimum','minimumstock','lowstockthreshold','الحدالأدنى'],/(min|حد)/i]],
+ customers:[
+  ['name','الاسم *',['businessname','name','clientname','customername','companyname','fullname','الاسم','اسمالعميل','الاسمالتجاري','العميل'],/(business.?name|client.?name|customer.?name|اسم)/i],
+  ['nameEn','الاسم بالإنجليزية',['nameen','englishname','الاسمبالانجليزية','الاسمبالإنجليزية'],/(english|انجليزي|إنجليزي)/i],
+  ['code','رقم العميل (من دفترة)',['clientnumber','customernumber','suppliernumber','vendornumber','number','code','رقمالعميل','رقمالمورد'],/(client.?number|supplier.?number|رقم العميل|رقم المورد)/i],
+  ['phone','الهاتف',['mobile','phone1','phone','mobilenumber','phonenumber','tel','الجوال','الهاتف','رقمالهاتف'],/(mobile|phone|tel|جوال|هاتف)/i],
+  ['email','البريد',['email','emailaddress','mail','البريد','البريدالإلكتروني'],/(e.?mail|بريد)/i],
+  ['address','العنوان',['address1','address','streetaddress','العنوان'],/(address|عنوان)/i],
+  ['vatNo','الرقم الضريبي',['taxnumber','vatnumber','bnnumber','trn','vatin','الرقمالضريبي'],/(tax.?n|vat|trn|ضريبي)/i],
+  ['opening','الرصيد الافتتاحي',['startingbalance','openingbalance','balance','الرصيدالافتتاحي','الرصيد'],/(starting.?balance|opening.?balance|^balance$|الرصيد)/i]],
 };
-IMPORT_FIELDS.suppliers=IMPORT_FIELDS.customers.map(f=>f[0]==='name'?['name','الاسم *',/^(name|supplier|vendor|الاسم|اسم المورد|المورد)/i]:f);
+IMPORT_FIELDS.suppliers=IMPORT_FIELDS.customers.map(f=>f[0]==='name'?['name','الاسم *',['businessname','suppliername','vendorname','name','companyname','الاسم','اسمالمورد','المورد'],/(business.?name|supplier.?name|vendor|اسم)/i]:f[0]==='code'?['code','رقم المورد (من دفترة)',f[2],f[3]]:f);
 let IMP=null;
+const hnorm=h=>String(h||'').toLowerCase().replace(/[\s_\-\.]+/g,'');
+async function readSheetFile(f){
+  const buf=await f.arrayBuffer();
+  if(/\.csv$/i.test(f.name)){
+    let text=new TextDecoder('utf-8').decode(buf);
+    if((text.match(/�/g)||[]).length>3){try{text=new TextDecoder('windows-1256').decode(buf)}catch(_){}}
+    text=text.replace(/^﻿/,'');
+    return window.XLSX.read(text,{type:'string',raw:true});
+  }
+  return window.XLSX.read(buf,{type:'array'});
+}
 function importStart(col){
   openModal(`<div data-keep><h3>استيراد ${col==='products'?'أصناف':col==='customers'?'عملاء':'موردين'} من Excel</h3>
   <p class="muted" style="font-size:13.5px">اختر ملف Excel أو CSV. الصف الأول يجب أن يحوي أسماء الأعمدة.</p>
@@ -2019,45 +2048,65 @@ function importStart(col){
     $('#imp-body').innerHTML='<span class="spin"></span> قراءة الملف…';
     try{await lib('xlsx')}catch(_){$('#imp-body').textContent='تعذر تحميل مكتبة Excel';return}
     try{
-      const wb=window.XLSX.read(await f.arrayBuffer(),{type:'array'});
+      const wb=await readSheetFile(f);
       const ws=wb.Sheets[wb.SheetNames[0]];let rows=window.XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
       const hi=rows.findIndex(r=>r.filter(c=>String(c).trim()).length>=2);if(hi<0)throw new Error('empty');
       const headers=rows[hi].map(h=>String(h).trim());rows=rows.slice(hi+1).filter(r=>r.some(c=>String(c).trim()));
-      IMP={col,headers,rows};
+      const H=headers.map(hnorm);
+      IMP={col,headers,rows,H};
       const used=new Set();
-      const guess=re=>{const i=headers.findIndex((h,i)=>!used.has(i)&&re.test(h));if(i>=0)used.add(i);return i};
-      const map=IMPORT_FIELDS[col].map(([k,l,re])=>[k,l,guess(re)]);
-      $('#imp-body').innerHTML=`<p style="font-size:13.5px">تم العثور على <b>${rows.length}</b> صف. طابق الأعمدة:</p><div class="grid g2">${map.map(([k,l,i])=>`<label>${l}<select class="imp-map" data-k="${k}"><option value="-1">— لا شيء —</option>${headers.map((h,j)=>`<option value="${j}" ${j===i?'selected':''}>${esc(h||'عمود '+(j+1))}</option>`).join('')}</select></label>`).join('')}</div>
-      <label style="display:flex;gap:8px;align-items:center;margin-top:12px;color:var(--ink)"><input type="checkbox" id="imp-upd" checked> تحديث السجلات الموجودة بنفس الاسم${col==='products'?' أو الكود':''}</label>
+      const guess=(aliases,re)=>{for(const a of aliases){const i=H.findIndex((h,i)=>!used.has(i)&&h===a);if(i>=0){used.add(i);return i}}const i=headers.findIndex((h,i)=>!used.has(i)&&re.test(h));if(i>=0)used.add(i);return i};
+      const map=IMPORT_FIELDS[col].map(([k,l,al,re])=>[k,l,guess(al,re)]);
+      $('#imp-body').innerHTML=`<p style="font-size:13.5px">تم العثور على <b>${rows.length}</b> صف. تأكد من مطابقة الأعمدة:</p><div class="grid g2">${map.map(([k,l,i])=>`<label>${l}<select class="imp-map" data-k="${k}"><option value="-1">— لا شيء —</option>${headers.map((h,j)=>`<option value="${j}" ${j===i?'selected':''}>${esc(h||'عمود '+(j+1))}</option>`).join('')}</select></label>`).join('')}</div>
+      <p class="muted" style="font-size:12.5px;margin:8px 0 0">${T('إذا كان الاسم فارغاً في صف، يُستخدم الاسم الأول + الأخير، ثم الهاتف، ثم الرقم.','If the name is empty in a row, first + last name is used, then phone, then number.')}</p>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:12px;color:var(--ink)"><input type="checkbox" id="imp-upd" checked> تحديث السجلات الموجودة (بنفس الرقم أو الاسم)</label>
+      <div id="imp-sum" style="margin-top:10px"></div>
       <div id="imp-prev" class="tw" style="margin-top:10px"></div><div id="imp-prog" style="margin-top:8px"></div>`;
-      const prev=()=>{const m=impMap();$('#imp-prev').innerHTML=`<table class="t"><tr>${IMPORT_FIELDS[col].filter(f=>m[f[0]]>=0).map(f=>`<th>${f[1]}</th>`).join('')}</tr>${rows.slice(0,4).map(r=>`<tr>${IMPORT_FIELDS[col].filter(f=>m[f[0]]>=0).map(f=>`<td>${esc(r[m[f[0]]])}</td>`).join('')}</tr>`).join('')}</table>`};
+      const prev=()=>{const m=impMap();const R=impRecords(col,m);
+        $('#imp-sum').innerHTML=`<div class="banner info" style="margin:0">${T('سيتم استيراد','Will import')} <b>${R.recs.length}</b>${R.dup?` · ${T('مكرر (نفس الرقم)','duplicates')} ${R.dup}`:''}${R.empty?` · ${T('صفوف بدون اسم','rows without a name')} ${R.empty}`:''}</div>`;
+        const cols=IMPORT_FIELDS[col].filter(f=>m[f[0]]>=0||f[0]==='name');
+        $('#imp-prev').innerHTML=`<table class="t"><tr>${cols.map(f=>`<th>${f[1]}</th>`).join('')}</tr>${R.recs.slice(0,5).map(o=>`<tr>${cols.map(f=>`<td>${esc(o[f[0]]??'')}</td>`).join('')}</tr>`).join('')}</table>`};
       $$('.imp-map').forEach(s=>s.onchange=prev);prev();
       $('#imp-go').classList.remove('hide');
     }catch(err){console.error(err);$('#imp-body').textContent='تعذر قراءة الملف. تأكد أنه Excel أو CSV صالح.'}
   };
 }
 function impMap(){const m={};$$('.imp-map').forEach(s=>m[s.dataset.k]=+s.value);return m}
-async function importGo(col){
-  if(!IMP)return;const m=impMap();if(m.name<0){toast('اختر عمود الاسم');return}
-  const upd=$('#imp-upd').checked;const btn=$('#imp-go');btn.disabled=true;
-  const numF=['price','cost','opening','minQty'];
-  const recs=[];const seen=new Set();
+function impRecords(col,m){
+  const numF=['price','cost','opening','minQty'];const H=IMP.H;
+  const at=(r,names)=>{for(const n of names){const i=H.indexOf(n);if(i>=0&&String(r[i]??'').trim())return String(r[i]).trim()}return ''};
+  const recs=[];const seen=new Set();let dup=0,empty=0;
   for(const r of IMP.rows){
-    const o={};for(const [k] of IMPORT_FIELDS[col]){if(m[k]>=0){let v=r[m[k]];o[k]=numF.includes(k)?r3(num(v)):String(v??'').trim()}}
-    if(!o.name)continue;const key=norm(o.name);if(seen.has(key))continue;seen.add(key);recs.push(o);
+    const o={};for(const [k] of IMPORT_FIELDS[col]){if(m[k]>=0){const v=r[m[k]];o[k]=numF.includes(k)?r3(num(v)):String(v??'').trim()}}
+    if(col!=='products'&&!o.phone)o.phone=at(r,['mobile','phone2','phone','mobilenumber']);
+    if(!o.name&&col!=='products'){const fn=[at(r,['firstname','الاسمالأول']),at(r,['lastname','اسمالعائلة'])].filter(Boolean).join(' ');o.name=at(r,['businessname'])||fn||o.phone||(o.code?('#'+o.code):'')}
+    if(!o.name){empty++;continue}
+    const key=o.code?'c:'+norm(o.code):'n:'+norm(o.name)+'|'+norm(o.phone);
+    if(seen.has(key)){dup++;continue}seen.add(key);recs.push(o);
   }
-  let done=0,created=0,updated=0,skipped=0,failed=0;const prog=$('#imp-prog');
-  const queue=[...recs];
-  const worker=async()=>{while(queue.length){const o=queue.shift();
-    const ex=S[col].find(x=>norm(x.name)===norm(o.name)||(col==='products'&&o.code&&norm(x.code)===norm(o.code)));
-    try{
-      if(ex){if(upd){const body={...ex,...o,updatedAt:nowIso()};delete body.id;await db.collection(col).doc(ex.id).set(body);updated++}else skipped++}
-      else{const body={...o,createdAt:nowIso(),createdBy:MYID||'',importedFrom:'excel'};if(col==='products'&&!body.unit)body.unit='';await db.collection(col).doc().set(body);created++}
-    }catch(e){failed++;console.error(e);if(e&&e.code==='quota_exceeded'){queue.length=0}}
-    done++;prog.innerHTML=`<span class="spin"></span> ${done} / ${recs.length}`;
-  }};
+  return {recs,dup,empty};
+}
+async function importGo(col){
+  if(!IMP)return;const m=impMap();if(m.name<0&&col==='products'){toast('اختر عمود الاسم');return}
   if(RO){toast('ليست لديك صلاحية');return}
-  await Promise.all([worker(),worker(),worker(),worker()]);
+  const upd=$('#imp-upd').checked;const btn=$('#imp-go');btn.disabled=true;
+  const {recs}=impRecords(col,m);
+  const byCode=new Map(),byName=new Map();S[col].forEach(x=>{if(x.code)byCode.set(norm(x.code),x);byName.set(norm(x.name),x)});
+  let created=0,updated=0,skipped=0,failed=0,done=0;const prog=$('#imp-prog');const F=window.FB.fns;
+  const ops=[];
+  for(const o of recs){
+    const fromOld=o.code&&byName.get(norm(o.code));
+    const ex=(o.code&&byCode.get(norm(o.code)))||(fromOld&&fromOld.importedFrom==='excel'&&!fromOld.code?fromOld:null)||((!o.code||col==='products')?byName.get(norm(o.name)):null);
+    if(ex){if(upd){const body={...ex,...o,updatedAt:nowIso()};delete body.id;if(ex===fromOld){if(ex.vatNo===o.code)body.vatNo=o.vatNo||'';if(String(ex.opening)===String(o.code))body.opening=o.opening||0}ops.push([ex.id,body]);updated++}else skipped++}
+    else{const body={...o,createdAt:nowIso(),createdBy:MYID||'',importedFrom:'excel'};if(col==='products'&&!body.unit)body.unit='';ops.push([null,body]);created++}
+  }
+  try{
+    for(let i=0;i<ops.length;i+=400){
+      const b=F.writeBatch(FB.fs);
+      for(const [id,body] of ops.slice(i,i+400)){const ref=id?F.doc(FB.fs,col,id):F.doc(F.collection(FB.fs,col));b.set(ref,body)}
+      await b.commit();done+=Math.min(400,ops.length-i);prog.innerHTML=`<span class="spin"></span> ${done} / ${ops.length}`;
+    }
+  }catch(e){console.error(e);failed=ops.length-done;created=Math.max(0,created-failed)}
   prog.innerHTML=`<div class="banner info">تم: ${created} جديد · ${updated} محدّث${skipped?` · ${skipped} موجود مسبقاً`:''}${failed?` · <b>${failed} فشل</b>`:''}</div>`;
   btn.classList.add('hide');IMP=null;
 }
