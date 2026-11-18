@@ -2188,11 +2188,25 @@ function updTotals(){
   $('#t-sub').textContent=fmt(c.sub);$('#t-vat').textContent=fmt(c.vat);$('#t-total').textContent=fmt(c.total);
   E.total=c.total;
 }
+// Next free number. The returned r.ref.set() never overwrites: if another user took the same number a moment ago
+// (the security rules reject replacing someone else's document), it moves to the next free number and retries.
 async function nextRef(col,prefix,filter){
   let max=0;for(const x of S[col]) if(!filter||filter(x)) max=Math.max(max,num(x.no));
   let n=max+1;
-  for(let i=0;i<30;i++){const id=prefix+'-'+String(n).padStart(5,'0');const ref=db.collection(col).doc(id);let g;try{g=await ref.get()}catch(e){if(!navigator.onLine)return {ref,no:n,id};throw e}if(!g.exists)return {ref,no:n,id};n++;}
-  throw new Error('numbering');
+  const find=async()=>{for(let i=0;i<30;i++){const id=prefix+'-'+String(n).padStart(5,'0');const ref=db.collection(col).doc(id);let g;try{g=await ref.get()}catch(e){if(!navigator.onLine)return {ref,id};throw e}if(!g.exists)return {ref,id};n++}throw new Error('numbering')};
+  const f0=await find();const r={id:f0.id,no:n,_ref:f0.ref};
+  r.ref={set:async body=>{
+    for(let a=0;;a++){
+      if(body&&typeof body==='object')body.no=r.no;
+      try{return await r._ref.set(body)}
+      catch(e){
+        let taken=false;if(e&&e.code==='permission-denied'&&a<5&&navigator.onLine){try{taken=(await r._ref.get()).exists}catch(_){}}
+        if(!taken)throw e;
+        n=r.no+1;const nx=await find();Object.assign(r,{id:nx.id,no:n,_ref:nx.ref});
+      }
+    }
+  }};
+  return r;
 }
 async function ensureParty(col,name){
   if(!name) return null;
@@ -2281,7 +2295,7 @@ async function saveDoc(then){
       if(kind==='sales'&&E.woId)body.woId=E.woId;
       if(kind==='purchases'&&E.poId)body.poId=E.poId;
       if(!isRet(kind))body.invoiceId='';else body.settle=settle;
-      await r.ref.set(body);
+      await r.ref.set(body);id=r.id;no=r.no;
       if(isRet(kind)&&settle==='refund'&&body.total>0)await createRefund(kind,id,no,body,method,accId);
       if(kind==='purchases'&&E.poId&&S._porders.get(E.poId)){await db.collection('porders').doc(E.poId).update({status:'received',invoiceId:id,invoiceNo:docNo('purchases',no),updatedAt:nowIso()})}
       if(E.quoteId&&!isWO(kind)){await db.collection('quotes').doc(E.quoteId).update({status:'converted',invoiceId:id,updatedAt:nowIso()})}

@@ -96,7 +96,7 @@ service cloud.firestore {
     match /portal/{token} {
       allow get: if true;
       allow list: if false;
-      allow write: if canWrite();
+      allow write: if isStaff() && (lvl('sales') >= 2 || lvl('quotes') >= 2 || lvl('customers') >= 2 || lvl('finance') >= 2);
     }
 
     // Push notification devices: each user manages their own devices (Cloud Functions send the notifications).
@@ -113,7 +113,8 @@ service cloud.firestore {
 
     // Outgoing email queue (sent by the "Trigger Email from Firestore" extension).
     match /mail/{id} {
-      allow create: if canWrite()
+      allow create: if isStaff()
+        && (lvl('sales') >= 2 || lvl('quotes') >= 2 || lvl('purchases') >= 2 || lvl('porders') >= 2 || lvl('finance') >= 2 || lvl('customers') >= 2)
         && request.resource.data.keys().hasOnly(['to', 'message', 'meta'])
         && request.resource.data.to is list && request.resource.data.to.size() <= 10
         && request.resource.data.meta.by == request.auth.uid;
@@ -124,8 +125,14 @@ service cloud.firestore {
     // Business data
     match /{col}/{id} {
       allow read: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders'];
-      allow create, update: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders']
+      allow create: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders']
         && canWriteCol(col);
+      // numbered documents (INV-00012…) can't be silently replaced by a different new document with the same number
+      allow update: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders']
+        && canWriteCol(col)
+        && (!(col in ['quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'workorders', 'porders'])
+            || resource.data.get('createdAt', null) == null
+            || request.resource.data.get('createdAt', null) == resource.data.createdAt);
       allow delete: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders']
         && (lvl(modOf(col)) >= 3 || (col == 'pimages' && lvl('products') >= 2));
     }
