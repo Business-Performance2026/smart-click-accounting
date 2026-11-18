@@ -121,6 +121,7 @@ table.t{width:100%;border-collapse:collapse;font-size:14px}
 table.t th{text-align:start;font-weight:600;color:var(--mute);font-size:12.5px;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
 table.t td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
 table.t td.n,table.t th.n{text-align:end}
+html[dir=rtl] table.t td.n.num{text-align:left}
 .tw{overflow-x:auto}
 .tw table.t{min-width:560px}
 table.t td.num,table.t td.n{white-space:nowrap}
@@ -350,7 +351,7 @@ const EN={
 'اسم جديد — سيُضاف كعميل جديد عند الحفظ':'New name — will be added as a new customer on save','اسم جديد — سيُضاف كمورد جديد عند الحفظ':'New name — will be added as a new supplier on save','الرصيد الحالي':'Current balance','التوقيع':'Signature','الختم':'Stamp',
 'يتم عرض أحدث 300، استخدم البحث للوصول للأقدم.':'Showing the latest 300; use search for older ones.','يتم عرض أول 400، استخدم البحث.':'Showing the first 400; use search.','قبض':'Receipt','تحديث السجلات الموجودة بنفس الاسم':'Update existing records with the same name','أو الكود':'or code','تم العثور على':'Found','صف. طابق الأعمدة:':'rows. Map the columns:',
 'الكمية غير كافية في المخزون لـ:':'Not enough stock for:','هل تريد الحفظ رغم ذلك؟':'Save anyway?','الإجمالي الجديد':'The new total','أقل من المبلغ المدفوع على الفاتورة':'is less than the amount paid on the invoice','هل تريد تخفيض الدفعة ليساوي الإجمالي؟ إذا اخترت الإبقاء، يُحسب الفرق':'Reduce the payment to match the total? If you keep it, the difference','رصيداً لصالح':'stays as credit for','المبلغ المدفوع':'The amount paid','أكبر من إجمالي الفاتورة':'is more than the invoice total','تعديل المدفوع ليساوي الإجمالي؟':'Change paid to equal the total?','تعديل إلى':'Change to','المبلغ':'The amount','أكبر من المتبقي على الفاتورة':'is more than the balance due','سيُحسب رصيداً زائداً. عدّل المبلغ أو اضغط':'will count as overpayment. Edit the amount or press','مبلغ زائد (رصيد لصالح العميل)':'Overpaid (customer credit)','مبلغ زائد (رصيد لصالح المورد)':'Overpaid (supplier credit)','الفرق':'the difference',
-'سند قبض ':'Receipt ','أوامر العمل والتركيب':'Work orders','الضمان والأرقام التسلسلية':'Warranty & serials','أمر عمل':'Work order','أمر عمل جديد':'New work order','تعديل أمر عمل':'Edit work order','سجل التعديلات':'Activity log','فواتير المرتجعات':'Returns','إدارة العملاء':'Manage customers','المواعيد والزيارات':'Appointments & visits','مرتجع المبيعات':'Sales returns','مرتجع المشتريات':'Purchase returns','مرتجعات المبيعات':'Sales returns','مرتجعات المشتريات':'Purchase returns','مرتجع مبيعات':'Sales return','مرتجع مشتريات':'Purchase return','مرتجع مبيعات جديد':'New sales return','مرتجع مشتريات جديد':'New purchase return','تعديل مرتجع مبيعات':'Edit sales return','تعديل مرتجع مشتريات':'Edit purchase return','خصم من الرصيد':'Credited','تم رد المبلغ':'Refunded','المالية':'Finance','الخزائن والبنوك':'Cash & banks','سندات القبض':'Receipts','سندات الصرف':'Payments','المصروفات':'Expenses','الفواتير':'Invoices','السندات':'Vouchers','ر.ع.':'OMR','من زر المشاركة (Share) في أعلى صفحة البرنامج على claude.ai، ادعُ كل موظف ببريده الإلكتروني بصلاحية':'Use the Share button at the top of the app page on claude.ai to invite each employee by email as','محرر (Editor)':'Editor','ليتمكن من إضافة الفواتير. من تتم دعوته بصلاحية':'so they can add invoices. Anyone invited as','مشاهد (Viewer)':'Viewer','يمكنه الاطلاع فقط.':'can only view.','إرفاق تفاصيل كل الفواتير مع الكشف':'Attach every invoice\'s details with the statement','الملف كبير جداً للإرسال. جرّب كشفاً بدون تفاصيل الفواتير.':'The file is too large to send. Try the statement without invoice details.','رفض Gmail الإرسال: ':'Gmail refused to send: ','إعدادات مؤسستك تمنع الإرسال عبر Gmail من هنا.':'Your organization\'s policy blocks sending via Gmail here.','📧 آخر إرسال بالإيميل:':'📧 Last emailed:','سند صرف ':'Payment ','رصيد حسابكم':'Your account balance','السيد/':'Dear',
+'سند قبض ':'Receipt ','أوامر العمل والتركيب':'Work orders','الضمان والأرقام التسلسلية':'Warranty & serials','أمر عمل':'Work order','أمر عمل جديد':'New work order','تعديل أمر عمل':'Edit work order','سجل التعديلات':'Activity log','فواتير المرتجعات':'Returns','إدارة العملاء':'Manage customers','إدارة الموردين':'Manage suppliers','أرصدة الموردين':'Supplier balances','لهم رصيد فقط':'With balance only','إجمالي المستحق للموردين':'Total payables','آخر فاتورة':'Last invoice','المرتجعات':'Returns','المواعيد والزيارات':'Appointments & visits','مرتجع المبيعات':'Sales returns','مرتجع المشتريات':'Purchase returns','مرتجعات المبيعات':'Sales returns','مرتجعات المشتريات':'Purchase returns','مرتجع مبيعات':'Sales return','مرتجع مشتريات':'Purchase return','مرتجع مبيعات جديد':'New sales return','مرتجع مشتريات جديد':'New purchase return','تعديل مرتجع مبيعات':'Edit sales return','تعديل مرتجع مشتريات':'Edit purchase return','خصم من الرصيد':'Credited','تم رد المبلغ':'Refunded','المالية':'Finance','الخزائن والبنوك':'Cash & banks','سندات القبض':'Receipts','سندات الصرف':'Payments','المصروفات':'Expenses','الفواتير':'Invoices','السندات':'Vouchers','ر.ع.':'OMR','من زر المشاركة (Share) في أعلى صفحة البرنامج على claude.ai، ادعُ كل موظف ببريده الإلكتروني بصلاحية':'Use the Share button at the top of the app page on claude.ai to invite each employee by email as','محرر (Editor)':'Editor','ليتمكن من إضافة الفواتير. من تتم دعوته بصلاحية':'so they can add invoices. Anyone invited as','مشاهد (Viewer)':'Viewer','يمكنه الاطلاع فقط.':'can only view.','إرفاق تفاصيل كل الفواتير مع الكشف':'Attach every invoice\'s details with the statement','الملف كبير جداً للإرسال. جرّب كشفاً بدون تفاصيل الفواتير.':'The file is too large to send. Try the statement without invoice details.','رفض Gmail الإرسال: ':'Gmail refused to send: ','إعدادات مؤسستك تمنع الإرسال عبر Gmail من هنا.':'Your organization\'s policy blocks sending via Gmail here.','📧 آخر إرسال بالإيميل:':'📧 Last emailed:','سند صرف ':'Payment ','رصيد حسابكم':'Your account balance','السيد/':'Dear',
 'اربط Gmail أولاً: من claude.ai ← الإعدادات ← Connectors.':'Connect Gmail first: claude.ai → Settings → Connectors.','انتهت صلاحية ربط Gmail. أعد ربطه من claude.ai ← الإعدادات ← Connectors.':'Gmail connection expired. Reconnect it in claude.ai → Settings → Connectors.','الإرسال يحتاج موافقتك على استخدام Gmail. افتح البرنامج في claude.ai ووافق عند الطلب.':'Sending needs your approval to use Gmail. Open the app in claude.ai and allow it when asked.','لم يتأكد الإرسال. تحقق من مجلد المرسل في Gmail قبل المحاولة مرة أخرى.':'Sending was not confirmed. Check your Gmail Sent folder before trying again.','أدخل بريداً إلكترونياً صحيحاً':'Enter a valid email address','الإيميل غير متاح في هذا العرض':'Email is not available in this view','تعذر الإرسال':'Could not send','آخر إرسال بالإيميل:':'Last emailed:',
 };
 // Arabic-letter-aware phrase replacement (longest first)
@@ -414,7 +415,9 @@ const NAV=[
  ['receipts','سندات القبض','💵','s'],
  ['payouts','سندات الصرف','💸','s'],
  ['expenses','المصروفات','🧮','s'],
- ['suppliers','الموردين','🏭'],
+ ['supg','الموردين','🏭','h'],
+ ['suppliers','إدارة الموردين','📇','s'],
+ ['supbal','أرصدة الموردين','⚖️','s'],
  ['products','الأصناف والمخزون','📦'],
  ['reports','التقارير','📊'],
  ['activity','سجل التعديلات','🕘','admin'],
@@ -1281,6 +1284,39 @@ function partyListView(col){
   };
 }
 VIEWS.customers=partyListView('customers');VIEWS.suppliers=partyListView('suppliers');
+function supBalRows(){
+  const d=derive();const m=new Map(S.suppliers.map(x=>[x.id,{p:x,op:num(x.opening),pur:0,ret:0,last:''}]));
+  S.purchases.forEach(x=>{const r=m.get(x.partyId);if(r){r.pur+=num(x.total);if(x.date>r.last)r.last=x.date}});
+  S.preturns.forEach(x=>{const r=m.get(x.partyId);if(r)r.ret+=num(x.total)});
+  return [...m.values()].map(r=>({...r,bal:r3(d.sup.get(r.p.id)||0),paid:r3(r.op+r.pur-r.ret-(d.sup.get(r.p.id)||0))}));
+}
+function supBalFiltered(){
+  const q=norm(Q.supbal);const all=Q.supbal_f==='all';
+  let arr=supBalRows();
+  if(!all)arr=arr.filter(r=>Math.abs(r.bal)>0.0005);
+  if(q)arr=arr.filter(r=>norm(r.p.name).includes(q)||norm(r.p.nameEn).includes(q)||norm(r.p.phone).includes(q));
+  return arr.sort((a,b)=>b.bal-a.bal||String(a.p.name).localeCompare(String(b.p.name),'ar'));
+}
+VIEWS.supbal=()=>{
+  const arr=supBalFiltered();const all=Q.supbal_f==='all';
+  const tot=k=>arr.reduce((a,r)=>a+r[k],0);
+  return `${loading()}<div class="head"><h1>${T('أرصدة الموردين','Supplier balances')}</h1><button class="btn" data-act="supBalPdf">⬇︎ PDF</button></div>
+  <div class="grid g3" style="margin-bottom:12px"><div class="stat"><div class="k">${T('إجمالي المستحق للموردين','Total payables')}</div><div class="v ${tot('bal')>0.0005?'neg':''}">${money(tot('bal'))}</div><div class="s">${arr.filter(r=>r.bal>0.0005).length} ${T('مورد','suppliers')}</div></div><div class="stat"><div class="k">${T('المشتريات','Purchases')}</div><div class="v">${money(tot('pur')-tot('ret'))}</div></div><div class="stat"><div class="k">${T('المدفوع','Paid')}</div><div class="v pos">${money(tot('paid'))}</div></div></div>
+  <div class="search"><input id="q-supbal" placeholder="${T('بحث بالاسم أو الهاتف…','Search by name or phone…')}" value="${esc(Q.supbal||'')}" data-q="supbal"></div>
+  <div class="tabs"><button class="${!all?'on':''}" data-act="filt" data-k="supbal" data-v="due">${T('لهم رصيد فقط','With balance only')}</button><button class="${all?'on':''}" data-act="filt" data-k="supbal" data-v="all">${T('الكل','All')}</button></div>
+  <div class="card" style="padding:0"><div class="tw"><table class="t"><tr><th>${T('المورد','Supplier')}</th><th class="n">${T('افتتاحي','Opening')}</th><th class="n">${T('المشتريات','Purchases')}</th><th class="n">${T('المرتجعات','Returns')}</th><th class="n">${T('المدفوع','Paid')}</th><th class="n">${T('الرصيد','Balance')}</th><th class="n">${T('آخر فاتورة','Last invoice')}</th></tr>
+  ${arr.map(r=>`<tr data-act="openSub" data-type="party" data-col="suppliers" data-id="${r.p.id}" style="cursor:pointer"><td><span translate="no" dir="auto">${esc(dn(r.p))}</span>${r.p.phone?`<div class="muted" style="font-size:12px"><span class="num">${esc(r.p.phone)}</span></div>`:''}</td><td class="n num">${r.op?fmt(r.op):''}</td><td class="n num">${fmt(r.pur)}</td><td class="n num">${r.ret?fmt(r.ret):''}</td><td class="n num pos">${fmt(r.paid)}</td><td class="n num ${r.bal>0.0005?'neg':''}"><b>${fmt(r.bal)}</b></td><td class="n num">${r.last?fdate(r.last):''}</td></tr>`).join('')||`<tr><td colspan="7" class="muted" style="text-align:center;padding:20px">${T('لا توجد أرصدة','No balances')}</td></tr>`}
+  ${arr.length?`<tr style="background:#f6f7f9"><td><b>${T('الإجمالي','Total')}</b></td><td class="n num">${fmt(tot('op'))}</td><td class="n num">${fmt(tot('pur'))}</td><td class="n num">${fmt(tot('ret'))}</td><td class="n num">${fmt(tot('paid'))}</td><td class="n num"><b>${fmt(tot('bal'))}</b></td><td></td></tr>`:''}</table></div></div>`;
+};
+async function supBalPdf(){
+  const arr=supBalFiltered();const tot=k=>arr.reduce((a,r)=>a+r[k],0);
+  const html=`${paperHead()}${paperTitle('أرصدة الموردين','Supplier Balances')}
+  <div class="meta"><div class="bx"><div><span>${PL('التاريخ','Date')}</span><span class="num">${fdate(today())}</span></div></div><div class="bx"><div><span>${PL('إجمالي المستحق','Total payable')}</span><b class="num">${fmt(tot('bal'))}</b></div></div></div>
+  <table><tr><th style="width:30px">#</th><th>${PL('المورد','Supplier',1)}</th><th class="n">${PL('المشتريات','Purchases',1)}</th><th class="n">${PL('المرتجعات','Returns',1)}</th><th class="n">${PL('المدفوع','Paid',1)}</th><th class="n">${PL('الرصيد','Balance',1)}</th></tr>
+  ${arr.map((r,i)=>`<tr><td>${i+1}</td><td>${PN(r.p.name,r.p.nameEn)}</td><td class="n num">${fmt(r.op+r.pur)}</td><td class="n num">${r.ret?fmt(r.ret):''}</td><td class="n num">${fmt(r.paid)}</td><td class="n num"><b>${fmt(r.bal)}</b></td></tr>`).join('')}
+  <tr><td></td><td><b>${PL('الإجمالي','Total')}</b></td><td class="n num">${fmt(tot('op')+tot('pur'))}</td><td class="n num">${fmt(tot('ret'))}</td><td class="n num">${fmt(tot('paid'))}</td><td class="n num"><b>${fmt(tot('bal'))}</b></td></tr></table>`;
+  await htmlToPdf(html,`${T('أرصدة الموردين','Supplier balances')} ${today()}.pdf`);
+}
 
 VIEWS.products=()=>{
   const q=norm(Q.products);const d=derive();const f=Q.products_f||'all';
@@ -2676,7 +2712,7 @@ const ACT={
   filt:o=>{Q[o.k+'_f']=o.v;render()},
   showLate:()=>{Q.sales_f='late';go('sales')},
   lang:()=>{closeSide();setLang(LANG==='en'?'ar':'en');if(!ROLE&&AUTHU!==undefined)resolveAccess()},
-  emailPdf:()=>emailPdf(),exportJson:()=>exportJson(),
+  emailPdf:()=>emailPdf(),supBalPdf:()=>supBalPdf(),exportJson:()=>exportJson(),
   portalWa:o=>portalWa(o.id),
   portalCopy:async o=>{try{const l=await portalLink(o.id);await navigator.clipboard.writeText(l);toast(T('تم نسخ الرابط ✓','Link copied ✓'))}catch(e){toast(T('تعذر النسخ','Could not copy'))}},
   portalOpen:o=>{const w=window.open('','_blank');portalLink(o.id).then(l=>{if(w)w.location.href=l}).catch(()=>w&&w.close())},
