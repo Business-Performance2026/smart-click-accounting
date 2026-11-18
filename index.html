@@ -503,7 +503,7 @@ function derive(){
   for(const p of S.payments){
     const a=num(p.amount);
     if(p.type==='tr'){addAcc(p.fromAcc,-a);addAcc(p.toAcc,a);continue}
-    addAcc(payAcc(p),p.type==='in'?a:-a);
+    if(!p.noCash)addAcc(payAcc(p),p.type==='in'?a:-a);
     if(p.invoiceId){paid.set(p.invoiceId,(paid.get(p.invoiceId)||0)+a);cash.set(p.invoiceId,(cash.get(p.invoiceId)||0)+a)}
     if(p.returnId){const r=retDoc.get(p.returnId);if(r&&r.invoiceId){paid.set(r.invoiceId,(paid.get(r.invoiceId)||0)-a);cash.set(r.invoiceId,(cash.get(r.invoiceId)||0)-a)}}
     if(p.partyType==='customer'&&cust.has(p.partyId)) cust.set(p.partyId,cust.get(p.partyId)+(p.type==='in'?-a:a));
@@ -1626,7 +1626,7 @@ function voucherList(key,filterFn,title,addBtns,emptyTxt){
   let arr=sortPays(S.payments.filter(filterFn).filter(P.inR));
   if(q) arr=arr.filter(p=>norm(p.partyName).includes(q)||norm(p.category).includes(q)||payNo(p).toLowerCase().includes(q)||norm(p.notes).includes(q)||norm(p.invoiceNo).includes(q));
   const tot=arr.reduce((a,p)=>a+num(p.amount),0);
-  const byAcc=new Map();arr.forEach(p=>{const k=payAcc(p);byAcc.set(k,(byAcc.get(k)||0)+num(p.amount))});
+  const byAcc=new Map();arr.forEach(p=>{if(p.noCash)return;const k=payAcc(p);byAcc.set(k,(byAcc.get(k)||0)+num(p.amount))});
   return {arr,tot,html:`${loading()}<div class="head"><h1>${title}</h1>${RO?'':addBtns}</div>
   <div class="search"><input id="q-${key}" placeholder="${T('بحث بالاسم أو الرقم أو البيان…','Search name, number or note…')}" value="${esc(Q[key]||'')}" data-q="${key}"></div>
   ${periodTabs(key,P.per)}
@@ -1666,7 +1666,7 @@ function accMoves(id){
   for(const p of S.payments){
     const a=num(p.amount);
     if(p.type==='tr'){if(p.fromAcc===id)mv.push({p,out:a,desc:`${T('تحويل إلى','Transfer to')} ${accName(accById(p.toAcc))}`});if(p.toAcc===id)mv.push({p,in:a,desc:`${T('تحويل من','Transfer from')} ${accName(accById(p.fromAcc))}`});continue}
-    if(payAcc(p)!==id)continue;
+    if(p.noCash||payAcc(p)!==id)continue;
     const who=p.partyType==='expense'?(p.category||T('مصروف','Expense'))+(p.partyName?' — '+p.partyName:''):(p.partyName||'');
     mv.push({p,[p.type==='in'?'in':'out']:a,desc:`${p.type==='in'?T('قبض','Receipt'):p.partyType==='expense'?T('مصروف','Expense'):T('صرف','Payment')}: ${who}${p.invoiceNo?' · '+p.invoiceNo:''}`});
   }
@@ -2081,6 +2081,7 @@ function payView(id){
    <div class="card"><div class="kv"><span>${T('من','From')}</span><span translate="no">${esc(accName(accById(p.fromAcc)))}</span><span>${T('إلى','To')}</span><span translate="no">${esc(accName(accById(p.toAcc)))}</span><span>${T('المبلغ','Amount')}</span><span>${money(p.amount)}</span><span>${T('التاريخ','Date')}</span><span class="num">${esc(p.date)}</span>${p.notes?`<span>${T('البيان','Description')}</span><span translate="no">${esc(p.notes)}</span>`:''}</div></div>`;
   return `<div class="head">${backBtn}<h2>${p.type==='in'?'سند قبض':p.partyType==='expense'?'سند صرف (مصروف)':'سند صرف'} <span class="num">${payNo(p)}</span></h2></div>
   <div class="btns" style="margin-bottom:12px">${RO?'':`<button class="btn" data-act="editPay" data-id="${id}">✏️ تعديل</button>`}${downloads?`<button class="btn pri" data-act="pdfPay" data-id="${id}">⬇︎ PDF</button>`:''}${MCP&&p.partyType!=='expense'?`<button class="btn" data-act="emailPay" data-id="${id}">📧 إيميل</button>`:''}${p.invoiceId?`<button class="btn" data-act="openSub" data-type="doc" data-k="${p.invoiceKind||'sales'}" data-id="${p.invoiceId}">عرض الفاتورة</button>`:''}${!RO&&ADMIN?`<button class="btn red" data-act="delPay" data-id="${id}">حذف</button>`:''}</div>
+  ${p.noCash?`<div class="muted" style="font-size:12.5px;margin:-4px 0 10px">📦 ${T('منقول من','Migrated from')} <b dir="auto">${esc(p.migrated||T('النظام السابق','the old system'))}</b> — ${T('يؤثر على رصيد العميل والفاتورة فقط، وما يدخل الخزينة','affects the customer balance and invoice only, not the cash/bank balance')}</div>`:''}
   <div class="paperwrap"><div class="paper" dir="${pdir()}">${paperPay(p)}</div></div>`;
 }
 function paperPay(p){
@@ -2506,7 +2507,7 @@ async function savePay(id){
     let party=null;if(!exp){party=await ensureParty(pt==='customer'?'customers':'suppliers',pname)}
     const inv=invId?S['_'+ik].get(invId):null;
     const body={type,date:V.date,partyType:pt,partyId:party?party.id:'',partyName:party?party.name:pname,category:exp?V.cat:'',invoiceKind:inv?ik:'',invoiceId:inv?invId:'',invoiceNo:inv?docNo(ik,inv.no):'',amount,method:V.method,accountId:V.acc,notes:V.notes,updatedAt:nowIso()};
-    if(id){const old=S._payments.get(id)||{};body.no=old.no;body.createdAt=old.createdAt||nowIso();body.createdBy=old.createdBy||'';if(old.returnId)Object.assign(body,{returnId:old.returnId,returnKind:old.returnKind||'',returnNo:old.returnNo||''});
+    if(id){const old=S._payments.get(id)||{};body.no=old.no;body.createdAt=old.createdAt||nowIso();body.createdBy=old.createdBy||'';if(old.returnId)Object.assign(body,{returnId:old.returnId,returnKind:old.returnKind||'',returnNo:old.returnNo||''});if(old.noCash)Object.assign(body,{noCash:true,migrated:old.migrated||''});
       if(old.type!==type){const r=await nextRef('payments',type==='in'?'RV':'PV',x=>x.type===type);body.no=r.no}
       await db.collection('payments').doc(id).set(body);return id}
     const r=await nextRef('payments',type==='in'?'RV':'PV',x=>x.type===type);
