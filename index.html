@@ -838,6 +838,45 @@ window.addEventListener('offline',()=>{OFFLINE=true;renderShell()});
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('sw',e)))}
 
 /* ---------- backup reminder ---------- */
+/* ---------- push notifications ---------- */
+const PUSH_CATS=[['pay','💵','دفعة جديدة من عميل','New customer payment',1],['doc','🧾','فاتورة أو عرض سعر جديد','New invoice or quotation',1],['appt','📅','تذكير المواعيد وأوامر العمل','Appointment & work-order reminders',0],['daily','⚠️','تنبيهات الصباح (متأخرات، نفاد، أوامر شراء)','Morning alerts (overdue, out of stock, POs)',1]];
+let PUSH=(()=>{try{return JSON.parse(localStorage.getItem('push')||'null')}catch(_){return null}})();
+const savePUSH=()=>{try{localStorage.setItem('push',JSON.stringify(PUSH))}catch(_){}};
+const pushSupported=()=>'Notification' in window&&'serviceWorker' in navigator&&'PushManager' in window;
+function pushCard(){
+  const s=ST();const on=PUSH&&PUSH.token&&Notification&&Notification.permission==='granted';
+  const prefs=(PUSH&&PUSH.prefs)||Object.fromEntries(PUSH_CATS.map(c=>[c[0],ADMIN||!c[4]]));
+  const warn=!pushSupported()?(isIOS()&&!isStandalone()?T('في الآيفون: أضف التطبيق للشاشة الرئيسية أولاً (مشاركة ← إضافة إلى الشاشة الرئيسية)، ثم افتحه من الأيقونة.','On iPhone: add the app to your Home Screen first (Share → Add to Home Screen), then open it from the icon.'):T('هذا المتصفح لا يدعم الإشعارات.','This browser does not support notifications.')):(typeof Notification!=='undefined'&&Notification.permission==='denied')?T('الإشعارات محظورة لهذا الموقع في إعدادات المتصفح. اسمح بها ثم أعد المحاولة.','Notifications are blocked for this site in browser settings. Allow them, then try again.'):!s.vapidKey?(ADMIN?T('أدخل «مفتاح الإشعارات (VAPID)» بالأسفل أولاً.','Enter the notification key (VAPID) below first.'):T('لم يُجهّز المدير الإشعارات بعد.','The admin has not set up notifications yet.')):'';
+  return `<div class="card"><h3>🔔 ${T('الإشعارات على هذا الجهاز','Notifications on this device')}</h3>
+   <p class="muted" style="margin:2px 0 10px;font-size:13px">${T('تصلك حتى لو التطبيق مغلق. كل جهاز يُفعَّل لوحده.','Delivered even when the app is closed. Enable on each device separately.')}</p>
+   ${warn?`<div class="banner" style="margin:0 0 10px">${warn}</div>`:''}
+   <div class="grid" style="gap:8px;margin-bottom:12px">${PUSH_CATS.filter(c=>ADMIN||!c[4]).map(c=>`<label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" class="push-c" data-c="${c[0]}" ${prefs[c[0]]?'checked':''}> ${c[1]} ${T(c[2],c[3])}</label>`).join('')}</div>
+   <div class="btns">${on?`<button class="btn pri" data-act="pushSave">💾 ${T('حفظ الاختيارات','Save choices')}</button><button class="btn" data-act="pushTest">${T('إشعار تجريبي','Test notification')}</button><button class="btn red" data-act="pushOff">${T('إيقاف على هذا الجهاز','Turn off on this device')}</button>`:`<button class="btn pri" data-act="pushOn" ${warn&&!(!s.vapidKey&&ADMIN)?'':''}>🔔 ${T('تفعيل الإشعارات','Enable notifications')}</button>`}</div>
+   ${ADMIN?`<details style="margin-top:12px"><summary class="muted" style="font-size:12.5px;cursor:pointer">${T('إعداد المدير: مفتاح الإشعارات (VAPID)','Admin setup: notification key (VAPID)')}</summary><div style="margin-top:8px;font-size:12.5px" class="muted">${T('من Firebase ← إعدادات المشروع ← Cloud Messaging ← Web Push certificates ← Generate key pair، انسخ المفتاح والصقه هنا.','Firebase → Project settings → Cloud Messaging → Web Push certificates → Generate key pair; copy the key and paste it here.')}</div><div class="btns" style="margin-top:8px"><input id="s-vapid" dir="ltr" value="${esc(s.vapidKey||'')}" placeholder="BPx…" style="flex:1;min-width:200px"><button class="btn" data-act="saveVapid">${T('حفظ','Save')}</button></div></details>`:''}
+  </div>`;
+}
+function pushPrefsFromUI(){const p={};PUSH_CATS.forEach(c=>p[c[0]]=false);$$('.push-c').forEach(i=>p[i.dataset.c]=i.checked);return p}
+async function pushOn(){
+  const s=ST();
+  if(!pushSupported()){toast(isIOS()?T('أضف التطبيق للشاشة الرئيسية أولاً','Add the app to your Home Screen first'):T('المتصفح لا يدعم الإشعارات','Browser does not support notifications'),5000);return}
+  if(!s.vapidKey){toast(T('مفتاح الإشعارات غير مُعدّ بعد','Notification key not set yet'),4000);return}
+  const perm=await Notification.requestPermission();if(perm!=='granted'){toast(T('لم يتم السماح بالإشعارات','Notifications were not allowed'),4000);return}
+  try{
+    toast(T('جارِ التفعيل…','Enabling…'),8000);
+    const reg=await navigator.serviceWorker.register('sw.js');await navigator.serviceWorker.ready;
+    const m=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js');
+    if(m.isSupported&&!(await m.isSupported())){toast(T('المتصفح لا يدعم الإشعارات','Browser does not support notifications'),4000);return}
+    const token=await m.getToken(m.getMessaging(FB.app),{vapidKey:s.vapidKey,serviceWorkerRegistration:reg});
+    if(!token)throw new Error('no token');
+    const prefs=pushPrefsFromUI();const id=token.replace(/\//g,'_').slice(0,700);
+    const F=window.FB.fns;await F.setDoc(F.doc(FB.fs,'pushTokens/'+id),{uid:MYID,email:(AUTHU&&AUTHU.email||'').toLowerCase(),token,prefs,ua:navigator.userAgent.slice(0,160),updatedAt:nowIso()});
+    PUSH={token,id,prefs};savePUSH();toast(T('تم تفعيل الإشعارات ✓','Notifications enabled ✓'));render();
+  }catch(e){console.error(e);toast(e&&e.code==='permission-denied'?T('لا توجد صلاحية: الصق ملف firestore.rules الجديد في Firebase.','No permission: paste the new firestore.rules into Firebase.'):T('تعذر التفعيل: ','Could not enable: ')+(e&&e.message||'').slice(0,90),6000)}
+}
+async function pushSave(){if(!PUSH)return;PUSH.prefs=pushPrefsFromUI();savePUSH();try{const F=window.FB.fns;await F.updateDoc(F.doc(FB.fs,'pushTokens/'+PUSH.id),{prefs:PUSH.prefs,updatedAt:nowIso()});toast(T('تم الحفظ ✓','Saved ✓'))}catch(e){console.error(e);toast(T('تعذر الحفظ','Could not save'))}}
+async function pushOff(){if(!PUSH)return;try{const F=window.FB.fns;await F.deleteDoc(F.doc(FB.fs,'pushTokens/'+PUSH.id))}catch(_){}try{const m=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js');await m.deleteToken(m.getMessaging(FB.app))}catch(_){}PUSH=null;savePUSH();toast(T('تم الإيقاف','Turned off'));render()}
+async function pushTest(){try{const F=window.FB.fns;await F.setDoc(F.doc(F.collection(FB.fs,'notify')),{uid:MYID,at:nowIso()});toast(T('أُرسل طلب الإشعار التجريبي… يصلك خلال ثوانٍ','Test requested… it should arrive in a few seconds'),5000)}catch(e){toast(T('تعذر الإرسال — تأكد من رفع القواعد والوظائف','Could not send — make sure rules and functions are deployed'),5000)}}
+
 /* ---------- low stock ---------- */
 function lowStockItems(){
   const st=derive().stock;
@@ -1673,6 +1712,7 @@ VIEWS.settings=()=>{
   const s=ST();
   const eiss=einvIssues('sales',{lines:[]});
   return `<div class="head"><h1>الإعدادات والاستيراد</h1></div>
+  ${pushCard()}
   <div class="card" style="border-color:#bfd7f5;background:#f5f9ff"><h3>🧾 ${T('الفوترة الإلكترونية (فوترة)','E-invoicing (Fawtara)')}</h3>
    <p style="margin:4px 0 8px;font-size:13.5px">${T('حسب قرار جهاز الضرائب 189/2026: الشركات التي توريداتها السنوية 5 ملايين ر.ع. أو أقل تبدأ الإلزام في <b>1 أكتوبر 2027</b> (والأكبر في 1 أبريل 2027). الإرسال يتم عبر مزوّد خدمة معتمد من الجهاز، وبعدها لا تُقبل فواتير PDF كفاتورة ضريبية.','Per OTA Decision 189/2026: businesses with annual supplies of OMR 5M or less must comply from <b>1 October 2027</b> (larger ones from 1 April 2027). Invoices go through an OTA-accredited service provider; after that, PDF invoices no longer count as tax invoices.')}</p>
    <div style="font-size:13px;margin-bottom:8px">${T('جاهزية بيانات الشركة','Company data readiness')}: ${eiss.length?`<span style="color:var(--amber);font-weight:600">⚠ ${T('ناقص','Missing')}: ${esc(eiss.join('، '))}</span>`:`<span style="color:#17803d;font-weight:600">✓ ${T('مكتملة','Complete')}</span>`}</div>
@@ -2884,7 +2924,7 @@ const ACT={
   filt:o=>{Q[o.k+'_f']=o.v;render()},
   showLate:()=>{Q.sales_f='late';go('sales')},
   lang:()=>{closeSide();setLang(LANG==='en'?'ar':'en');if(!ROLE&&AUTHU!==undefined)resolveAccess()},
-  emailPdf:()=>emailPdf(),supBalPdf:()=>supBalPdf(),xmlDoc:o=>xmlDoc(o.k,o.id),lowStockPO:()=>lowStockPO(),custBalPdf:()=>custBalPdf(),exportJson:()=>exportJson(),
+  emailPdf:()=>emailPdf(),supBalPdf:()=>supBalPdf(),pushOn:()=>pushOn(),pushOff:()=>pushOff(),pushSave:()=>pushSave(),pushTest:()=>pushTest(),saveVapid:async()=>{const v=$('#s-vapid').value.trim();if(await W(()=>db.doc('meta/settings').update({vapidKey:v}),T('تم الحفظ ✓','Saved ✓')))render()},xmlDoc:o=>xmlDoc(o.k,o.id),lowStockPO:()=>lowStockPO(),custBalPdf:()=>custBalPdf(),exportJson:()=>exportJson(),
   portalWa:o=>portalWa(o.id),
   portalCopy:async o=>{try{const l=await portalLink(o.id);await navigator.clipboard.writeText(l);toast(T('تم نسخ الرابط ✓','Link copied ✓'))}catch(e){toast(T('تعذر النسخ','Could not copy'))}},
   portalOpen:o=>{const w=window.open('','_blank');portalLink(o.id).then(l=>{if(w)w.location.href=l}).catch(()=>w&&w.close())},

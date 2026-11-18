@@ -1,5 +1,5 @@
 // Service worker: app shell works offline; always tries the network first so updates show immediately.
-const CACHE = 'sc-accounting-v2';
+const CACHE = 'sc-accounting-v3';
 const CORE = ['./', './index.html', './fb.js', './firebase-config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const LIB_HOSTS = /^(www\.gstatic\.com|cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com)$/;
 
@@ -30,4 +30,23 @@ self.addEventListener('fetch', e => {
     if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
     return res;
   }).catch(() => caches.match(req, { ignoreSearch: true }).then(hit => hit || (req.mode === 'navigate' ? caches.match('./index.html') : undefined))));
+});
+
+// Push notifications (sent by Cloud Functions through Firebase Cloud Messaging as data messages).
+self.addEventListener('push', e => {
+  let d = {};
+  try { const j = e.data ? e.data.json() : {}; d = j.data || j.notification || j; } catch (_) { d = { body: e.data ? e.data.text() : '' }; }
+  const title = d.title || 'SMART CLICK';
+  e.waitUntil(self.registration.showNotification(title, {
+    body: d.body || '', dir: 'rtl', lang: 'ar', tag: d.tag || undefined, renotify: !!d.tag,
+    icon: 'icon-192.png', badge: 'icon-192.png', data: { url: d.url || './' }
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) { if (c.url.split('#')[0] === url.split('#')[0] && 'focus' in c) { c.navigate ? c.navigate(url) : 0; return c.focus(); } }
+    return self.clients.openWindow(url);
+  }));
 });

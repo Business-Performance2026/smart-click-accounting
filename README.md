@@ -41,3 +41,18 @@
 3. Default FROM: `SMART CLICK <Smartclick.om@gmail.com>`.
 4. الصق `firestore.rules` في Firebase ← Firestore ← Rules ← Publish.
 5. في البرنامج: الإعدادات ← فعّل "إرسال الإيميل تلقائياً من البرنامج مع PDF مرفق".
+
+## الإشعارات (حتى لو التطبيق مغلق) — رفع مرة واحدة من الكمبيوتر
+1. ثبّت **Node.js** (نسخة LTS) من nodejs.org.
+2. من GitHub: Code ← Download ZIP، وفك الضغط.
+3. افتح نافذة الأوامر داخل المجلد (ويندوز: اكتب `cmd` في شريط العنوان واضغط Enter)، ثم:
+   ```
+   npm install -g firebase-tools
+   firebase login
+   cd functions
+   npm install
+   cd ..
+   firebase deploy --only functions,firestore:rules
+   ```
+4. Firebase ← إعدادات المشروع ← Cloud Messaging ← Web Push certificates ← **Generate key pair**، وانسخ المفتاح.
+5. في البرنامج: الإعدادات ← الإشعارات ← «إعداد المدير» ← الصق المفتاح ← حفظ ← **تفعيل الإشعارات** على كل جهاز.
