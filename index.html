@@ -17,7 +17,7 @@
 <style>
 :root{--bg:#f4f5f7;--card:#fff;--ink:#1c2230;--mute:#6b7385;--line:#e4e7ec;--pri:#0f766e;--pri-d:#0b5d57;--pri2:#e5f3f1;--red:#b4381a;--redbg:#fdeee8;--amber:#94600a;--amberbg:#fdf4dc;--green:#17803d;--greenbg:#e8f6ed;--side:#13202e;--r:12px}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans Arabic',system-ui,-apple-system,sans-serif;font-size:15px;letter-spacing:normal;-webkit-text-size-adjust:100%}
+html,body{overflow-x:hidden;overflow-x:clip;max-width:100%;margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans Arabic',system-ui,-apple-system,sans-serif;font-size:15px;letter-spacing:normal;-webkit-text-size-adjust:100%}
 button,input,select,textarea{font:inherit;color:inherit;letter-spacing:normal}
 a{color:var(--pri)}
 #app{display:flex;min-height:100vh}
@@ -50,10 +50,12 @@ main{flex:1;min-width:0;padding:20px 28px 100px}
 body.authmode #side,body.authmode #bottom,body.authmode #topbar,body.authmode #banner{display:none!important}
 body.authmode main{margin:0 auto}
 @media(max-width:860px){
- #side{position:fixed;right:0;top:0;z-index:60;transform:translateX(105%);transition:transform .2s;box-shadow:-8px 0 30px rgba(0,0,0,.2)}
- #side.open{transform:none}
- [dir=ltr] #side{right:auto;left:0;transform:translateX(-105%)}
- [dir=ltr] #side.open{transform:none}
+ #side{position:fixed;right:0;top:0;z-index:60;display:none;box-shadow:-8px 0 30px rgba(0,0,0,.2);max-width:85vw}
+ #side.open{display:block;animation:sidein .18s ease-out}
+ @keyframes sidein{from{transform:translateX(100%)}to{transform:none}}
+ [dir=ltr] #side{right:auto;left:0}
+ [dir=ltr] #side.open{animation-name:sideinl}
+ @keyframes sideinl{from{transform:translateX(-100%)}to{transform:none}}
  #scrim.open{display:block;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:55}
  main{padding:0 12px 96px}
  #topbar{display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:30;background:var(--bg);padding:10px 2px;margin-bottom:4px}
@@ -79,6 +81,7 @@ h3{font-size:16px;margin:0 0 10px}
 .btn:disabled{opacity:.5;cursor:default}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 .grid{display:grid;gap:12px}
+.grid>*,.qa>*{min-width:0}
 .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .g4{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -202,8 +205,9 @@ table.t td.num,table.t td.n{white-space:nowrap}
 .qa-c:hover{border-color:#cfd5de;box-shadow:0 4px 14px rgba(20,30,45,.07);transform:translateY(-1px)}
 .qa-c:active{transform:scale(.97)}
 .qa-i{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center}
-.qa-t{font-size:13px;font-weight:600;text-align:center;line-height:1.3}
+.qa-t{font-size:13px;font-weight:600;text-align:center;line-height:1.3;overflow-wrap:anywhere}
 @media(max-width:1100px){.qa{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:420px){.stat{padding:12px}.stat .v{font-size:18px}.head h1{font-size:20px}main{padding:0 10px 96px}}
 @media(max-width:520px){.qa{gap:8px}.qa-c{padding:12px 4px 10px;border-radius:12px}.qa-i{width:42px;height:42px}.qa-t{font-size:12px}}
 .dsc{display:flex;align-items:stretch;gap:0;margin-top:4px}
 .dsc input{flex:1;min-width:0;border-start-end-radius:0;border-end-end-radius:0;margin:0}
