@@ -10,7 +10,7 @@ const db = admin.firestore();
 setGlobalOptions({ region: 'me-central1', maxInstances: 3 });
 
 // 🤖 Claude connector (MCP). URL: https://me-central1-<project>.cloudfunctions.net/mcp/<KEY>
-const { onRequest } = require('firebase-functions/v2/https');
+const { onRequest, onCall, HttpsError } = require('firebase-functions/v2/https');
 exports.mcp = onRequest({ invoker: 'public', timeoutSeconds: 60, memory: '256MiB' }, (req, res) => require('./mcp').mcpHandler(req, res));
 
 const TZ = 'Asia/Muscat';
@@ -39,7 +39,8 @@ async function send(cat, title, body, opts = {}) {
   const targets = [];
   snap.forEach(d => {
     const t = d.data() || {};
-    if (!t.token || !(t.prefs || {})[cat]) return;
+    if (!t.token) return;
+    if (!(t.prefs || {})[cat] && !(opts.anyPref && Object.values(t.prefs || {}).some(Boolean))) return;
     if (opts.exclude && t.uid === opts.exclude) return;
     if (opts.only && !opts.only.has(t.uid)) return;
     if (admins && !admins.has(t.uid)) return;
@@ -149,4 +150,40 @@ exports.dailyAlerts = onSchedule({ schedule: '0 8 * * *', timeZone: TZ }, async 
   if (latePO.length) lines.push(`📋 ${latePO.length} أمر شراء متأخر التوريد`);
   if (!lines.length) return;
   await send('daily', '⚠️ تنبيهات اليوم', lines.join('\n'), { adminOnly: true, url: './', tag: 'daily' });
+});
+
+// 🧑‍💼 admin creates an employee account directly (email + temporary password + permissions)
+exports.createStaff = onCall(async req => {
+  const uid = req.auth && req.auth.uid; if (!uid) throw new HttpsError('unauthenticated', 'Sign in first');
+  const admins = await adminUids(); if (!admins.has(uid)) throw new HttpsError('permission-denied', 'Admins only');
+  const d = req.data || {};
+  const email = String(d.email || '').trim().toLowerCase(), password = String(d.password || ''), name = String(d.name || '').trim().slice(0, 80);
+  const role = d.role === 'admin' ? 'admin' : 'staff';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpsError('invalid-argument', 'Invalid email');
+  if (password.length < 6) throw new HttpsError('invalid-argument', 'Password too short');
+  const perms = {};
+  if (role !== 'admin') for (const [k, v] of Object.entries(d.perms || {})) if (/^[a-z]{3,20}$/.test(k)) perms[k] = Math.max(0, Math.min(3, parseInt(v, 10) || 0));
+  let user;
+  try { user = await admin.auth().createUser({ email, password, displayName: name || undefined, emailVerified: true }); }
+  catch (e) { if (e.code === 'auth/email-already-exists') throw new HttpsError('already-exists', 'Email already has an account'); throw new HttpsError('internal', e.message); }
+  const body = { email, name, role, createdAt: new Date().toISOString(), by: uid };
+  if (role !== 'admin') body.perms = perms;
+  await db.collection('staff').doc(user.uid).set(body);
+  await db.collection('requests').doc(user.uid).delete().catch(() => {});
+  await db.collection('activity').add({ at: new Date().toISOString(), by: uid, byEmail: (req.auth.token.email || ''), action: 'create', col: 'staff', docId: user.uid, label: `${name} <${email}>`, changes: [] }).catch(() => {});
+  return { uid: user.uid };
+});
+
+// 📨 new join request → notify admins (push + email to the company address)
+exports.onJoinRequest = onDocumentCreated('requests/{uid}', async e => {
+  const r = e.data && e.data.data(); if (!r) return;
+  const s = await settings();
+  await send('staff', '📨 طلب انضمام جديد', `${r.name || ''} · ${r.email || ''}`, { adminOnly: true, anyPref: true, url: '#requests', tag: 'req-' + e.params.uid });
+  const to = String(s.email || '').split(/[,;\s]+/).filter(x => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
+  if (s.emailAuto && to.length) {
+    await db.collection('mail').add({ to, message: {
+      subject: `طلب انضمام جديد: ${r.name || r.email}`,
+      text: `شخص جديد سجّل في البرنامج ويطلب الانضمام:\nالاسم: ${r.name || ''}\nالبريد: ${r.email || ''}\nالهاتف: ${r.phone || ''}\n\nللموافقة وتحديد الصلاحيات: افتح البرنامج ← إدارة الموظفين ← طلبات الانضمام.`,
+    }, meta: { at: new Date().toISOString(), by: 'system', col: 'requests', docId: e.params.uid } });
+  }
 });

@@ -8,7 +8,28 @@ service cloud.firestore {
     function staffPath() { return /databases/$(database)/documents/staff/$(request.auth.uid); }
     function hasStaff() { return signedIn() && exists(staffPath()); }
     function role() { return isOwner() ? 'admin' : (hasStaff() ? get(staffPath()).data.role : 'none'); }
-    function isStaff() { return isOwner() || hasStaff(); }
+    function isStaff() { return isOwner() || (hasStaff() && get(staffPath()).data.get('disabled', false) != true); }
+    // Per-section permission level: 0 none, 1 view, 2 add & edit, 3 full with delete.
+    function legacyLvl(mod) { return role() == 'viewer' ? 1 : {'finance': 3, 'appointments': 3, 'reports': 1}.get(mod, 2); }
+    function lvl(mod) {
+      return isAdmin() ? 3
+        : (get(staffPath()).data.get('perms', null) == null ? legacyLvl(mod) : get(staffPath()).data.perms.get(mod, 0));
+    }
+    function modOf(col) {
+      return {'sales': 'sales', 'sreturns': 'sales', 'quotes': 'quotes', 'purchases': 'purchases', 'preturns': 'purchases',
+              'porders': 'porders', 'customers': 'customers', 'suppliers': 'suppliers', 'products': 'products', 'pimages': 'products',
+              'payments': 'finance', 'appointments': 'appointments', 'workorders': 'workorders'}.get(col, 'none');
+    }
+    // writes that other sections need (e.g. a sales invoice records its payment, creates its customer, marks the quote converted)
+    function canWriteCol(col) {
+      return lvl(modOf(col)) >= 2
+        || (col in ['payments', 'customers', 'quotes', 'workorders'] && lvl('sales') >= 2)
+        || (col in ['payments', 'suppliers', 'porders'] && lvl('purchases') >= 2)
+        || (col == 'customers' && (lvl('quotes') >= 2 || lvl('workorders') >= 2 || lvl('appointments') >= 2))
+        || (col == 'suppliers' && lvl('porders') >= 2)
+        || (col in ['appointments', 'customers'] && lvl('workorders') >= 2)
+        || (col == 'workorders' && lvl('appointments') >= 2);
+    }
     function canWrite() { return isStaff() && role() in ['admin', 'staff']; }
     function isAdmin() { return isStaff() && role() == 'admin'; }
     function myEmail() { return signedIn() && request.auth.token.email != null ? request.auth.token.email.lower() : ''; }
@@ -36,7 +57,9 @@ service cloud.firestore {
         || (signedIn() && request.auth.uid == uid
             && request.auth.token.email_verified == true
             && exists(/databases/$(database)/documents/invites/$(myEmail()))
-            && request.resource.data.role == get(/databases/$(database)/documents/invites/$(myEmail())).data.role);
+            && request.resource.data.role == get(/databases/$(database)/documents/invites/$(myEmail())).data.role
+            && request.resource.data.get('perms', null) == get(/databases/$(database)/documents/invites/$(myEmail())).data.get('perms', null)
+            && request.resource.data.get('disabled', false) == false);
       allow update, delete: if isAdmin();
     }
     match /invites/{email} {
@@ -44,6 +67,16 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create, update: if isAdmin();
       allow delete: if isAdmin() || (signedIn() && myEmail() == email && hasStaff());
+    }
+
+    // Join requests: a signed-up user with a verified email asks the admin for access.
+    match /requests/{uid} {
+      allow create: if signedIn() && request.auth.uid == uid && request.auth.token.email_verified == true
+        && request.resource.data.email == myEmail() && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(['email', 'name', 'phone', 'at', 'status']);
+      allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow list, update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     // Activity log: staff append entries about themselves; nobody can change or delete them.
@@ -85,9 +118,10 @@ service cloud.firestore {
     // Business data
     match /{col}/{id} {
       allow read: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders'];
-      allow create, update: if canWrite() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders'];
-      allow delete: if col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders']
-        && (isAdmin() || (col in ['payments', 'appointments', 'pimages'] && canWrite()));
+      allow create, update: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders']
+        && canWriteCol(col);
+      allow delete: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders']
+        && (lvl(modOf(col)) >= 3 || (col == 'pimages' && lvl('products') >= 2));
     }
   }
 }

@@ -1,5 +1,5 @@
 // Service worker: app shell works offline; always tries the network first so updates show immediately.
-const CACHE = 'sc-accounting-v5';
+const CACHE = 'sc-accounting-v6';
 const CORE = ['./', './index.html', './fb.js', './firebase-config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const LIB_HOSTS = /^(www\.gstatic\.com|cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com)$/;
 

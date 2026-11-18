@@ -246,6 +246,9 @@ table.t td.num,table.t td.n{white-space:nowrap}
 .crop-ctl{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;width:min(86vw,380px)}
 .crop-ctl input[type=range]{flex:1;min-width:140px;accent-color:#3ddc84}
 .crop-ctl .btn{min-height:40px}
+.seg{background:#eef1f5;border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;color:#4a5568;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+.seg button.on{background:#fff;color:var(--pri);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .crop-seg{display:flex;background:rgba(255,255,255,.12);border-radius:10px;padding:3px}
 .crop-seg button{border:0;background:transparent;color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13.5px}
 .crop-seg button.on{background:#fff;color:#1c2230}
@@ -356,7 +359,7 @@ const EN={
 'اسم جديد — سيُضاف كعميل جديد عند الحفظ':'New name — will be added as a new customer on save','اسم جديد — سيُضاف كمورد جديد عند الحفظ':'New name — will be added as a new supplier on save','الرصيد الحالي':'Current balance','التوقيع':'Signature','الختم':'Stamp',
 'يتم عرض أحدث 300، استخدم البحث للوصول للأقدم.':'Showing the latest 300; use search for older ones.','يتم عرض أول 400، استخدم البحث.':'Showing the first 400; use search.','قبض':'Receipt','تحديث السجلات الموجودة بنفس الاسم':'Update existing records with the same name','أو الكود':'or code','تم العثور على':'Found','صف. طابق الأعمدة:':'rows. Map the columns:',
 'الكمية غير كافية في المخزون لـ:':'Not enough stock for:','هل تريد الحفظ رغم ذلك؟':'Save anyway?','الإجمالي الجديد':'The new total','أقل من المبلغ المدفوع على الفاتورة':'is less than the amount paid on the invoice','هل تريد تخفيض الدفعة ليساوي الإجمالي؟ إذا اخترت الإبقاء، يُحسب الفرق':'Reduce the payment to match the total? If you keep it, the difference','رصيداً لصالح':'stays as credit for','المبلغ المدفوع':'The amount paid','أكبر من إجمالي الفاتورة':'is more than the invoice total','تعديل المدفوع ليساوي الإجمالي؟':'Change paid to equal the total?','تعديل إلى':'Change to','المبلغ':'The amount','أكبر من المتبقي على الفاتورة':'is more than the balance due','سيُحسب رصيداً زائداً. عدّل المبلغ أو اضغط':'will count as overpayment. Edit the amount or press','مبلغ زائد (رصيد لصالح العميل)':'Overpaid (customer credit)','مبلغ زائد (رصيد لصالح المورد)':'Overpaid (supplier credit)','الفرق':'the difference',
-'سند قبض ':'Receipt ','أوامر العمل والتركيب':'Work orders','الضمان والأرقام التسلسلية':'Warranty & serials','أمر عمل':'Work order','أمر عمل جديد':'New work order','تعديل أمر عمل':'Edit work order','سجل التعديلات':'Activity log','فواتير المرتجعات':'Returns','إدارة العملاء':'Manage customers','إدارة الموردين':'Manage suppliers','أوامر الشراء':'Purchase orders','أمر شراء':'Purchase order','أمر شراء جديد':'New purchase order','تعديل أمر شراء':'Edit purchase order','تم الاستلام':'Received','متأخر التوريد':'Delivery overdue','مستلمة':'Received','ملغي':'Cancelled','أرصدة الموردين':'Supplier balances','أرصدة العملاء':'Customer balances','أعمار الديون':'Debt aging','لم تستحق':'Not due','أخرى':'Other','إجمالي المستحق على العملاء':'Total receivables','لهم رصيد فقط':'With balance only','إجمالي المستحق للموردين':'Total payables','آخر فاتورة':'Last invoice','المرتجعات':'Returns','المواعيد والزيارات':'Appointments & visits','مرتجع المبيعات':'Sales returns','مرتجع المشتريات':'Purchase returns','مرتجعات المبيعات':'Sales returns','مرتجعات المشتريات':'Purchase returns','مرتجع مبيعات':'Sales return','مرتجع مشتريات':'Purchase return','مرتجع مبيعات جديد':'New sales return','مرتجع مشتريات جديد':'New purchase return','تعديل مرتجع مبيعات':'Edit sales return','تعديل مرتجع مشتريات':'Edit purchase return','خصم من الرصيد':'Credited','تم رد المبلغ':'Refunded','المالية':'Finance','الخزائن والبنوك':'Cash & banks','سندات القبض':'Receipts','سندات الصرف':'Payments','المصروفات':'Expenses','الفواتير':'Invoices','السندات':'Vouchers','ر.ع.':'OMR','من زر المشاركة (Share) في أعلى صفحة البرنامج على claude.ai، ادعُ كل موظف ببريده الإلكتروني بصلاحية':'Use the Share button at the top of the app page on claude.ai to invite each employee by email as','محرر (Editor)':'Editor','ليتمكن من إضافة الفواتير. من تتم دعوته بصلاحية':'so they can add invoices. Anyone invited as','مشاهد (Viewer)':'Viewer','يمكنه الاطلاع فقط.':'can only view.','إرفاق تفاصيل كل الفواتير مع الكشف':'Attach every invoice\'s details with the statement','الملف كبير جداً للإرسال. جرّب كشفاً بدون تفاصيل الفواتير.':'The file is too large to send. Try the statement without invoice details.','رفض Gmail الإرسال: ':'Gmail refused to send: ','إعدادات مؤسستك تمنع الإرسال عبر Gmail من هنا.':'Your organization\'s policy blocks sending via Gmail here.','📧 آخر إرسال بالإيميل:':'📧 Last emailed:','سند صرف ':'Payment ','رصيد حسابكم':'Your account balance','السيد/':'Dear',
+'سند قبض ':'Receipt ','أوامر العمل والتركيب':'Work orders','الضمان والأرقام التسلسلية':'Warranty & serials','أمر عمل':'Work order','أمر عمل جديد':'New work order','تعديل أمر عمل':'Edit work order','سجل التعديلات':'Activity log','فواتير المرتجعات':'Returns','إدارة العملاء':'Manage customers','إدارة الموردين':'Manage suppliers','أوامر الشراء':'Purchase orders','أمر شراء':'Purchase order','أمر شراء جديد':'New purchase order','تعديل أمر شراء':'Edit purchase order','تم الاستلام':'Received','متأخر التوريد':'Delivery overdue','مستلمة':'Received','ملغي':'Cancelled','أرصدة الموردين':'Supplier balances','أرصدة العملاء':'Customer balances','إدارة الموظفين':'Staff management','الموظفين والصلاحيات':'Staff & permissions','إضافة موظف':'Add employee','طلبات الانضمام':'Join requests','أعمار الديون':'Debt aging','لم تستحق':'Not due','أخرى':'Other','إجمالي المستحق على العملاء':'Total receivables','لهم رصيد فقط':'With balance only','إجمالي المستحق للموردين':'Total payables','آخر فاتورة':'Last invoice','المرتجعات':'Returns','المواعيد والزيارات':'Appointments & visits','مرتجع المبيعات':'Sales returns','مرتجع المشتريات':'Purchase returns','مرتجعات المبيعات':'Sales returns','مرتجعات المشتريات':'Purchase returns','مرتجع مبيعات':'Sales return','مرتجع مشتريات':'Purchase return','مرتجع مبيعات جديد':'New sales return','مرتجع مشتريات جديد':'New purchase return','تعديل مرتجع مبيعات':'Edit sales return','تعديل مرتجع مشتريات':'Edit purchase return','خصم من الرصيد':'Credited','تم رد المبلغ':'Refunded','المالية':'Finance','الخزائن والبنوك':'Cash & banks','سندات القبض':'Receipts','سندات الصرف':'Payments','المصروفات':'Expenses','الفواتير':'Invoices','السندات':'Vouchers','ر.ع.':'OMR','من زر المشاركة (Share) في أعلى صفحة البرنامج على claude.ai، ادعُ كل موظف ببريده الإلكتروني بصلاحية':'Use the Share button at the top of the app page on claude.ai to invite each employee by email as','محرر (Editor)':'Editor','ليتمكن من إضافة الفواتير. من تتم دعوته بصلاحية':'so they can add invoices. Anyone invited as','مشاهد (Viewer)':'Viewer','يمكنه الاطلاع فقط.':'can only view.','إرفاق تفاصيل كل الفواتير مع الكشف':'Attach every invoice\'s details with the statement','الملف كبير جداً للإرسال. جرّب كشفاً بدون تفاصيل الفواتير.':'The file is too large to send. Try the statement without invoice details.','رفض Gmail الإرسال: ':'Gmail refused to send: ','إعدادات مؤسستك تمنع الإرسال عبر Gmail من هنا.':'Your organization\'s policy blocks sending via Gmail here.','📧 آخر إرسال بالإيميل:':'📧 Last emailed:','سند صرف ':'Payment ','رصيد حسابكم':'Your account balance','السيد/':'Dear',
 'اربط Gmail أولاً: من claude.ai ← الإعدادات ← Connectors.':'Connect Gmail first: claude.ai → Settings → Connectors.','انتهت صلاحية ربط Gmail. أعد ربطه من claude.ai ← الإعدادات ← Connectors.':'Gmail connection expired. Reconnect it in claude.ai → Settings → Connectors.','الإرسال يحتاج موافقتك على استخدام Gmail. افتح البرنامج في claude.ai ووافق عند الطلب.':'Sending needs your approval to use Gmail. Open the app in claude.ai and allow it when asked.','لم يتأكد الإرسال. تحقق من مجلد المرسل في Gmail قبل المحاولة مرة أخرى.':'Sending was not confirmed. Check your Gmail Sent folder before trying again.','أدخل بريداً إلكترونياً صحيحاً':'Enter a valid email address','الإيميل غير متاح في هذا العرض':'Email is not available in this view','تعذر الإرسال':'Could not send','آخر إرسال بالإيميل:':'Last emailed:',
 };
 // Arabic-letter-aware phrase replacement (longest first)
@@ -427,6 +430,10 @@ const NAV=[
  ['supbal','أرصدة الموردين','⚖️','s'],
  ['products','الأصناف والمخزون','📦'],
  ['reports','التقارير','📊'],
+ ['staffg','إدارة الموظفين','🧑‍💼','h'],
+ ['staff','الموظفين والصلاحيات','🔐','s'],
+ ['+staff','إضافة موظف','➕','s'],
+ ['requests','طلبات الانضمام','📨','s'],
  ['activity','سجل التعديلات','🕘','admin'],
  ['settings','الإعدادات والاستيراد','⚙️'],
 ];
@@ -592,13 +599,17 @@ function navHtml(cur){
   for(let i=0;i<NAV.length;i++){
     const [k,t,ic,f]=NAV[i];
     if(f==='h'){
-      grp=k;const kids=[];for(let j=i+1;j<NAV.length&&NAV[j][3]==='s';j++)kids.push(NAV[j][0]);
+      grp=k;const kids=[];for(let j=i+1;j<NAV.length&&NAV[j][3]==='s';j++)if(routeOk(NAV[j][0]))kids.push(NAV[j][0]);
+      if(!kids.length){while(i+1<NAV.length&&NAV[i+1][3]==='s')i++;continue}
       const active=kids.includes(cur);open=(k in NAVOPEN)?!!NAVOPEN[k]:active;
       out+=`<a href="#" class="navh${active?' act':''}" data-act="navToggle" data-g="${k}" aria-expanded="${open}"><span class="ic">${ic}</span><span style="flex:1">${t}</span><svg class="chev${open?' open':''}" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></a>`;
       continue;
     }
     if(f==='s'){if(!open)continue}else grp=null;
     if(f==='admin'&&!ADMIN)continue;
+    if(!routeOk(k))continue;
+    if(k==='+staff'){out+=`<a href="#" class="sub" data-act="addStaff"><span class="ic">${ic}</span>${t}</a>`;continue}
+    if(k==='requests'){const n=STF.requests.filter(x=>x.status!=='rejected').length;out+=`<a href="#" class="sub${cur===k?' act':''}" data-act="nav" data-r="requests"><span class="ic">${ic}</span><span style="flex:1">${t}</span>${n?`<span class="badge b-red" style="font-size:11px">${n}</span>`:''}</a>`;continue}
     if(k==='+customer'){if(!RO)out+=`<a href="#" class="sub" data-act="editParty" data-col="customers"><span class="ic">${ic}</span>${t}</a>`;continue}
     out+=`<a href="#${k}" class="${cur===k?'on':''}${f==='s'?' sub':''}" data-act="nav" data-r="${k}"><span class="ic">${ic}</span>${t}</a>`;
   }
@@ -607,7 +618,7 @@ function navHtml(cur){
 function renderShell(){
   const cur=route;
   $('#side').innerHTML=`<div class="brand">${ST().logo?`<img class="blogo" src="${esc(ST().logo)}" alt="">`:''}${esc(ST().company||'نظام الإدارة والمحاسبة')}<small>المبيعات · المشتريات · المخزون</small></div>`+navHtml(cur)+`${canInstall()?`<a href="#" data-act="install" style="margin-top:14px;background:#1d3347;color:#fff"><span class="ic">📲</span>${T('تثبيت التطبيق','Install app')}</a>`:''}<a href="#" data-act="lang" translate="no" style="margin-top:14px;border-top:1px solid #24384c;border-radius:0;padding-top:14px"><span class="ic">🌐</span>${LANG==='en'?'العربية':'English'}</a>`;
-  $('#bottom').innerHTML=BOTTOM.map(([k,t,i])=>k==='more'?`<a href="#" data-act="openSide"><span>${i}</span>${t}</a>`:`<a href="#${k}" class="${cur===k?'on':''}" data-act="nav" data-r="${k}"><span>${i}</span>${t}</a>`).join('');
+  $('#bottom').innerHTML=BOTTOM.filter(([k])=>k==='more'||routeOk(k)).map(([k,t,i])=>k==='more'?`<a href="#" data-act="openSide"><span>${i}</span>${t}</a>`:`<a href="#${k}" class="${cur===k?'on':''}" data-act="nav" data-r="${k}"><span>${i}</span>${t}</a>`).join('');
   {const tl=$('#tb-logo');if(tl){const lg=ST().logo||'';if(lg){if(tl.getAttribute('src')!==lg)tl.src=lg;tl.hidden=false}else tl.hidden=true}}
   const n=NAV.find(x=>x[0]===cur);$('#tb-title').textContent=isRet(cur)?KIND[cur].many:n?n[1]:'';
   let b='';
@@ -632,7 +643,7 @@ function render(fromData){
   let html='';
   try{
     if(sub) html=renderSub();
-    else html=(VIEWS[route]||VIEWS.dashboard)();
+    else html=routeOk(route)?(VIEWS[route]||VIEWS.dashboard)():noPerm();
   }catch(e){console.error(e);html=`<div class="banner">حدث خطأ في العرض: ${esc(e.message)}</div>`}
   v.oninput=null;v.onchange=null;
   if(!keepId&&ae&&v.contains(ae)&&ae.blur)ae.blur();
@@ -1299,10 +1310,13 @@ function quickActions(){
    ['customer','عميل جديد','New customer','editParty','data-col="customers"','#6d4fc2','#efebfa'],
    ['product','صنف جديد','New item','editProduct','','#3a4a5e','#eceff3'],
   ];
-  return `<div class="qa">${A.map(([ic,ar,en,act,attrs,c,bg])=>`<button class="qa-c" data-act="${act}" ${attrs}><span class="qa-i" style="background:${bg};color:${c}"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${QI[ic]}</svg></span><span class="qa-t">${T(ar,en)}</span></button>`).join('')}</div>`;
+  const QM={sales:'sales',quote:'quotes',purchase:'purchases',in:'finance',out:'finance',expense:'finance',customer:'customers',product:'products'};
+  const AA=A.filter(a=>can(QM[a[0]],2));if(!AA.length)return '';
+  return `<div class="qa">${AA.map(([ic,ar,en,act,attrs,c,bg])=>`<button class="qa-c" data-act="${act}" ${attrs}><span class="qa-i" style="background:${bg};color:${c}"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${QI[ic]}</svg></span><span class="qa-t">${T(ar,en)}</span></button>`).join('')}</div>`;
 }
 
 VIEWS.dashboard=()=>{
+  if(!can('reports',1))return `<div class="head"><h1>${esc(ST().company||'لوحة التحكم')}</h1></div>${quickActions()}<p class="muted">${T('اختر من القائمة القسم اللي تبيه.','Pick a section from the menu.')}</p>`;
   const d=derive(),t=today(),m0=t.slice(0,7);
   const inM=x=>(x.date||'').startsWith(m0);
   const salesM=S.sales.filter(inM).reduce((a,x)=>a+num(x.total),0)-S.sreturns.filter(inM).reduce((a,x)=>a+num(x.total),0);
@@ -1782,7 +1796,7 @@ VIEWS.settings=()=>{
    ${downloads?`<button class="btn" data-act="backup">⬇︎ تنزيل نسخة احتياطية (Excel)</button>`:`<p class="muted">التنزيل غير متاح في هذا العرض.</p>`}
    <p class="muted" style="font-size:12.5px;margin-bottom:0">المستخدم: ${ADMIN?'مالك / محرر':'مستخدم'} · العملاء ${S.customers.length} · الموردين ${S.suppliers.length} · الأصناف ${S.products.length} · الفواتير ${S.sales.length+S.purchases.length} · السندات ${S.payments.length}</p>
   </div>
-  ${staffCard()}
+  ${ADMIN?`<div class="card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="flex:1;min-width:200px"><h3 style="margin:0">🧑‍💼 ${T('الموظفين والصلاحيات','Staff & permissions')}</h3><div class="muted" style="font-size:13px">${T('انتقلت إلى قسم «إدارة الموظفين» في القائمة.','Moved to the “Staff management” section in the menu.')}</div></div><button class="btn pri" data-act="nav" data-r="staff">${T('فتح','Open')}</button></div>`:''}
   <div class="card"><h3>${T('نقل البيانات (JSON)','Data transfer (JSON)')}</h3>
    <p class="muted" style="margin-top:0;font-size:13.5px">${T('لنقل البيانات من النسخة السابقة أو أخذ نسخة كاملة يمكن استرجاعها.','To move data from the previous version, or take a full restorable copy.')}${S.settings.lastBackupAt?` · ${T('آخر نسخة','Last backup')}: <span class="num">${fdate(S.settings.lastBackupAt.slice(0,10))}</span>`:''}</p>
    <div class="btns"><button class="btn" data-act="exportJson">⬇︎ ${T('تنزيل نسخة JSON','Download JSON copy')}</button>${ADMIN?`<label class="btn" style="color:var(--ink)">⬆︎ ${T('استيراد نسخة JSON','Import JSON copy')}<input type="file" accept=".json,application/json" id="s-json" class="hide"></label>`:''}</div>
@@ -1795,6 +1809,8 @@ AFTER.reports=()=>{const a=$('#rep-from'),b=$('#rep-to');if(a){a.onchange=()=>{Q
 
 /* ================= detail pages ================= */
 function renderSub(){
+  {const m=sub.type==='doc'?KMOD[sub.k]:sub.type==='party'?sub.col:sub.type==='product'||sub.type==='stocktake'?'products':sub.type==='pay'||sub.type==='account'?'finance':sub.type==='appt'?'appointments':sub.type==='staffu'?'admin':null;if(m&&!can(m,1))return noPerm()}
+  if(sub.type==='staffu') return staffUserView(sub.id);
   if(sub.type==='doc') return docView(sub.k,sub.id);
   if(sub.type==='party') return partyView(sub.col,sub.id);
   if(sub.type==='product') return productView(sub.id);
@@ -2706,9 +2722,132 @@ async function portalWa(cid,docText){
   }catch(e){console.error(e);if(w)w.close();toast(T('تعذر إنشاء الرابط','Could not create the link'))}
 }
 
+/* ---------- permissions ---------- */
+const MODS=[['sales','🧾','المبيعات (الفواتير والمرتجعات)','Sales (invoices & returns)'],['quotes','📝','عروض الأسعار','Quotations'],['purchases','📥','المشتريات (الفواتير والمرتجعات)','Purchases (invoices & returns)'],['porders','📋','أوامر الشراء','Purchase orders'],['customers','👥','العملاء وأرصدتهم','Customers & balances'],['suppliers','🏭','الموردين وأرصدتهم','Suppliers & balances'],['products','📦','الأصناف والمخزون والجرد','Items, stock & stocktake'],['finance','💰','المالية: السندات والمصروفات والخزائن','Finance: vouchers, expenses, cash & bank'],['appointments','📅','المواعيد والزيارات','Appointments & visits'],['workorders','🛠️','أوامر العمل والتركيب والضمان','Work orders, installs & warranty'],['reports','📊','التقارير وأرقام لوحة التحكم','Reports & dashboard figures']];
+const LVN=[['لا يوجد','None'],['عرض','View'],['إضافة وتعديل','Add & edit'],['كامل + حذف','Full + delete']];
+const PALL=v=>Object.fromEntries(MODS.map(m=>[m[0],v]));
+const PRESETS=[
+ ['sales',T('موظف مبيعات','Salesperson'),{...PALL(0),sales:2,quotes:2,customers:2,products:1,appointments:2,workorders:1}],
+ ['tech',T('فني تركيب','Technician'),{...PALL(0),appointments:2,workorders:2,customers:1,products:1}],
+ ['acct',T('محاسب','Accountant'),{...PALL(1),sales:2,purchases:2,porders:2,customers:2,suppliers:2,finance:3,reports:1}],
+ ['store',T('أمين مخزن','Storekeeper'),{...PALL(0),products:2,purchases:1,porders:2,suppliers:1}],
+ ['view',T('مشاهد فقط','View only'),PALL(1)],
+ ['all',T('كل شيء عدا الحذف','Everything except delete'),PALL(2)],
+];
+const LEGACY_P={...PALL(2),finance:3,appointments:3,reports:1};
+let MYPERMS=null;
+function lvl(m){if(ADMIN)return 3;if(ROLE==='viewer'&&!MYPERMS)return 1;const p=MYPERMS||LEGACY_P;return Math.max(0,Math.min(3,num(p[m])))}
+const can=(m,l=1)=>m==='admin'?ADMIN:lvl(m)>=l;
+function deny(){toast('🔒 '+T('ليس لديك صلاحية','You do not have permission'),3000);return false}
+const KMOD={sales:'sales',sreturns:'sales',quotes:'quotes',purchases:'purchases',preturns:'purchases',porders:'porders',workorders:'workorders'};
+const ROUTE_MOD={sales:'sales',sreturns:'sales',quotes:'quotes',purchases:'purchases',preturns:'purchases',porders:'porders',customers:'customers','+customer':'customers',custbal:'customers',suppliers:'suppliers',supbal:'suppliers',products:'products',warranty:'workorders',accounts:'finance',receipts:'finance',payouts:'finance',expenses:'finance',appointments:'appointments',workorders:'workorders',reports:'reports',activity:'admin',staff:'admin','+staff':'admin',requests:'admin'};
+function routeOk(r){const m=ROUTE_MOD[r];if(!m)return true;if(r==='+customer')return can('customers',2);return can(m,1)}
+const noPerm=()=>`<div class="empty" style="padding:50px 16px"><div style="font-size:40px">🔒</div><h3 style="margin:10px 0 4px">${T('ليس لديك صلاحية','You do not have permission')}</h3><div class="muted">${T('اطلب من المدير إعطاءك صلاحية لهذا القسم.','Ask the admin to give you access to this section.')}</div></div>`;
+const permSummary=p=>{if(!p)return '';const a=MODS.filter(m=>num(p[m[0]])>0);return a.length?a.map(m=>`${m[1]}${['','👁','✏️','🗑'][num(p[m[0]])]}`).join(' '):T('بدون صلاحيات','No access')};
+
 /* ---------- staff & auth ---------- */
 const roleName=r=>({admin:T('مدير','Admin'),staff:T('موظف','Staff'),viewer:T('مشاهد','Viewer')}[r]||'—');
-const STF={staff:[],invites:[],owner:null};
+const STF={staff:[],invites:[],requests:[],owner:null};
+function permEditor(p,idp){
+  p=p||PALL(0);
+  return `<div class="btns" style="margin:4px 0 10px;flex-wrap:wrap">${PRESETS.map(x=>`<button type="button" class="btn sm" data-preset="${x[0]}" data-for="${idp}">${x[1]}</button>`).join('')}</div>
+   <div class="list">${MODS.map(m=>`<div class="item" style="flex-wrap:wrap;gap:8px"><div class="m" style="min-width:170px"><div class="t">${m[1]} ${T(m[2],m[3])}</div></div><div class="seg perm-seg" data-mod="${m[0]}" data-for="${idp}" style="display:flex;flex-wrap:wrap">${LVN.map((n,i)=>`<button type="button" data-l="${i}" class="${num(p[m[0]])===i?'on':''}">${T(n[0],n[1])}</button>`).join('')}</div></div>`).join('')}</div>`;
+}
+function readPerms(idp){const o=PALL(0);$$(`.perm-seg[data-for="${idp}"]`).forEach(g=>{const b=g.querySelector('button.on');o[g.dataset.mod]=b?num(b.dataset.l):0});return o}
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('.perm-seg button');
+  if(b){const g=b.parentElement;g.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));return}
+  const pr=e.target.closest&&e.target.closest('[data-preset]');
+  if(pr){const P=(PRESETS.find(x=>x[0]===pr.dataset.preset)||[])[2];if(!P)return;$$(`.perm-seg[data-for="${pr.dataset.for}"]`).forEach(g=>g.querySelectorAll('button').forEach(x=>x.classList.toggle('on',num(x.dataset.l)===num(P[g.dataset.mod]))))}
+});
+const roleSel=(id,r)=>`<label>${T('نوع الحساب','Account type')}<select id="${id}"><option value="staff" ${r!=='admin'?'selected':''}>${T('موظف بصلاحيات محددة','Staff with selected permissions')}</option><option value="admin" ${r==='admin'?'selected':''}>${T('مدير (كل الصلاحيات والإعدادات)','Admin (everything & settings)')}</option></select></label>`;
+function staffDisplay(x){return x.name||x.email||x.id}
+VIEWS.staff=()=>{
+  const ownerId=STF.owner&&STF.owner.uid;
+  const list=STF.staff.filter(x=>x.id!==ownerId).sort((a,b)=>staffDisplay(a).localeCompare(staffDisplay(b),'ar'));
+  const nReq=STF.requests.filter(x=>x.status!=='rejected').length;
+  return `<div class="head"><h1>${T('الموظفين والصلاحيات','Staff & permissions')}</h1><button class="btn pri" data-act="addStaff">+ ${T('إضافة موظف','Add employee')}</button></div>
+  ${nReq?`<div class="card" style="display:flex;align-items:center;gap:10px;border-color:#e9cf8c;background:#fffaf0"><div style="flex:1">📨 ${T(`${nReq} طلب انضمام بانتظار موافقتك`,`${nReq} join request(s) awaiting approval`)}</div><button class="btn pri" data-act="nav" data-r="requests">${T('عرض','View')}</button></div>`:''}
+  <div class="list">
+   ${STF.owner?`<div class="item"><div class="m"><div class="t" translate="no" dir="auto">${esc(STF.owner.email||'')}</div><div class="d"><span class="badge b-pri">${T('المالك','Owner')}</span> ${T('كل الصلاحيات','Full access')}</div></div></div>`:''}
+   ${list.map(x=>`<a class="item" href="#" data-act="openSub" data-type="staffu" data-id="${x.id}"><div class="m"><div class="t" dir="auto">${esc(staffDisplay(x))}</div><div class="d" translate="no" dir="ltr" style="text-align:start">${esc(x.email||'')}</div><div class="d" style="font-size:12px">${x.role==='admin'?`<span class="badge b-pri">${T('مدير','Admin')}</span>`:x.perms?permSummary(x.perms):roleName(x.role)}${x.disabled?` <span class="badge b-red">${T('موقوف','Suspended')}</span>`:''}</div></div><span class="muted">‹</span></a>`).join('')}
+   ${STF.invites.map(x=>`<div class="item"><div class="m"><div class="t" dir="auto">${esc(x.name||x.id)}</div><div class="d" translate="no" dir="ltr" style="text-align:start">${esc(x.id)}</div><div class="d"><span class="badge b-amber">${T('دعوة — بانتظار تسجيل الموظف','Invite — awaiting sign-up')}</span></div></div><button class="btn sm red" data-act="rmInvite" data-id="${esc(x.id)}">✕</button></div>`).join('')}
+   ${!list.length&&!STF.invites.length?`<div class="empty">${T('لا يوجد موظفين بعد','No employees yet')}</div>`:''}
+  </div>
+  <p class="muted" style="font-size:12.5px">${T('👁 عرض · ✏️ إضافة وتعديل · 🗑 كامل مع الحذف. أي قسم بدون صلاحية يختفي من قائمة الموظف، وإذا حاول يدخله يطلع له «ليس لديك صلاحية».','👁 view · ✏️ add & edit · 🗑 full with delete. Sections without access are hidden from the employee; opening one shows “You do not have permission”.')}</p>`;
+};
+function staffUserView(id){
+  const x=STF.staff.find(s=>s.id===id);if(!x)return `<div class="empty">${T('غير موجود','Not found')}</div>`;
+  return `<div class="head">${backBtn}<h1 dir="auto">${esc(staffDisplay(x))}</h1></div>
+  <div class="card"><div class="grid g2 f"><label>${T('الاسم','Name')}<input id="su-name" value="${esc(x.name||'')}"></label><label>${T('البريد','Email')}<input value="${esc(x.email||'')}" dir="ltr" readonly></label>${roleSel('su-role',x.role)}</div></div>
+  <div class="card" id="su-perms" ${x.role==='admin'?'hidden':''}><h3>${T('الصلاحيات','Permissions')}</h3>${permEditor(x.perms||(x.role==='viewer'?PALL(1):LEGACY_P),'su')}</div>
+  <div class="btns" style="margin-bottom:14px"><button class="btn pri" data-act="saveStaffU" data-id="${id}">💾 ${T('حفظ','Save')}</button><button class="btn" data-act="toggleStaff" data-id="${id}">${x.disabled?T('إعادة تفعيل الحساب','Reactivate'):T('إيقاف مؤقت','Suspend')}</button><button class="btn red" data-act="rmStaff" data-id="${id}">${T('حذف الموظف','Remove employee')}</button></div>`;
+}
+document.addEventListener('change',e=>{if(e.target.id==='su-role'&&$('#su-perms'))$('#su-perms').hidden=e.target.value==='admin';if(e.target.id==='as-role'&&$('#as-perms'))$('#as-perms').hidden=e.target.value==='admin';if(e.target.id==='rq-role'&&$('#rq-perms'))$('#rq-perms').hidden=e.target.value==='admin'});
+async function saveStaffU(id){
+  const role=$('#su-role').value;const body={name:$('#su-name').value.trim(),role,updatedAt:nowIso()};
+  body.perms=role==='admin'?null:readPerms('su');
+  if(await W(()=>db.doc('staff/'+id).update(body),T('تم الحفظ ✓','Saved ✓')))back();
+}
+VIEWS.requests=()=>{
+  const L=[...STF.requests].sort((a,b)=>(b.at||'').localeCompare(a.at||''));
+  return `<div class="head"><h1>${T('طلبات الانضمام','Join requests')}</h1></div>
+  <p class="muted" style="margin-top:0;font-size:13px">${T('أي شخص يسجّل في البرنامج ويؤكد بريده يظهر هنا. ما يقدر يدخل لين توافق عليه وتحدد صلاحياته.','Anyone who signs up and verifies their email appears here. They cannot get in until you approve and set permissions.')}</p>
+  <div class="list">${L.map(x=>`<div class="item" style="flex-wrap:wrap;gap:8px"><div class="m" style="min-width:200px"><div class="t" dir="auto">${esc(x.name||'')}</div><div class="d" translate="no" dir="ltr" style="text-align:start">${esc(x.email||'')}${x.phone?' · '+esc(x.phone):''}</div><div class="d">${x.at?fdate(x.at.slice(0,10)):''} ${x.status==='rejected'?`<span class="badge b-red">${T('مرفوض','Rejected')}</span>`:`<span class="badge b-amber">${T('بانتظار الموافقة','Pending')}</span>`}</div></div>
+   <div class="btns">${x.status!=='rejected'?`<button class="btn pri sm" data-act="approveReq" data-id="${x.id}">✓ ${T('موافقة','Approve')}</button><button class="btn sm" data-act="rejectReq" data-id="${x.id}">${T('رفض','Reject')}</button>`:''}<button class="btn sm red" data-act="delReq" data-id="${x.id}">✕</button></div></div>`).join('')||`<div class="empty">${T('لا توجد طلبات','No requests')}</div>`}</div>`;
+};
+function approveReq(id){
+  const r=STF.requests.find(x=>x.id===id);if(!r)return;
+  openModal(`<div class="mh"><h3>${T('موافقة على','Approve')} ${esc(r.name||r.email)}</h3><button class="btn ghost" data-act="closeModal">✕</button></div>
+   <div class="grid f" style="gap:10px"><div class="muted" translate="no" dir="ltr">${esc(r.email)}</div>${roleSel('rq-role','staff')}<div id="rq-perms">${permEditor(PRESETS[0][2],'rq')}</div></div>
+   <div class="btns" style="margin-top:14px"><button class="btn pri" data-act="saveApprove" data-id="${id}">✓ ${T('موافقة وتفعيل','Approve & activate')}</button><button class="btn" data-act="closeModal">${T('إلغاء','Cancel')}</button></div>`);
+}
+async function saveApprove(id){
+  const r=STF.requests.find(x=>x.id===id);if(!r)return;const role=$('#rq-role').value;
+  const body={email:r.email||'',name:r.name||'',phone:r.phone||'',role,createdAt:nowIso(),by:MYID||''};if(role!=='admin')body.perms=readPerms('rq');
+  if(await W(async()=>{await db.doc('staff/'+id).set(body);await db.doc('requests/'+id).delete()},T('تمت الموافقة ✓ — يقدر الموظف يدخل الآن','Approved ✓ — the employee can sign in now'))){closeModal();if(route!=='staff')go('staff')}
+}
+function addStaff(){
+  closeSide();
+  openModal(`<div class="mh"><h3>${T('إضافة موظف','Add employee')}</h3><button class="btn ghost" data-act="closeModal">✕</button></div>
+   <div class="seg" style="display:flex;margin-bottom:12px" id="as-mode"><button type="button" class="on" data-m="create">${T('إنشاء حساب له الآن','Create the account now')}</button><button type="button" data-m="invite">${T('دعوة يسجّل بنفسه','Invite to sign up')}</button></div>
+   <div class="grid g2 f" style="gap:10px">
+    <label>${T('اسم الموظف','Employee name')}<input id="as-name"></label>
+    <label>${T('البريد الإلكتروني','Email')}<input id="as-email" type="email" dir="ltr"></label>
+    <label id="as-pass-l">${T('كلمة مرور مؤقتة (6 أحرف أو أكثر)','Temporary password (6+ characters)')}<input id="as-pass" dir="ltr" value="${Math.random().toString(36).slice(2,8)}${Math.floor(Math.random()*90+10)}"></label>
+    ${roleSel('as-role','staff')}
+   </div>
+   <div id="as-perms" style="margin-top:10px"><h3 style="margin:6px 0">${T('الصلاحيات','Permissions')}</h3>${permEditor(PRESETS[0][2],'as')}</div>
+   <p class="muted" id="as-hint" style="font-size:12.5px">${T('يدخل الموظف بالبريد وكلمة المرور هذي مباشرة، ويقدر يغيّرها من «نسيت كلمة المرور».','The employee signs in right away with this email and password, and can change it via “Forgot password”.')}</p>
+   <div class="btns" style="margin-top:10px"><button class="btn pri" data-act="saveAddStaff">✓ ${T('إضافة','Add')}</button><button class="btn" data-act="closeModal">${T('إلغاء','Cancel')}</button></div>`);
+  $('#as-mode').onclick=e=>{const b=e.target.closest('button');if(!b)return;$$('#as-mode button').forEach(x=>x.classList.toggle('on',x===b));const inv=b.dataset.m==='invite';$('#as-pass-l').hidden=inv;$('#as-hint').textContent=inv?T('يفتح الموظف رابط البرنامج ويسجّل بنفس البريد ويؤكده، ويدخل تلقائياً بهذي الصلاحيات.','The employee opens the app link, signs up with the same email and verifies it, then gets these permissions automatically.'):T('يدخل الموظف بالبريد وكلمة المرور هذي مباشرة، ويقدر يغيّرها من «نسيت كلمة المرور».','The employee signs in right away with this email and password, and can change it via “Forgot password”.')};
+}
+async function saveAddStaff(){
+  const mode=($('#as-mode button.on')||{}).dataset.m;const name=$('#as-name').value.trim(),email=$('#as-email').value.trim().toLowerCase(),role=$('#as-role').value;
+  const perms=role==='admin'?null:readPerms('as');
+  if(!name){toast(T('اكتب اسم الموظف','Enter the employee name'));return}
+  if(!EMAIL_RE.test(email)){toast(T('أدخل بريداً إلكترونياً صحيحاً','Enter a valid email address'));return}
+  if(STF.staff.some(x=>(x.email||'')===email)){toast(T('هذا البريد مضاف مسبقاً','This email is already added'));return}
+  if(mode==='invite'){
+    const body={role,name,createdAt:nowIso(),by:MYID};if(perms)body.perms=perms;
+    if(await W(()=>db.doc('invites/'+email).set(body),T('تمت الدعوة ✓ — أرسل له رابط البرنامج','Invited ✓ — send them the app link'))){closeModal();go('staff')}
+    return;
+  }
+  const pass=$('#as-pass').value;if(pass.length<6){toast(T('كلمة المرور 6 أحرف على الأقل','Password must be at least 6 characters'));return}
+  const btn=$('[data-act=saveAddStaff]');btn.disabled=true;btn.innerHTML=`<span class="spin"></span>`;
+  try{
+    const m=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js');
+    const fn=m.httpsCallable(m.getFunctions(FB.app,'me-central1'),'createStaff');
+    await fn({name,email,password:pass,role,perms});
+    closeModal();
+    openModal(`<div class="mh"><h3>✓ ${T('تمت إضافة الموظف','Employee added')}</h3><button class="btn ghost" data-act="closeModal">✕</button></div>
+     <p>${T('أرسل له بيانات الدخول:','Send them their sign-in details:')}</p><div class="card" style="direction:ltr;text-align:left;font-family:monospace;white-space:pre-wrap" id="as-creds">${esc(location.href.split('#')[0])}\n${esc(email)}\n${esc(pass)}</div>
+     <div class="btns"><button class="btn pri" data-act="copyCreds">📋 ${T('نسخ','Copy')}</button><a class="btn" target="_blank" href="https://wa.me/?text=${encodeURIComponent(`${ST().company||''}\n${T('رابط البرنامج','App link')}: ${location.href.split('#')[0]}\n${T('البريد','Email')}: ${email}\n${T('كلمة المرور','Password')}: ${pass}`)}">WhatsApp</a></div>`);
+    go('staff');
+  }catch(e){console.error(e);btn.disabled=false;btn.textContent='✓ '+T('إضافة','Add');
+    const c=(e&&e.code)||'';toast(c.includes('already-exists')?T('هذا البريد له حساب مسبقاً. استخدم «دعوة يسجّل بنفسه»، أو وافق على طلبه من طلبات الانضمام.','This email already has an account. Use “Invite”, or approve their join request.'):c.includes('not-found')||c.includes('internal')&&!e.details?T('وظيفة إضافة الموظفين غير مرفوعة بعد. شغّل أمر الرفع من الكمبيوتر، أو استخدم «دعوة يسجّل بنفسه».','The add-employee function is not deployed yet. Run the deploy command, or use “Invite”.'):T('تعذرت الإضافة: ','Could not add: ')+(e.message||c),7000)}
+}
+
 function staffCard(){
   if(!ADMIN)return '';
   return `<div class="card"><h3>${T('المستخدمون والصلاحيات','Users & permissions')}</h3>
@@ -2734,11 +2873,12 @@ function authScreen(mode,msg){
   if(mode==='login'||mode==='signup'){
     v.innerHTML=box(`<form id="auth-f" class="grid" style="gap:12px">
       <label>${T('البريد الإلكتروني','Email')}<input id="a-email" type="email" dir="ltr" autocomplete="email" required></label>
+      ${mode==='signup'?`<label>${T('الاسم','Name')}<input id="a-name" autocomplete="name" required></label><label>${T('رقم الهاتف (اختياري)','Phone (optional)')}<input id="a-phone" type="tel" dir="ltr" autocomplete="tel"></label>`:''}
       <label>${T('كلمة المرور','Password')}<input id="a-pass" type="password" dir="ltr" autocomplete="${mode==='login'?'current-password':'new-password'}" required minlength="6"></label>
       <button class="btn pri" style="min-height:46px">${mode==='login'?T('تسجيل الدخول','Sign in'):T('إنشاء حساب','Create account')}</button></form>
-      <div class="btns" style="justify-content:space-between;margin-top:12px"><button class="btn ghost sm" data-act="authMode" data-m="${mode==='login'?'signup':'login'}">${mode==='login'?T('موظف جديد؟ أنشئ حساباً','New employee? Create account'):T('عندي حساب، تسجيل الدخول','I have an account, sign in')}</button>${mode==='login'?`<button class="btn ghost sm" data-act="resetPass">${T('نسيت كلمة المرور','Forgot password')}</button>`:''}</div>`);
+      <div class="btns" style="justify-content:space-between;margin-top:12px"><button class="btn ghost sm" data-act="authMode" data-m="${mode==='login'?'signup':'login'}">${mode==='login'?T('موظف جديد؟ سجّل وأرسل طلب انضمام','New employee? Sign up & request access'):T('عندي حساب، تسجيل الدخول','I have an account, sign in')}</button>${mode==='login'?`<button class="btn ghost sm" data-act="resetPass">${T('نسيت كلمة المرور','Forgot password')}</button>`:''}</div>`);
     $('#auth-f').onsubmit=async e=>{e.preventDefault();const em=$('#a-email').value.trim(),pw=$('#a-pass').value;const F=window.FB.fns;const b=e.target.querySelector('button');b.disabled=true;
-      try{if(mode==='login')await F.signInWithEmailAndPassword(FB.auth,em,pw);else{const r=await F.createUserWithEmailAndPassword(FB.auth,em,pw);try{await F.sendEmailVerification(r.user)}catch(_){}}}
+      try{if(mode==='login')await F.signInWithEmailAndPassword(FB.auth,em,pw);else{try{localStorage.setItem('signupName',($('#a-name')&&$('#a-name').value.trim())||'');localStorage.setItem('signupPhone',($('#a-phone')&&$('#a-phone').value.trim())||'')}catch(_){}const r=await F.createUserWithEmailAndPassword(FB.auth,em,pw);try{await F.sendEmailVerification(r.user)}catch(_){}}}
       catch(err){b.disabled=false;const c=err.code||'';authScreen(mode,c.includes('invalid-credential')||c.includes('wrong-password')||c.includes('user-not-found')?T('البريد أو كلمة المرور غير صحيحة','Wrong email or password'):c.includes('email-already-in-use')?T('هذا البريد مسجل مسبقاً، سجّل الدخول','This email is already registered, sign in'):c.includes('weak-password')?T('كلمة المرور ضعيفة (6 أحرف على الأقل)','Weak password (at least 6 characters)'):c.includes('too-many-requests')?T('محاولات كثيرة، انتظر قليلاً','Too many attempts, wait a bit'):T('تعذر الدخول: ','Could not sign in: ')+c)}};
   }else if(mode==='verify'){
     v.innerHTML=box(`<p>${T('أرسلنا رسالة تأكيد إلى','We sent a verification email to')} <b translate="no" dir="ltr">${esc(u.email)}</b>. ${T('افتحها واضغط الرابط، ثم ارجع واضغط "تم التأكيد". (تحقق من مجلد Spam)','Open it and click the link, then come back and press "I verified". (Check Spam)')}</p>
@@ -2746,6 +2886,12 @@ function authScreen(mode,msg){
   }else if(mode==='claim'){
     v.innerHTML=box(`<p>${T('لا يوجد مالك للبرنامج بعد. هل تريد تسجيل هذا الحساب كمالك ومدير للبرنامج؟','The app has no owner yet. Register this account as the owner and admin?')}</p><p class="muted" translate="no" dir="ltr">${esc(u.email)}</p>
       <div class="btns"><button class="btn pri" data-act="claimOwner">${T('نعم، أنا المالك','Yes, I am the owner')}</button><button class="btn ghost" data-act="signOut">${T('خروج','Sign out')}</button></div>`);
+  }else if(mode==='pending'){
+    v.innerHTML=box(`<div style="text-align:center;font-size:36px">⏳</div><p style="text-align:center">${T('تم إرسال طلبك للمدير. بتقدر تدخل البرنامج بعد ما يوافق على طلبك ويحدد صلاحياتك.','Your request was sent to the admin. You can enter once they approve it and set your permissions.')}</p><p class="muted" style="text-align:center" translate="no" dir="ltr">${esc(u.email)}</p>
+      <div class="btns" style="justify-content:center"><button class="btn pri" data-act="recheck">${T('تحقق مرة أخرى','Check again')}</button><button class="btn ghost" data-act="signOut">${T('خروج','Sign out')}</button></div>`);
+  }else if(mode==='rejected'||mode==='suspended'){
+    v.innerHTML=box(`<div style="text-align:center;font-size:36px">🔒</div><p style="text-align:center">${mode==='rejected'?T('تم رفض طلب الانضمام. تواصل مع المدير إذا كان فيه خطأ.','Your join request was declined. Contact the admin if this is a mistake.'):T('تم إيقاف حسابك مؤقتاً. تواصل مع المدير.','Your account is suspended. Contact the admin.')}</p>
+      <div class="btns" style="justify-content:center"><button class="btn" data-act="recheck">${T('تحقق مرة أخرى','Check again')}</button><button class="btn ghost" data-act="signOut">${T('خروج','Sign out')}</button></div>`);
   }else if(mode==='denied'){
     v.innerHTML=box(`<p>${T('حسابك غير مفعّل في البرنامج. اطلب من المدير إضافة بريدك:','Your account isn\'t enabled. Ask the admin to add your email:')}</p><p class="muted" translate="no" dir="ltr">${esc(u.email)}</p>
       <div class="btns"><button class="btn pri" data-act="recheck">${T('تحقق مرة أخرى','Check again')}</button><button class="btn ghost" data-act="signOut">${T('خروج','Sign out')}</button></div>`);
@@ -2760,18 +2906,26 @@ async function resolveAccess(){
   if(owner.exists&&owner.data().uid===u.uid){ROLE='admin'}
   else{
     const st=await g('staff/'+u.uid);
-    if(st.exists)ROLE=st.data().role||'viewer';
+    if(st.exists&&st.data().disabled){authScreen('suspended');return}
+    if(st.exists){ROLE=st.data().role||'viewer';MYPERMS=ROLE==='admin'?null:(st.data().perms||null)}
     else{
       const inv=await g('invites/'+(u.email||'').toLowerCase());
       if(inv.exists){
         if(!u.emailVerified){authScreen('verify');return}
-        try{await db.doc('staff/'+u.uid).set({email:(u.email||'').toLowerCase(),role:inv.data().role,createdAt:nowIso()});await db.doc('invites/'+(u.email||'').toLowerCase()).delete().catch(()=>{});ROLE=inv.data().role}
+        try{const iv=inv.data();const sd={email:(u.email||'').toLowerCase(),role:iv.role,createdAt:nowIso()};if(iv.perms)sd.perms=iv.perms;if(iv.name)sd.name=iv.name;await db.doc('staff/'+u.uid).set(sd);await db.doc('invites/'+(u.email||'').toLowerCase()).delete().catch(()=>{});ROLE=iv.role;MYPERMS=iv.role==='admin'?null:(iv.perms||null)}
         catch(e){console.error(e);authScreen('denied',T('تعذر تفعيل الحساب','Could not activate the account'));return}
       }else if(!owner.exists&&!owner.err){authScreen('claim');return}
-      else{authScreen('denied');return}
+      else{
+        // no invite: send a join request to the admin (needs a verified email)
+        if(!u.emailVerified){authScreen('verify');return}
+        const rq=await g('requests/'+u.uid);
+        if(rq.exists&&rq.data().status==='rejected'){authScreen('rejected');return}
+        if(!rq.exists){let nm='',ph='';try{nm=localStorage.getItem('signupName')||'';ph=localStorage.getItem('signupPhone')||''}catch(_){}
+          try{await db.doc('requests/'+u.uid).set({email:(u.email||'').toLowerCase(),name:nm||(u.email||'').split('@')[0],phone:ph,at:nowIso(),status:'pending'})}catch(e){console.error(e);authScreen('denied');return}}
+        authScreen('pending');return}
     }
   }
-  MYID=u.uid;RO=ROLE==='viewer';ADMIN=ROLE==='admin';
+  MYID=u.uid;ADMIN=ROLE==='admin';if(ADMIN)MYPERMS=null;RO=!ADMIN&&!MODS.some(m=>lvl(m[0])>=2);
   document.body.classList.remove('authmode');
   startData();
 }
@@ -2790,9 +2944,10 @@ function startData(){
   });
   db.doc('meta/settings').onSnapshot(s=>{const local=s.metadata&&s.metadata.hasPendingWrites;const prev=S.settings||{};S.settings=s.exists?s.data():{};S.settingsReady=true;schedule();const PF=['company','companyEn','crNo','vatNo','phone','email','address','city','postal','currency','terms','bank','logo','printLang','printImages','vatRate'];if(local&&!RO&&PF.some(k=>JSON.stringify(prev[k])!==JSON.stringify(S.settings[k]))){S.customers.filter(c=>c.portalToken).forEach(c=>queuePortalSync(c.id))}},onErr('settings'));
   if(ADMIN)db.collection('activity').recent('at',500,list=>{S.activity=list;if(route==='activity'&&!sub&&!E)schedule()},e=>{console.warn('activity',e&&e.code);S.activityErr=true;if(route==='activity')schedule()});
-  db.collection('staff').onSnapshot(s=>{STF.staff=s.docs.map(x=>({...x.data(),id:x.id}));if((route==='settings'||route==='appointments')&&!E)schedule()},()=>{});
+  db.collection('staff').onSnapshot(s=>{STF.staff=s.docs.map(x=>({...x.data(),id:x.id}));if(!ADMIN&&MYID&&!s.metadata.hasPendingWrites){const me=STF.staff.find(x=>x.id===MYID);if(!me){location.reload();return}const np=me.role==='admin'?'ADMIN':JSON.stringify(me.perms||null);if(np==='ADMIN'||np!==JSON.stringify(MYPERMS)||(me.role||'')!==ROLE){if(me.role==='admin'||ROLE==='admin'){location.reload();return}ROLE=me.role;MYPERMS=me.perms||null;RO=!MODS.some(m=>lvl(m[0])>=2);schedule()}}if((route==='settings'||route==='appointments')&&!E)schedule()},()=>{});
   if(ADMIN){
-    db.collection('invites').onSnapshot(s=>{STF.invites=s.docs.map(x=>({...x.data(),id:x.id}));if(route==='settings'&&!sub&&!E)schedule()},()=>{});
+    db.collection('invites').onSnapshot(s=>{STF.invites=s.docs.map(x=>({...x.data(),id:x.id}));if((route==='staff'||route==='settings')&&!sub&&!E)schedule()},()=>{});
+    db.collection('requests').onSnapshot(s=>{STF.requests=s.docs.map(x=>({...x.data(),id:x.id}));renderShell();if(route==='requests'&&!sub&&!E)schedule()},()=>{});
     db.doc('meta/owner').get().then(o=>{STF.owner=o.exists?o.data():null}).catch(()=>{});
   }
   render();
@@ -2980,7 +3135,13 @@ const ACT={
   recheck:()=>resolveAccess(),
   addInvite:()=>addInvite(),
   rmInvite:async o=>{if(await ask(T('حذف الدعوة؟','Delete invite?'),T('حذف','Delete'),true))await W(()=>db.doc('invites/'+o.id).delete(),T('تم','Done'))},
-  rmStaff:async o=>{if(await ask(T('إزالة هذا المستخدم من البرنامج؟','Remove this user from the app?'),T('إزالة','Remove'),true))await W(()=>db.doc('staff/'+o.id).delete(),T('تم','Done'))},
+  rmStaff:async o=>{if(await ask(T('حذف هذا الموظف من البرنامج؟ ما يقدر يدخل بعدها.','Remove this employee? They will no longer be able to sign in.'),T('حذف','Remove'),true)&&await W(()=>db.doc('staff/'+o.id).delete(),T('تم','Done'))){if(sub&&sub.type==='staffu')back()}},
+  addStaff:()=>{if(!ADMIN)return deny();addStaff()},saveAddStaff:()=>saveAddStaff(),saveStaffU:o=>saveStaffU(o.id),
+  toggleStaff:async o=>{const x=STF.staff.find(s=>s.id===o.id);if(!x)return;await W(()=>db.doc('staff/'+o.id).update({disabled:!x.disabled,updatedAt:nowIso()}),x.disabled?T('أُعيد التفعيل ✓','Reactivated ✓'):T('تم الإيقاف','Suspended'))},
+  approveReq:o=>approveReq(o.id),saveApprove:o=>saveApprove(o.id),
+  rejectReq:async o=>{if(await ask(T('رفض هذا الطلب؟','Reject this request?'),T('رفض','Reject'),true))await W(()=>db.doc('requests/'+o.id).update({status:'rejected',rejectedAt:nowIso()}),T('تم الرفض','Rejected'))},
+  delReq:async o=>{if(await ask(T('حذف الطلب؟ يقدر الشخص يرسل طلب جديد.','Delete the request? The person can send a new one.'),T('حذف','Delete'),true))await W(()=>db.doc('requests/'+o.id).delete(),T('تم','Done'))},
+  copyCreds:async()=>{try{await navigator.clipboard.writeText($('#as-creds').textContent);toast(T('تم النسخ ✓','Copied ✓'))}catch(_){toast(T('انسخ يدوياً','Copy manually'))}},
   emailDoc:o=>emailStart({kind:o.k,id:o.id}),emailPay:o=>emailStart({pay:o.id}),emailStatement:o=>emailStart({col:o.col,id:o.id,stmt:o.detail?'detail':'simple'}),sendEmail:()=>sendEmail(),sendEmailAuto:()=>sendEmailAuto(),sendEmailMailto:()=>sendEmailMailto(),
   pdfStatementDetail:o=>{const p=S['_'+o.col].get(o.id);htmlToPdf(detailedStatement(o.col,o.id),`${T('كشف حساب مفصل','Detailed statement')} - ${p.name}.pdf`)},
   rep:o=>{Q.rep=o.v;render()},
@@ -3071,6 +3232,15 @@ ${dayName(a.date)} ${fdate(a.date)} — ${fTime(a.time)}${a.location?'\n'+a.loca
   import:o=>importStart(o.col),importGo:o=>importGo(o.col),
   backup,exportReport:o=>exportReport(o.from,o.to),
 };
+{const NEED={newDoc:o=>[KMOD[o.k],2],editDoc:o=>[KMOD[o.k],2],dupDoc:o=>[KMOD[o.k],2],saveDoc:()=>[E&&KMOD[E.kind],2],delDoc:o=>[KMOD[o.k],3],
+  convert:()=>['sales',2],convertPO:()=>['purchases',2],poStatus:()=>['porders',2],quoteStatus:()=>['quotes',2],
+  editParty:o=>[o.col,2],saveParty:o=>[o.col,2],delParty:o=>[o.col,3],editProduct:()=>['products',2],saveProduct:()=>['products',2],adjustStock:()=>['products',2],saveAdjust:()=>['products',2],delProduct:()=>['products',3],stkApply:()=>['products',2],
+  newPay:o=>o.inv&&o.k&&can(KMOD[o.k],2)?null:['finance',2],editPay:()=>['finance',2],delPay:()=>['finance',3],newTransfer:()=>['finance',2],saveTransfer:()=>['finance',2],editAccount:()=>['finance',2],saveAccount:()=>['finance',2],
+  newAppt:()=>['appointments',2],editAppt:()=>['appointments',2],saveAppt:()=>['appointments',2],doneAppt:()=>['appointments',2],saveDone:()=>['appointments',2],cancelAppt:()=>['appointments',2],delAppt:()=>['appointments',3],
+  newWO:()=>['workorders',2],woStatus:()=>['workorders',2],woDone:()=>['workorders',2],saveWoDone:()=>['workorders',2],woInvoice:()=>['sales',2],
+  newReturn:o=>[KMOD[o.k],2],refundRet:o=>[KMOD[o.k],2],saveRefund:o=>[KMOD[o.k],2],import:()=>['admin'],importGo:()=>['admin'],lowStockPO:()=>['porders',2],rep:()=>['reports',1]};
+ for(const k in NEED){const f=ACT[k];if(!f)continue;ACT[k]=(o,el,e)=>{const r=NEED[k](o||{});if(r&&r[0]&&!can(r[0],r[1]||1))return deny();return f(o,el,e)}}
+}
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-stop]'))return;
   const el=e.target.closest('[data-act]');if(!el)return;
