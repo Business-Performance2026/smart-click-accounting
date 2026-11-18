@@ -24,10 +24,12 @@ const EDITABLE = ['quotes', 'sales', 'purchases', 'porders'];
 const docNo = (k, no) => KIND[k].prefix + '-' + String(no || 0).padStart(5, '0');
 const lineTotal = l => { const g = num(l.qty) * num(l.price); return r3(l.discType === 'a' ? g - num(l.disc) : g - g * num(l.disc) / 100); };
 function calc(d) {
-  let sub = 0; for (const l of d.lines) { l.total = lineTotal(l); sub += l.total; }
-  sub = r3(sub); const discount = d.discType === 'p' ? r3(sub * num(d.discPct) / 100) : r3(num(d.discount));
-  const taxable = r3(sub - discount); const vat = d.vatOn ? r3(taxable * num(d.vatRate) / 100) : 0;
-  return { sub, discount, vat, total: r3(taxable + vat) };
+  let sub = 0, vb = 0; for (const l of d.lines) { l.total = lineTotal(l); sub += l.total; if (!l.noVat) vb += l.total; }
+  sub = r3(sub); vb = r3(vb); const discount = d.discType === 'p' ? r3(sub * num(d.discPct) / 100) : r3(num(d.discount));
+  const taxable = r3(sub - discount);
+  const vatBase = d.vatOn ? (vb === sub ? taxable : r3(vb - (sub > 0 ? discount * vb / sub : 0))) : 0;
+  const vat = d.vatOn ? r3(vatBase * num(d.vatRate) / 100) : 0;
+  return { sub, discount, vatBase, vat, total: r3(taxable + vat) };
 }
 const all = async c => (await db.collection(c).get()).docs.map(d => ({ id: d.id, ...d.data() }));
 const settings = async () => { const s = await db.doc('meta/settings').get(); return s.exists ? s.data() : {}; };
@@ -159,6 +161,7 @@ async function buildDoc(kind, a, old, s, D) {
       const dt = /^a/i.test(L.discount_type || '') ? 'a' : 'p'; const disc = num(L.discount || 0);
       if (disc < 0 || (dt === 'p' && disc > 100) || (dt === 'a' && disc > qty * price + 0.0005)) return { error: `Line ${i + 1}: invalid discount.` };
       const line = { productId: p ? p.id : '', name: p ? p.name : String(L.name || key).trim(), nameEn: p ? (p.nameEn || '') : '', qty: r3(qty), price: r3(price), disc: r3(disc), discType: dt };
+      if (L.vat === false || (L.vat == null && p && p.noVat)) line.noVat = true;
       const desc = L.description != null ? String(L.description).trim() : (p && p.desc ? String(p.desc).trim() : '');
       if (desc) line.desc = desc;
       if (!line.name) return { error: `Line ${i + 1}: name is required.` };
@@ -186,7 +189,7 @@ async function buildDoc(kind, a, old, s, D) {
     ref: a.ref != null ? String(a.ref) : a.migrated_from ? String(a.migrated_from) : old ? old.ref || '' : '',
     ...(a.migrated_from ? { migrated: String(a.migrated_from) } : old && old.migrated ? { migrated: old.migrated } : {}),
     lines: lines.map(l => ({ ...l, total: r3(l.total) })), discount: c.discount, discType: d.discType, discPct: d.discType === 'p' ? d.discPct : 0,
-    vatOn: d.vatOn, vatRate: d.vatRate, sub: c.sub, vat: c.vat, total: c.total, notes: a.notes != null ? String(a.notes) : old ? old.notes || '' : '',
+    vatOn: d.vatOn, vatRate: d.vatRate, sub: c.sub, vatBase: c.vatBase, vat: c.vat, total: c.total, notes: a.notes != null ? String(a.notes) : old ? old.notes || '' : '',
     updatedAt: nowIso(), updatedBy: 'claude', portalDirty: k.party === 'customers',
   };
   return { body, party, warn };
@@ -202,8 +205,8 @@ function preview(kind, body, warn, extra) {
   return {
     preview: true, kind, note: 'NOT SAVED. Show this to the user and call again with confirm=true only after they approve.', ...extra,
     party: body.partyName, date: body.date, due: body.due,
-    lines: body.lines.map(l => `${l.name}${l.desc ? ' — ' + l.desc : ''} × ${l.qty} @ ${fmt(l.price)}${num(l.disc) ? ' − ' + (l.discType === 'a' ? fmt(l.disc) : l.disc + '%') : ''} = ${fmt(l.total)}`),
-    subtotal: fmt(body.sub), discount: fmt(body.discount), vat: fmt(body.vat), total: fmt(body.total), warnings: warn,
+    lines: body.lines.map(l => `${l.name}${l.desc ? ' — ' + l.desc : ''} × ${l.qty} @ ${fmt(l.price)}${num(l.disc) ? ' − ' + (l.discType === 'a' ? fmt(l.disc) : l.disc + '%') : ''} = ${fmt(l.total)}${l.noVat ? ' (no VAT)' : ''}`),
+    subtotal: fmt(body.sub), discount: fmt(body.discount), vat_base: fmt(body.vatBase), vat: fmt(body.vat), total: fmt(body.total), warnings: warn,
   };
 }
 
@@ -216,7 +219,8 @@ const S_LINES = {
     product_id: { type: 'string' }, product: { type: 'string', description: 'Product name or code (exact) if no id' }, name: { type: 'string', description: 'Free-text line name' },
     description: { type: 'string', description: 'Line description/notes (defaults to the product description)' },
     qty: { type: 'number' }, price: { type: 'number', description: 'Unit price before VAT. Defaults to the product sale price (cost for suppliers).' },
-    discount: { type: 'number' }, discount_type: { type: 'string', enum: ['percent', 'amount'] },
+    discount: { type: 'number', description: 'Line discount. With discount_type=amount this is the TOTAL discount for the whole line (not per unit).' }, discount_type: { type: 'string', enum: ['percent', 'amount'] },
+    vat: { type: 'boolean', description: 'false = this line has no VAT (exempt / out of scope). Defaults to the product setting.' },
   }, required: ['qty'] },
 };
 const S_DOC_FIELDS = {
