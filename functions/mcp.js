@@ -65,8 +65,15 @@ async function nextRef(col, prefix, filter) {
   return { start: max + 1, prefix };
 }
 // create with a unique sequential id (ref.create fails if the id is taken)
-async function createNumbered(col, prefix, body, filter) {
+async function createNumbered(col, prefix, body, filter, exact) {
+  if (exact) {
+    const id = prefix + '-' + String(exact).padStart(5, '0');
+    try { await db.collection(col).doc(id).create({ ...body, no: exact }); return { id, no: exact }; }
+    catch (e) { if (e.code === 6 || /already exists/i.test(e.message)) throw new Error(`Number ${id} already exists in the app.`); throw e; }
+  }
+  const s = await settings(); const ns = s.numStart || {};
   let { start } = await nextRef(col, prefix, filter);
+  start = Math.max(start, Math.floor(num(ns[col === 'payments' ? prefix : col])) || 1);
   for (let i = 0; i < 30; i++, start++) {
     const id = prefix + '-' + String(start).padStart(5, '0');
     try { await db.collection(col).doc(id).create({ ...body, no: start }); return { id, no: start }; }
@@ -218,6 +225,7 @@ const S_DOC_FIELDS = {
   date: { type: 'string', description: 'YYYY-MM-DD (default today)' }, due: { type: 'string', description: 'YYYY-MM-DD; quotes: valid until; porders: expected delivery' },
   lines: S_LINES, discount: { type: 'number', description: 'Overall discount' }, discount_type: { type: 'string', enum: ['amount', 'percent'] },
   vat: { type: 'boolean', description: 'Apply VAT (default true, rate from settings)' },
+  keep_number: { type: 'number', description: 'Only with migrated_from: save under the old system\'s number (e.g. 798 → INV-00798). Fails if that number is already used.' },
   migrated_from: { type: 'string', description: 'For documents moved from the old system (e.g. "دفترة 000798"): stored as the reference and the lines do NOT change stock (stock was already counted).' }, notes: { type: 'string' }, ref: { type: 'string', description: 'Reference / customer PO number' },
   confirm: { type: 'boolean', description: 'false/omitted = preview only. true = save (only after the user approved the preview).' },
 };
@@ -276,7 +284,8 @@ async function callTool(name, a) {
       if (!a.confirm) return ok(preview(a.kind, r.body, r.warn, { action: 'create ' + KIND[a.kind].ar }));
       const party = await ensureParty(KIND[a.kind].party, r.party);
       const body = { ...r.body, partyId: party && party.id ? party.id : '', partyName: party ? party.name : r.body.partyName, createdAt: nowIso(), createdBy: 'claude', status: 'open', quoteId: '', invoiceId: '' };
-      const { id, no } = await createNumbered(a.kind, KIND[a.kind].prefix, body);
+      const exact = a.migrated_from && num(a.keep_number) > 0 ? Math.floor(num(a.keep_number)) : 0;
+      const { id, no } = await createNumbered(a.kind, KIND[a.kind].prefix, body, null, exact);
       await log('create', a.kind, id, `${docNo(a.kind, no)} · ${body.partyName}`);
       return ok({ saved: true, number: docNo(a.kind, no), id, total: fmt(body.total), warnings: r.warn });
     }

@@ -1788,6 +1788,10 @@ VIEWS.settings=()=>{
    <div style="font-size:13px;margin-bottom:8px">${T('جاهزية بيانات الشركة','Company data readiness')}: ${eiss.length?`<span style="color:var(--amber);font-weight:600">⚠ ${T('ناقص','Missing')}: ${esc(eiss.join('، '))}</span>`:`<span style="color:#17803d;font-weight:600">✓ ${T('مكتملة','Complete')}</span>`}</div>
    <label style="display:flex;gap:8px;align-items:flex-start;color:var(--ink)"><input type="checkbox" id="s-einvCheck" ${s.einvCheck?'checked':''}> <span>${T('إظهار فحص جاهزية «فوترة» في الفواتير وزر تصدير XML','Show Fawtara readiness on invoices and the XML export button')}<br><span class="muted" style="font-size:12px">${T('ملف XML تجهيزي بصيغة UBL — يُعتمد فقط بعد الربط مع مزوّد الخدمة.','Preparatory UBL XML — only valid once connected to a service provider.')}</span></span></label>
   </div>
+  <div class="card"><h3>🔢 ${T('ترقيم المستندات','Document numbering')}</h3>
+   <p class="muted" style="margin:0 0 10px;font-size:13px">${T('رقم البداية لكل نوع. البرنامج ياخذ الأكبر بين هذا الرقم وآخر رقم مستخدم + 1، فما يتكرر رقم أبداً. مثال: آخر فاتورة في دفترة 823 → اكتب 824.','Starting number per type. The app uses the larger of this and the last used number + 1, so numbers never repeat. E.g. last Daftra invoice 823 → enter 824.')}</p>
+   <div class="grid g3 f">${NUMSTART.map(([k,pf,ar,en])=>`<label>${T(ar,en)} <span class="muted" translate="no">(${pf}-…)</span><input class="s-num" data-k="${k}" type="number" min="1" step="1" dir="ltr" value="${esc(String(((s.numStart)||{})[k]||''))}" placeholder="1"></label>`).join('')}</div>
+  </div>
   <div class="card"><h3>بيانات الشركة (تظهر في الفواتير)</h3>
    <div class="grid g2 f">
     <label>اسم الشركة<input id="s-company" value="${esc(s.company)}"></label>
@@ -2191,9 +2195,11 @@ function updTotals(){
 }
 // Next free number. The returned r.ref.set() never overwrites: if another user took the same number a moment ago
 // (the security rules reject replacing someone else's document), it moves to the next free number and retries.
+const NUMSTART=[['sales','INV','فواتير المبيعات','Sales invoices'],['quotes','QT','عروض الأسعار','Quotations'],['purchases','PUR','فواتير المشتريات','Purchase invoices'],['porders','PO','أوامر الشراء','Purchase orders'],['sreturns','SR','مرتجعات المبيعات','Sales returns'],['preturns','PR','مرتجعات المشتريات','Purchase returns'],['workorders','WO','أوامر العمل','Work orders'],['RV','RV','سندات القبض','Receipts'],['PV','PV','سندات الصرف والمصروفات','Payments & expenses']];
+const numStart=(col,prefix)=>Math.max(1,Math.floor(num(((ST().numStart)||{})[col==='payments'?prefix:col])||1));
 async function nextRef(col,prefix,filter){
   let max=0;for(const x of S[col]) if(!filter||filter(x)) max=Math.max(max,num(x.no));
-  let n=max+1;
+  let n=Math.max(max+1,numStart(col,prefix));
   const find=async()=>{for(let i=0;i<30;i++){const id=prefix+'-'+String(n).padStart(5,'0');const ref=db.collection(col).doc(id);let g;try{g=await ref.get()}catch(e){if(!navigator.onLine)return {ref,id};throw e}if(!g.exists)return {ref,id};n++}throw new Error('numbering')};
   const f0=await find();const r={id:f0.id,no:n,_ref:f0.ref};
   r.ref={set:async body=>{
@@ -3143,6 +3149,7 @@ async function saveSettings(){
   const f=['company','companyEn','crNo','vatNo','phone','email','address','city','postal','currency','terms','bank','lowStockTo'];
   const body={...S.settings};f.forEach(k=>body[k]=$('#s-'+k).value.trim());
   body.vatRate=num($('#s-vatRate').value);body.printImages=$('#s-printImages').checked;body.emailAuto=$('#s-emailAuto').checked;body.lowStockAlert=$('#s-lowStockAlert').checked;body.einvCheck=!!($('#s-einvCheck')&&$('#s-einvCheck').checked);body.printLang=$('#s-printLang').value;body.quoteDays=num($('#s-quoteDays').value)||15;body.dueDays=num($('#s-dueDays').value);body.overdueDays=num($('#s-overdueDays').value)||30;
+  {const ns={};$$('.s-num').forEach(i=>{const v=Math.floor(num(i.value));if(v>1)ns[i.dataset.k]=v});body.numStart=ns}
   await W(()=>db.doc('meta/settings').set(body),'تم حفظ الإعدادات ✓');
 }
 function onLogo(e){
