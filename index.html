@@ -121,7 +121,9 @@ table.t td.num,table.t td.n{white-space:nowrap}
 .ln{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;background:#fcfcfd}
 .ln .r1{display:flex;gap:8px;align-items:center}
 .ln .r1 input{flex:1}
-.ln .r2{display:grid;grid-template-columns:1fr 1.3fr .9fr 1.2fr;gap:8px;margin-top:8px}
+.ln .r2{display:grid;grid-template-columns:.9fr 1.2fr 1.5fr 1.1fr;gap:8px;margin-top:8px}
+.ln .r2>label{min-width:0}
+.ln .r2 input{min-width:0;width:100%}
 .ln .r2 label{font-size:11.5px}
 .ln .tot{min-height:40px;display:flex;align-items:center;font-weight:700;margin-top:4px}
 .ln .stk{font-size:11.5px;color:var(--mute);margin-top:4px}
@@ -197,6 +199,10 @@ table.t td.num,table.t td.n{white-space:nowrap}
 .qa-t{font-size:13px;font-weight:600;text-align:center;line-height:1.3}
 @media(max-width:1100px){.qa{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:520px){.qa{gap:8px}.qa-c{padding:12px 4px 10px;border-radius:12px}.qa-i{width:42px;height:42px}.qa-t{font-size:12px}}
+.dsc{display:flex;align-items:stretch;gap:0;margin-top:4px}
+.dsc input{flex:1;min-width:0;border-start-end-radius:0;border-end-end-radius:0;margin:0}
+.dsc-t{border:1px solid #d5dae2;border-inline-start:0;background:var(--pri2);color:var(--pri-d);font-weight:700;border-start-end-radius:9px;border-end-end-radius:9px;padding:0 8px;min-width:36px;cursor:pointer;font-size:12.5px;white-space:nowrap}
+.dsc-t:hover{background:#d3ebe7}
 .spin{display:inline-block;width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--pri);border-radius:50%;animation:sp 1s linear infinite;vertical-align:middle}
 @keyframes sp{to{transform:rotate(360deg)}}
 .hide{display:none!important}
@@ -424,10 +430,13 @@ function returnedQty(invId,exceptId){
   for(const r of [...S.sreturns,...S.preturns]){if(r.invoiceId!==invId||r.id===exceptId)continue;for(const l of r.lines||[]){const k=l.productId||'n:'+l.name;m.set(k,(m.get(k)||0)+num(l.qty))}}
   return m;
 }
+const curSym=()=>{const c=ST().currency||'ر.ع.';return LANG==='en'&&c==='ر.ع.'?'OMR':c};
+const lineTotal=l=>{const g=num(l.qty)*num(l.price);return r3(l.discType==='a'?g-num(l.disc):g-g*num(l.disc)/100)};
+const discLabel=l=>num(l.disc)?(l.discType==='a'?fmt(l.disc):fq(l.disc)+'%'):'';
 function calc(d){
   let sub=0;
-  for(const l of d.lines||[]){const g=num(l.qty)*num(l.price);l.total=r3(g-g*num(l.disc)/100);sub+=l.total;}
-  sub=r3(sub);const discount=r3(num(d.discount));const taxable=r3(sub-discount);
+  for(const l of d.lines||[]){l.total=lineTotal(l);sub+=l.total;}
+  sub=r3(sub);const discount=d.discType==='p'?r3(sub*num(d.discPct)/100):r3(num(d.discount));const taxable=r3(sub-discount);
   const vat=d.vatOn?r3(taxable*num(d.vatRate)/100):0;
   return {sub,discount,taxable,vat,total:r3(taxable+vat)};
 }
@@ -1211,11 +1220,11 @@ function paperDoc(kind,d){
    <div class="bx"><div><span>${pl}</span><b>${PN(d.partyName,party.nameEn)}</b></div>${party.phone?`<div><span>${PL('الهاتف','Phone')}</span><span class="num">${esc(party.phone)}</span></div>`:''}${party.vatNo?`<div><span>${PL('الرقم الضريبي','VATIN')}</span><span class="num">${esc(party.vatNo)}</span></div>`:''}${party.address?`<div><span>${PL('العنوان','Address')}</span><span>${esc(party.address)}</span></div>`:''}</div>
    <div class="bx"><div><span>${PL('الرقم','No.')}</span><b class="num">${docNo(kind,d.no)}</b></div><div><span>${PL('التاريخ','Date')}</span><span class="num">${fdate(d.date)}</span></div>${d.due?`<div><span>${kind==='quotes'?PL('صالح حتى','Valid until'):PL('تاريخ الاستحقاق','Due date')}</span><span class="num">${fdate(d.due)}</span></div>`:''}${d.ref?`<div><span>${PL('المرجع','Ref.')}</span><span class="num">${esc(d.ref)}</span></div>`:''}${isRet(kind)&&d.invoiceNo?`<div><span>${PL('الفاتورة الأصلية','Original invoice')}</span><span class="num">${esc(d.invoiceNo)}</span></div>`:''}</div>
   </div>
-  <table><tr><th style="width:30px">#</th><th>${PL('الصنف / الوصف','Item / Description',1)}</th><th class="n">${PL('الكمية','Qty',1)}</th><th class="n">${PL('السعر','Price',1)}</th>${hasDisc?`<th class="n">${PL('خصم %','Disc %',1)}</th>`:''}<th class="n">${PL('الإجمالي','Amount',1)}</th></tr>
-  ${(d.lines||[]).map((l,i)=>`<tr><td>${i+1}</td><td>${PN(l.name,lineEn(l))}</td><td class="n num">${fq(l.qty)}</td><td class="n num">${fmt(l.price)}</td>${hasDisc?`<td class="n num">${fq(l.disc||0)}</td>`:''}<td class="n num">${fmt(l.total)}</td></tr>`).join('')}</table>
+  <table><tr><th style="width:30px">#</th><th>${PL('الصنف / الوصف','Item / Description',1)}</th><th class="n">${PL('الكمية','Qty',1)}</th><th class="n">${PL('السعر','Price',1)}</th>${hasDisc?`<th class="n">${PL('الخصم','Discount',1)}</th>`:''}<th class="n">${PL('الإجمالي','Amount',1)}</th></tr>
+  ${(d.lines||[]).map((l,i)=>`<tr><td>${i+1}</td><td>${PN(l.name,lineEn(l))}</td><td class="n num">${fq(l.qty)}</td><td class="n num">${fmt(l.price)}</td>${hasDisc?`<td class="n num">${discLabel(l)}</td>`:''}<td class="n num">${fmt(l.total)}</td></tr>`).join('')}</table>
   <div class="sum"><div class="notes">${esc(d.notes||'')}</div><table>
    <tr><td>${PL('المجموع','Subtotal')}</td><td class="n num">${fmt(d.sub)}</td></tr>
-   ${num(d.discount)?`<tr><td>${PL('الخصم','Discount')}</td><td class="n num">-${fmt(d.discount)}</td></tr>`:''}
+   ${num(d.discount)?`<tr><td>${PL('الخصم','Discount')}${d.discType==='p'&&num(d.discPct)?` (${fq(d.discPct)}%)`:''}</td><td class="n num">-${fmt(d.discount)}</td></tr>`:''}
    ${d.vatOn?`<tr><td>${PL('المبلغ الخاضع للضريبة','Taxable amount')}</td><td class="n num">${fmt(num(d.sub)-num(d.discount))}</td></tr><tr><td>${PL('ضريبة القيمة المضافة','VAT')} ${fq(d.vatRate)}%</td><td class="n num">${fmt(d.vat)}</td></tr>`:''}
    <tr class="big"><td>${PL('الإجمالي','Total')} (${esc(s.currency)})</td><td class="n num">${fmt(d.total)}</td></tr>
    ${isInv&&(paid>0||retA>0)?`${retA>0?`<tr><td>${PL('المرتجع','Returned')}</td><td class="n num">-${fmt(retA)}</td></tr>`:''}${paid>0?`<tr><td>${PL('المدفوع','Paid')}</td><td class="n num">${fmt(paid)}</td></tr>`:''}<tr><td><b>${PL('المتبقي','Balance due')}</b></td><td class="n num"><b>${fmt(Math.max(0,num(d.total)-settled))}</b></td></tr>${settled-num(d.total)>0.0005?`<tr><td>${PL('مبلغ زائد (رصيد لصالحكم)','Overpaid (your credit)')}</td><td class="n num">${fmt(settled-num(d.total))}</td></tr>`:''}`:''}
@@ -1346,7 +1355,7 @@ function openEditor(kind,id,data,opts={}){
    </div>
    <div class="card"><table class="totals">
     <tr><td>المجموع</td><td id="t-sub" class="num"></td></tr>
-    <tr><td>خصم إجمالي (مبلغ)</td><td><input id="e-discount" inputmode="decimal" value="${num(d.discount)||''}" placeholder="0.000" style="width:110px;text-align:end"></td></tr>
+    <tr><td>${T('خصم إجمالي','Overall discount')} <span id="t-disc" class="muted num" style="font-size:12px"></span></td><td><span class="dsc" style="justify-content:flex-end"><input id="e-discount" inputmode="decimal" value="${d.discType==='p'?(num(d.discPct)||''):(num(d.discount)||'')}" placeholder="0" style="width:90px;text-align:end"><button type="button" class="dsc-t" id="e-disc-t" data-act="discType" data-t="${d.discType==='p'?'p':'a'}">${d.discType==='p'?'%':esc(curSym())}</button></span></td></tr>
     <tr><td><label style="color:var(--ink);font-size:14px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="e-vat" ${d.vatOn?'checked':''}> ضريبة القيمة المضافة <input id="e-vatRate" inputmode="decimal" value="${fq(d.vatRate)}" style="width:56px;min-height:32px;padding:4px 6px;text-align:center">%</label></td><td id="t-vat" class="num"></td></tr>
     <tr class="big"><td>الإجمالي</td><td id="t-total" class="num"></td></tr>
    </table></div>
@@ -1383,12 +1392,12 @@ function renderLines(){
     const p=l.productId?S._products.get(l.productId):null;
     return `<div class="ln" data-i="${i}" data-pid="${esc(l.productId||'')}">
     <div class="r1"><input class="l-name" list="dl-products" value="${esc(l.name)}" placeholder="اسم الصنف أو الكود أو وصف حر" autocomplete="off"><button class="btn sm ghost" data-act="rmLine" data-i="${i}" title="حذف السطر">✕</button></div>
-    <div class="r2"><label>الكمية<input class="l-qty" inputmode="decimal" value="${esc(l.qty)}"></label><label>السعر<input class="l-price" inputmode="decimal" value="${esc(l.price)}" placeholder="0.000"></label><label>خصم %<input class="l-disc" inputmode="decimal" value="${num(l.disc)||''}" placeholder="0"></label><label>الإجمالي<div class="tot num l-tot"></div></label></div>
+    <div class="r2"><label>الكمية<input class="l-qty" inputmode="decimal" value="${esc(l.qty)}"></label><label>السعر<input class="l-price" inputmode="decimal" value="${esc(l.price)}" placeholder="0.000"></label><label>${T('الخصم','Discount')}<span class="dsc"><input class="l-disc" inputmode="decimal" value="${num(l.disc)||''}" placeholder="0"><button type="button" class="dsc-t" data-act="discType" data-t="${l.discType==='a'?'a':'p'}" title="${T('تبديل بين النسبة والمبلغ','Switch percent / amount')}">${l.discType==='a'?esc(curSym()):'%'}</button></span></label><label>الإجمالي<div class="tot num l-tot"></div></label></div>
     <div class="stk">${p&&!p.service?'المتوفر: '+fq(st.get(p.id)||0)+' '+esc(p.unit||''):''}</div></div>`}).join('');
   linesBusy=false;
 }
 function readLines(){
-  return $$('#e-lines .ln').map(el=>({nameEn:(el.dataset.pid&&S._products.get(el.dataset.pid)&&S._products.get(el.dataset.pid).nameEn)||'',productId:el.dataset.pid||'',name:$('.l-name',el).value.trim(),qty:num($('.l-qty',el).value),price:num($('.l-price',el).value),disc:num($('.l-disc',el).value)}));
+  return $$('#e-lines .ln').map(el=>({nameEn:(el.dataset.pid&&S._products.get(el.dataset.pid)&&S._products.get(el.dataset.pid).nameEn)||'',productId:el.dataset.pid||'',name:$('.l-name',el).value.trim(),qty:num($('.l-qty',el).value),price:num($('.l-price',el).value),disc:num($('.l-disc',el).value),discType:$('.dsc-t',el).dataset.t==='a'?'a':'p'}));
 }
 function onLineProduct(inp){
   if(linesBusy||!E)return;
@@ -1402,14 +1411,14 @@ function onLineProduct(inp){
 function readEditor(){
   const d=E.d;
   d.partyName=$('#e-party').value.trim();d.date=$('#e-date').value||today();d.due=$('#e-due').value;d.ref=$('#e-ref').value.trim();
-  d.notes=$('#e-notes').value;d.discount=num($('#e-discount').value);d.vatOn=$('#e-vat').checked;d.vatRate=num($('#e-vatRate').value);
+  d.notes=$('#e-notes').value;d.discType=$('#e-disc-t')&&$('#e-disc-t').dataset.t==='p'?'p':'a';if(d.discType==='p'){d.discPct=num($('#e-discount').value);d.discount=0}else{d.discount=num($('#e-discount').value);d.discPct=0}d.vatOn=$('#e-vat').checked;d.vatRate=num($('#e-vatRate').value);
   d.lines=readLines();
   if($('#e-inv')){d.invoiceId=$('#e-inv').value;const inv=d.invoiceId&&S['_'+KIND[E.kind].ret].get(d.invoiceId);d.invoiceNo=inv?docNo(KIND[E.kind].ret,inv.no):''}
   return d;
 }
 function returnableLines(invKind,inv,exceptId){
   const done=returnedQty(inv.id,exceptId);
-  return (inv.lines||[]).map(l=>{const key=l.productId||'n:'+l.name;const used=Math.min(done.get(key)||0,num(l.qty));done.set(key,Math.max(0,(done.get(key)||0)-num(l.qty)));return {productId:l.productId||'',name:l.name,nameEn:l.nameEn||'',qty:r3(num(l.qty)-used),price:num(l.price),disc:num(l.disc)}}).filter(l=>l.qty>0.0005);
+  return (inv.lines||[]).map(l=>{const key=l.productId||'n:'+l.name;const used=Math.min(done.get(key)||0,num(l.qty));done.set(key,Math.max(0,(done.get(key)||0)-num(l.qty)));return {productId:l.productId||'',name:l.name,nameEn:l.nameEn||'',qty:r3(num(l.qty)-used),price:num(l.price),disc:num(l.disc),discType:l.discType||'p'}}).filter(l=>l.qty>0.0005);
 }
 function fillFromInvoice(invId){
   if(!E||!invId)return;const k=KIND[E.kind];const inv=S['_'+k.ret].get(invId);if(!inv)return;
@@ -1422,7 +1431,8 @@ function fillFromInvoice(invId){
 function updTotals(){
   if(!E)return;const d=readEditor();
   const ls=$$('#e-lines .ln');
-  d.lines.forEach((l,i)=>{const g=l.qty*l.price;$('.l-tot',ls[i]).textContent=fmt(g-g*l.disc/100)});
+  d.lines.forEach((l,i)=>{$('.l-tot',ls[i]).textContent=fmt(lineTotal(l))});
+  const dp=$('#e-disc-t');if(dp)$('#t-disc').textContent=dp.dataset.t==='p'?'= '+fmt(calc({...d,lines:d.lines.filter(l=>l.name)}).discount):'';
   const c=calc({...d,lines:d.lines.filter(l=>l.name)});
   $('#t-sub').textContent=fmt(c.sub);$('#t-vat').textContent=fmt(c.vat);$('#t-total').textContent=fmt(c.total);
   E.total=c.total;
@@ -1487,8 +1497,8 @@ async function saveDoc(then){
     if(d.partyName){party=await ensureParty(k.party,d.partyName)}
     const c=calc(d);
     const body={date:d.date,due:d.due||'',partyId:party?party.id:'',partyName:party?party.name:(kind==='purchases'?'مورد نقدي':'عميل نقدي'),ref:d.ref,
-      lines:d.lines.map(l=>({productId:l.productId||'',name:l.name,nameEn:l.nameEn||'',qty:r3(l.qty),price:r3(l.price),disc:r3(l.disc),total:r3(l.total)})),
-      discount:c.discount,vatOn:!!d.vatOn,vatRate:d.vatRate,sub:c.sub,vat:c.vat,total:c.total,notes:d.notes||'',updatedAt:nowIso(),updatedBy:MYID||''};
+      lines:d.lines.map(l=>({productId:l.productId||'',name:l.name,nameEn:l.nameEn||'',qty:r3(l.qty),price:r3(l.price),disc:r3(l.disc),discType:l.discType==='a'?'a':'p',total:r3(l.total)})),
+      discount:c.discount,discType:d.discType==='p'?'p':'a',discPct:d.discType==='p'?r3(d.discPct):0,vatOn:!!d.vatOn,vatRate:d.vatRate,sub:c.sub,vat:c.vat,total:c.total,notes:d.notes||'',updatedAt:nowIso(),updatedBy:MYID||''};
     let id=E.id,no;
     if(isRet(kind)){body.invoiceId=d.invoiceId||'';body.invoiceNo=d.invoiceNo||'';body.due=''}
     if(id){const old=S['_'+kind].get(id)||{};Object.assign(body,{no:old.no,createdAt:old.createdAt||nowIso(),createdBy:old.createdBy||'',status:old.status||'open',quoteId:old.quoteId||''});if(!isRet(kind))body.invoiceId=old.invoiceId||'';else body.settle=old.settle||'credit';
@@ -1669,7 +1679,7 @@ async function savePay(id){
 async function convertQuote(id){
   const q=S._quotes.get(id);if(!q)return;
   const d=newDocData('sales',q.partyId);
-  Object.assign(d,{partyName:q.partyName,lines:JSON.parse(JSON.stringify(q.lines||[])),discount:q.discount,vatOn:q.vatOn,vatRate:q.vatRate,notes:q.notes,ref:q.ref||''});
+  Object.assign(d,{partyName:q.partyName,lines:JSON.parse(JSON.stringify(q.lines||[])),discount:q.discount,discType:q.discType,discPct:q.discPct,vatOn:q.vatOn,vatRate:q.vatRate,notes:q.notes,ref:q.ref||''});
   openEditor('sales',null,d,{quoteId:id});
 }
 
@@ -2160,7 +2170,7 @@ const ACT={
   rep:o=>{Q.rep=o.v;render()},
   newDoc:o=>openEditor(o.k,null,newDocData(o.k,o.party)),
   editDoc:o=>{const d=S['_'+o.k].get(o.id);if(d){const c=JSON.parse(JSON.stringify(d));if(!c.lines.length)c.lines.push({productId:'',name:'',qty:1,price:'',disc:0});openEditor(o.k,o.id,c)}},
-  dupDoc:o=>{const d=S['_'+o.k].get(o.id);if(!d)return;const n=newDocData(o.k,d.partyId);Object.assign(n,{partyName:d.partyName,lines:JSON.parse(JSON.stringify(d.lines)),discount:d.discount,vatOn:d.vatOn,vatRate:d.vatRate,notes:d.notes});openEditor(o.k,null,n)},
+  dupDoc:o=>{const d=S['_'+o.k].get(o.id);if(!d)return;const n=newDocData(o.k,d.partyId);Object.assign(n,{partyName:d.partyName,lines:JSON.parse(JSON.stringify(d.lines)),discount:d.discount,discType:d.discType,discPct:d.discPct,vatOn:d.vatOn,vatRate:d.vatRate,notes:d.notes});openEditor(o.k,null,n)},
   cancelEdit:async()=>{if(await ask('إلغاء التعديلات غير المحفوظة؟','نعم، إلغاء',true)){back()}},
   addLine:()=>{E.d.lines=readLines();E.d.lines.push({productId:'',name:'',qty:1,price:'',disc:0});renderLines();updTotals();const n=$$('#e-lines .l-name').pop();if(n)n.focus()},
   rmLine:o=>{E.d.lines=readLines();E.d.lines.splice(+o.i,1);if(!E.d.lines.length)E.d.lines.push({productId:'',name:'',qty:1,price:'',disc:0});renderLines();updTotals()},
@@ -2208,6 +2218,7 @@ const ACT={
 ${T('السيد/','Dear')} ${a.customerName}
 ${T('نذكّركم بموعد','Reminder of your appointment')}: ${T(ty[0],ty[1])}
 ${dayName(a.date)} ${fdate(a.date)} — ${fTime(a.time)}${a.location?'\n'+a.location:''}${a.mapUrl?'\n'+a.mapUrl:''}`),'_blank');if(!w)toast(T('تعذر فتح واتساب','Could not open WhatsApp'))},
+  discType:(o,el)=>{const t=el.dataset.t==='a'?'p':'a';el.dataset.t=t;el.textContent=t==='a'?curSym():'%';const inp=el.previousElementSibling;if(inp)inp.focus();updTotals()},
   navToggle:o=>{NAVOPEN[o.g]=!NAVOPEN[o.g];try{localStorage.setItem('navopen',JSON.stringify(NAVOPEN))}catch(_){}renderShell()},
   newReturn:o=>{const inv=S['_'+o.k].get(o.id);if(!inv)return;const rk=retKindOf(o.k);const k=KIND[rk];const lines=returnableLines(o.k,inv,null);if(!lines.length){toast(T('كل أصناف هذه الفاتورة مُرتجعة مسبقاً','All items of this invoice were already returned'),3500);return}const dd=newDocData(rk,inv.partyId);Object.assign(dd,{due:'',lines,vatOn:inv.vatOn,vatRate:inv.vatRate,discount:0,partyName:inv.partyName,partyId:inv.partyId,invoiceId:inv.id,invoiceNo:docNo(o.k,inv.no)});openEditor(rk,null,dd)},
   refundRet:o=>refundRet(o.k,o.id),
