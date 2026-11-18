@@ -69,6 +69,8 @@ button{font:inherit;color:inherit}
 .paper th{background:#0f766e;color:#fff;font-weight:600;padding:7px 8px;text-align:start;font-size:12px;line-height:1.3}
 .paper td{padding:7px 8px;border-bottom:1px solid #e3e3e3}
 .paper td.n,.paper th.n{text-align:end}
+.paper td.pimg{width:52px;padding:4px 6px}
+.paper td.pimg img{width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #e3e3e3;display:block}
 .paper .pe{color:#666;font-size:.86em;font-weight:400}
 .paper th .pe{color:#d6efe9}
 .paper .num{display:inline-block;direction:ltr;unicode-bidi:normal}
@@ -126,6 +128,7 @@ function render(){
       a.innerHTML=`${head}<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button class="btn" id="back">${LANG==='en'?'←':'→'} ${T('رجوع','Back')}</button><button class="btn pri" id="pdf">⬇︎ ${T('تنزيل PDF','Download PDF')}</button></div>
       <div class="paperwrap"><div class="paper" id="paper" dir="${P.printLang==='en'?'ltr':'rtl'}">${it.html}</div></div>`;
       a.querySelectorAll('img[data-logo]').forEach(i=>{if(P.logo)i.src=P.logo;else i.remove()});
+      a.querySelectorAll('img[data-pimg]').forEach(i=>{const v=(P.images||{})[i.dataset.pimg];if(v)i.src=v;else i.remove()});
       $('#back').onclick=()=>{open=null;render();scrollTo(0,0)};
       $('#pdf').onclick=()=>pdf(it.html,`${it.no||'document'}.pdf`);
       $('#lang').onclick=toggleLang;return;
@@ -160,6 +163,7 @@ async function pdf(html,filename){
   const host=document.createElement('div');host.style.cssText='position:fixed;left:-12000px;top:0;width:794px;background:#fff';
   host.innerHTML=`<div class="paper" dir="${P.printLang==='en'?'ltr':'rtl'}" style="width:794px;max-width:none;min-height:1123px">${html}</div>`;
   host.querySelectorAll('img[data-logo]').forEach(i=>{if(P.logo)i.src=P.logo;else i.remove()});
+  host.querySelectorAll('img[data-pimg]').forEach(i=>{const v=(P.images||{})[i.dataset.pimg];if(v)i.src=v;else i.remove()});
   host.querySelectorAll('.num').forEach(el=>{const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode()))n.nodeValue=n.nodeValue.replace(/-/g,'‑').replace(/ /g,' ')});
   document.body.appendChild(host);
   try{

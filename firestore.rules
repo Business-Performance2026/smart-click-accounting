@@ -58,10 +58,10 @@ service cloud.firestore {
 
     // Business data
     match /{col}/{id} {
-      allow read: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders'];
-      allow create, update: if canWrite() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders'];
-      allow delete: if col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders']
-        && (isAdmin() || (col in ['payments', 'appointments'] && canWrite()));
+      allow read: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages'];
+      allow create, update: if canWrite() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages'];
+      allow delete: if col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages']
+        && (isAdmin() || (col in ['payments', 'appointments', 'pimages'] && canWrite()));
     }
   }
 }
