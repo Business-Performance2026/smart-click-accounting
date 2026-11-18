@@ -42,6 +42,13 @@ service cloud.firestore {
       allow delete: if isAdmin() || (signedIn() && myEmail() == email && hasStaff());
     }
 
+    // Activity log: staff append entries about themselves; nobody can change or delete them.
+    match /activity/{id} {
+      allow read: if isAdmin();
+      allow create: if isStaff() && request.resource.data.by == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     // Customer portal: readable only by exact secret link (no listing).
     match /portal/{token} {
       allow get: if true;

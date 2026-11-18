@@ -6,6 +6,12 @@
 <title>نظام الإدارة والمحاسبة والمخزون</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧾</text></svg>">
 <meta name="theme-color" content="#13202e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="المحاسبة">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -258,6 +264,7 @@ let route=(location.hash||'').slice(1)||'dashboard';
 let sub=null;       // detail page: {type,id}
 let E=null;         // active editor
 const Q={};         // search text per list
+S.activity=[];
 
 const ST=()=>Object.assign({overdueDays:30,vatRate:5,currency:'ر.ع.',quoteDays:15,dueDays:0,company:'',lowStock:true},S.settings||{});
 
@@ -305,7 +312,7 @@ const EN={
 'اسم جديد — سيُضاف كعميل جديد عند الحفظ':'New name — will be added as a new customer on save','اسم جديد — سيُضاف كمورد جديد عند الحفظ':'New name — will be added as a new supplier on save','الرصيد الحالي':'Current balance','التوقيع':'Signature','الختم':'Stamp',
 'يتم عرض أحدث 300، استخدم البحث للوصول للأقدم.':'Showing the latest 300; use search for older ones.','يتم عرض أول 400، استخدم البحث.':'Showing the first 400; use search.','قبض':'Receipt','تحديث السجلات الموجودة بنفس الاسم':'Update existing records with the same name','أو الكود':'or code','تم العثور على':'Found','صف. طابق الأعمدة:':'rows. Map the columns:',
 'الكمية غير كافية في المخزون لـ:':'Not enough stock for:','هل تريد الحفظ رغم ذلك؟':'Save anyway?','الإجمالي الجديد':'The new total','أقل من المبلغ المدفوع على الفاتورة':'is less than the amount paid on the invoice','هل تريد تخفيض الدفعة ليساوي الإجمالي؟ إذا اخترت الإبقاء، يُحسب الفرق':'Reduce the payment to match the total? If you keep it, the difference','رصيداً لصالح':'stays as credit for','المبلغ المدفوع':'The amount paid','أكبر من إجمالي الفاتورة':'is more than the invoice total','تعديل المدفوع ليساوي الإجمالي؟':'Change paid to equal the total?','تعديل إلى':'Change to','المبلغ':'The amount','أكبر من المتبقي على الفاتورة':'is more than the balance due','سيُحسب رصيداً زائداً. عدّل المبلغ أو اضغط':'will count as overpayment. Edit the amount or press','مبلغ زائد (رصيد لصالح العميل)':'Overpaid (customer credit)','مبلغ زائد (رصيد لصالح المورد)':'Overpaid (supplier credit)','الفرق':'the difference',
-'سند قبض ':'Receipt ','فواتير المرتجعات':'Returns','إدارة العملاء':'Manage customers','المواعيد والزيارات':'Appointments & visits','مرتجع المبيعات':'Sales returns','مرتجع المشتريات':'Purchase returns','مرتجعات المبيعات':'Sales returns','مرتجعات المشتريات':'Purchase returns','مرتجع مبيعات':'Sales return','مرتجع مشتريات':'Purchase return','مرتجع مبيعات جديد':'New sales return','مرتجع مشتريات جديد':'New purchase return','تعديل مرتجع مبيعات':'Edit sales return','تعديل مرتجع مشتريات':'Edit purchase return','خصم من الرصيد':'Credited','تم رد المبلغ':'Refunded','المالية':'Finance','الخزائن والبنوك':'Cash & banks','سندات القبض':'Receipts','سندات الصرف':'Payments','المصروفات':'Expenses','الفواتير':'Invoices','السندات':'Vouchers','ر.ع.':'OMR','من زر المشاركة (Share) في أعلى صفحة البرنامج على claude.ai، ادعُ كل موظف ببريده الإلكتروني بصلاحية':'Use the Share button at the top of the app page on claude.ai to invite each employee by email as','محرر (Editor)':'Editor','ليتمكن من إضافة الفواتير. من تتم دعوته بصلاحية':'so they can add invoices. Anyone invited as','مشاهد (Viewer)':'Viewer','يمكنه الاطلاع فقط.':'can only view.','إرفاق تفاصيل كل الفواتير مع الكشف':'Attach every invoice\'s details with the statement','الملف كبير جداً للإرسال. جرّب كشفاً بدون تفاصيل الفواتير.':'The file is too large to send. Try the statement without invoice details.','رفض Gmail الإرسال: ':'Gmail refused to send: ','إعدادات مؤسستك تمنع الإرسال عبر Gmail من هنا.':'Your organization\'s policy blocks sending via Gmail here.','📧 آخر إرسال بالإيميل:':'📧 Last emailed:','سند صرف ':'Payment ','رصيد حسابكم':'Your account balance','السيد/':'Dear',
+'سند قبض ':'Receipt ','سجل التعديلات':'Activity log','فواتير المرتجعات':'Returns','إدارة العملاء':'Manage customers','المواعيد والزيارات':'Appointments & visits','مرتجع المبيعات':'Sales returns','مرتجع المشتريات':'Purchase returns','مرتجعات المبيعات':'Sales returns','مرتجعات المشتريات':'Purchase returns','مرتجع مبيعات':'Sales return','مرتجع مشتريات':'Purchase return','مرتجع مبيعات جديد':'New sales return','مرتجع مشتريات جديد':'New purchase return','تعديل مرتجع مبيعات':'Edit sales return','تعديل مرتجع مشتريات':'Edit purchase return','خصم من الرصيد':'Credited','تم رد المبلغ':'Refunded','المالية':'Finance','الخزائن والبنوك':'Cash & banks','سندات القبض':'Receipts','سندات الصرف':'Payments','المصروفات':'Expenses','الفواتير':'Invoices','السندات':'Vouchers','ر.ع.':'OMR','من زر المشاركة (Share) في أعلى صفحة البرنامج على claude.ai، ادعُ كل موظف ببريده الإلكتروني بصلاحية':'Use the Share button at the top of the app page on claude.ai to invite each employee by email as','محرر (Editor)':'Editor','ليتمكن من إضافة الفواتير. من تتم دعوته بصلاحية':'so they can add invoices. Anyone invited as','مشاهد (Viewer)':'Viewer','يمكنه الاطلاع فقط.':'can only view.','إرفاق تفاصيل كل الفواتير مع الكشف':'Attach every invoice\'s details with the statement','الملف كبير جداً للإرسال. جرّب كشفاً بدون تفاصيل الفواتير.':'The file is too large to send. Try the statement without invoice details.','رفض Gmail الإرسال: ':'Gmail refused to send: ','إعدادات مؤسستك تمنع الإرسال عبر Gmail من هنا.':'Your organization\'s policy blocks sending via Gmail here.','📧 آخر إرسال بالإيميل:':'📧 Last emailed:','سند صرف ':'Payment ','رصيد حسابكم':'Your account balance','السيد/':'Dear',
 'اربط Gmail أولاً: من claude.ai ← الإعدادات ← Connectors.':'Connect Gmail first: claude.ai → Settings → Connectors.','انتهت صلاحية ربط Gmail. أعد ربطه من claude.ai ← الإعدادات ← Connectors.':'Gmail connection expired. Reconnect it in claude.ai → Settings → Connectors.','الإرسال يحتاج موافقتك على استخدام Gmail. افتح البرنامج في claude.ai ووافق عند الطلب.':'Sending needs your approval to use Gmail. Open the app in claude.ai and allow it when asked.','لم يتأكد الإرسال. تحقق من مجلد المرسل في Gmail قبل المحاولة مرة أخرى.':'Sending was not confirmed. Check your Gmail Sent folder before trying again.','أدخل بريداً إلكترونياً صحيحاً':'Enter a valid email address','الإيميل غير متاح في هذا العرض':'Email is not available in this view','تعذر الإرسال':'Could not send','آخر إرسال بالإيميل:':'Last emailed:',
 };
 // Arabic-letter-aware phrase replacement (longest first)
@@ -370,6 +377,7 @@ const NAV=[
  ['suppliers','الموردين','🏭'],
  ['products','الأصناف والمخزون','📦'],
  ['reports','التقارير','📊'],
+ ['activity','سجل التعديلات','🕘','admin'],
  ['settings','الإعدادات والاستيراد','⚙️'],
 ];
 const BOTTOM=[['dashboard','الرئيسية','🏠'],['sales','المبيعات','🧾'],['products','المخزون','📦'],['customers','العملاء','👥'],['more','المزيد','☰']];
@@ -523,6 +531,7 @@ function navHtml(cur){
       continue;
     }
     if(f==='s'){if(!open)continue}else grp=null;
+    if(f==='admin'&&!ADMIN)continue;
     if(k==='+customer'){if(!RO)out+=`<a href="#" class="sub" data-act="editParty" data-col="customers"><span class="ic">${ic}</span>${t}</a>`;continue}
     out+=`<a href="#${k}" class="${cur===k?'on':''}${f==='s'?' sub':''}" data-act="nav" data-r="${k}"><span class="ic">${ic}</span>${t}</a>`;
   }
@@ -530,13 +539,14 @@ function navHtml(cur){
 }
 function renderShell(){
   const cur=route;
-  $('#side').innerHTML=`<div class="brand">${esc(ST().company||'نظام الإدارة والمحاسبة')}<small>المبيعات · المشتريات · المخزون</small></div>`+navHtml(cur)+`<a href="#" data-act="lang" translate="no" style="margin-top:14px;border-top:1px solid #24384c;border-radius:0;padding-top:14px"><span class="ic">🌐</span>${LANG==='en'?'العربية':'English'}</a>`;
+  $('#side').innerHTML=`<div class="brand">${esc(ST().company||'نظام الإدارة والمحاسبة')}<small>المبيعات · المشتريات · المخزون</small></div>`+navHtml(cur)+`${canInstall()?`<a href="#" data-act="install" style="margin-top:14px;background:#1d3347;color:#fff"><span class="ic">📲</span>${T('تثبيت التطبيق','Install app')}</a>`:''}<a href="#" data-act="lang" translate="no" style="margin-top:14px;border-top:1px solid #24384c;border-radius:0;padding-top:14px"><span class="ic">🌐</span>${LANG==='en'?'العربية':'English'}</a>`;
   $('#bottom').innerHTML=BOTTOM.map(([k,t,i])=>k==='more'?`<a href="#" data-act="openSide"><span>${i}</span>${t}</a>`:`<a href="#${k}" class="${cur===k?'on':''}" data-act="nav" data-r="${k}"><span>${i}</span>${t}</a>`).join('');
   const n=NAV.find(x=>x[0]===cur);$('#tb-title').textContent=isRet(cur)?KIND[cur].many:n?n[1]:'';
   let b='';
   if(NODB) b=`<div class="banner">${T('تعذر الاتصال بـ Firebase. تحقق من ملف firebase-config.js والاتصال بالإنترنت.','Could not connect to Firebase. Check firebase-config.js and your connection.')}</div>`;
   else if(S.err) b=`<div class="banner">${esc(S.err)}</div>`;
   else if(S.slow&&!allReady()) b=`<div class="banner">تعذر الوصول إلى البيانات حتى الآن، قد تكون غير محدثة. تحقق من الاتصال.</div>`;
+  if(OFFLINE) b+=`<div class="banner" style="background:#eef0f3;color:var(--ink)">📡 ${T('أنت غير متصل بالإنترنت. يمكنك المتابعة، وستُرفع التعديلات تلقائياً عند عودة الاتصال.','You\'re offline. Keep working; changes will sync automatically when you\'re back online.')}</div>`;
   if(S.rulesOld&&ADMIN) b+=`<div class="banner">${T('لتفعيل المرتجعات: انسخ ملف firestore.rules الجديد من المستودع والصقه في Firebase ← Firestore ← Rules ثم Publish.','To enable returns: copy the new firestore.rules from the repository into Firebase → Firestore → Rules, then Publish.')}</div>`;
   if(RO&&!NODB) b+=`<div class="banner info">لديك صلاحية عرض فقط. اطلب من مالك البرنامج دعوتك كمحرر (Editor).</div>`;
   $('#banner').innerHTML=b;
@@ -698,6 +708,75 @@ function todayApptsBlock(){
   return `<div class="card" style="padding:14px 14px 6px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><h3 style="margin:0;flex:1">📅 ${T('مواعيد اليوم','Today\'s appointments')}</h3><button class="btn sm" data-act="nav" data-r="appointments">${T('عرض الكل','Show all')}</button></div><div class="list" style="border:0;margin:0 -14px">${list.slice(0,6).map(a=>apItem(a,false)).join('')}</div></div>`;
 }
 
+/* ---------- activity view ---------- */
+const COL_NAMES={sales:['فاتورة مبيعات','Sales invoice'],purchases:['فاتورة مشتريات','Purchase invoice'],quotes:['عرض سعر','Quotation'],sreturns:['مرتجع مبيعات','Sales return'],preturns:['مرتجع مشتريات','Purchase return'],payments:['سند','Voucher'],customers:['عميل','Customer'],suppliers:['مورد','Supplier'],products:['صنف','Item'],appointments:['موعد','Appointment'],meta:['الإعدادات','Settings'],staff:['مستخدم','User'],invites:['دعوة','Invite']};
+const ACT_INFO={create:['➕','أضاف','added','b-green'],update:['✏️','عدّل','edited','b-pri'],delete:['🗑️','حذف','deleted','b-red'],import:['⬆️','استورد','imported','b-amber']};
+function activityOpen(a){
+  if(a.action==='delete'||!a.docId)return '';
+  if(KIND[a.col])return `data-act="openSub" data-type="doc" data-k="${a.col}" data-id="${esc(a.docId)}"`;
+  if(a.col==='payments')return `data-act="openSub" data-type="pay" data-id="${esc(a.docId)}"`;
+  if(a.col==='customers'||a.col==='suppliers')return `data-act="openSub" data-type="party" data-col="${a.col}" data-id="${esc(a.docId)}"`;
+  if(a.col==='products')return `data-act="openSub" data-type="product" data-id="${esc(a.docId)}"`;
+  if(a.col==='appointments')return `data-act="openSub" data-type="appt" data-id="${esc(a.docId)}"`;
+  return '';
+}
+VIEWS.activity=()=>{
+  if(!ADMIN)return `<div class="empty">${T('هذه الصفحة للمدير فقط','Admins only')}</div>`;
+  const q=norm(Q.activity);const who=Q.actwho_f||'';const typ=Q.acttyp_f||'';const act=Q.actact_f||'';
+  let arr=S.activity.filter(a=>(!who||a.by===who)&&(!typ||a.col===typ)&&(!act||a.action===act));
+  if(q)arr=arr.filter(a=>norm(a.label).includes(q)||norm(a.byEmail).includes(q));
+  const users=[...new Map(S.activity.map(a=>[a.by,a.byEmail])).entries()];
+  const groups=new Map();const ld=iso=>{const x=new Date(iso);if(isNaN(x))return '';x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)};
+  arr.forEach(a=>{const d=ld(a.at);if(!groups.has(d))groups.set(d,[]);groups.get(d).push(a)});
+  const tm=iso=>{const d=new Date(iso);return isNaN(d)?'':fTime(`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`)};
+  const fname=f=>f==='lines'?T('الأصناف','Items'):f==='accounts'?T('الخزائن والحسابات','Accounts'):f==='logo'?T('الشعار','Logo'):T(LOG_FIELDS[f]||f,f);
+  const row=a=>{const ai=ACT_INFO[a.action]||ACT_INFO.update;const cn=COL_NAMES[a.col]||[a.col,a.col];const op=activityOpen(a);
+    return `<div class="item" ${op} style="${op?'':'cursor:default'};align-items:flex-start"><span style="font-size:18px;width:24px;text-align:center">${ai[0]}</span><div class="m"><div class="d" style="margin:0 0 2px"><b translate="no" dir="auto" style="color:var(--ink)">${esc((a.byEmail||'').split('@')[0])}</b> ${T(ai[1],ai[2])} ${T(cn[0],cn[1])} · <span class="num">${tm(a.at)}</span></div><div class="t" translate="no" dir="auto" style="white-space:normal">${esc(a.label)}</div>
+    ${(a.changes||[]).length?`<div class="d" style="margin-top:4px">${a.changes.map(c=>(c.f==='lines'||c.f==='accounts'||c.f==='logo')?`• ${fname(c.f)}: ${T('تغيّرت','changed')}`:`• ${fname(c.f)}: <span translate="no" class="num">${esc(c.from||'—')}</span> ← <span translate="no" class="num">${esc(c.to||'—')}</span>`).join('<br>')}</div>`:''}</div><span class="badge ${ai[3]}">${T(ai[1],ai[2])}</span></div>`};
+  return `<div class="head"><h1>${T('سجل التعديلات','Activity log')}</h1></div>
+  ${S.activityErr?`<div class="banner">${T('لتفعيل السجل: الصق ملف firestore.rules الجديد في Firebase ← Firestore ← Rules ثم Publish.','To enable the log: paste the new firestore.rules into Firebase → Firestore → Rules, then Publish.')}</div>`:''}
+  <p class="muted" style="margin:-6px 0 12px;font-size:13px">${T('كل إضافة وتعديل وحذف يقوم به المستخدمون. السجل لا يمكن تعديله أو حذفه من البرنامج.','Every add, edit and delete by users. The log can\'t be edited or deleted from the app.')}</p>
+  <div class="search"><input id="q-activity" placeholder="${T('بحث برقم المستند أو الاسم…','Search by document number or name…')}" value="${esc(Q.activity||'')}" data-q="activity">
+   <select data-flt="actwho" style="min-width:140px"><option value="">${T('كل المستخدمين','All users')}</option>${users.map(([u,e])=>`<option value="${esc(u)}" ${who===u?'selected':''}>${esc(e||u)}</option>`).join('')}</select>
+   <select data-flt="acttyp"><option value="">${T('كل الأنواع','All types')}</option>${Object.entries(COL_NAMES).map(([k,v])=>`<option value="${k}" ${typ===k?'selected':''}>${T(v[0],v[1])}</option>`).join('')}</select>
+   <select data-flt="actact"><option value="">${T('كل العمليات','All actions')}</option>${Object.entries(ACT_INFO).map(([k,v])=>`<option value="${k}" ${act===k?'selected':''}>${v[0]} ${T(v[1],v[2])}</option>`).join('')}</select></div>
+  ${groups.size?[...groups].map(([d,list])=>`<h3 style="margin:14px 2px 8px;font-size:14px">${d===today()?`<span style="color:var(--pri)">${T('اليوم','Today')}</span> · `:''}${d?dayName(d):''} <span class="num muted" style="font-weight:500">${fdate(d)}</span></h3><div class="list">${list.map(row).join('')}</div>`).join(''):`<div class="list"><div class="empty">${T('لا توجد عمليات مسجلة بعد','No activity yet')}</div></div>`}
+  ${S.activity.length>=500?`<p class="muted" style="font-size:12.5px">${T('يتم عرض آخر 500 عملية.','Showing the latest 500 actions.')}</p>`:''}`;
+};
+document.addEventListener('change',e=>{const f=e.target.dataset&&e.target.dataset.flt;if(f){Q[f+'_f']=e.target.value;render()}});
+
+/* ---------- install (PWA) & offline ---------- */
+let installEvt=null;
+const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;renderShell()});
+window.addEventListener('appinstalled',()=>{installEvt=null;toast(T('تم تثبيت التطبيق ✓','App installed ✓'));renderShell()});
+function canInstall(){return !isStandalone()&&(!!installEvt||isIOS())}
+async function doInstall(){
+  closeSide();
+  if(installEvt){installEvt.prompt();try{await installEvt.userChoice}catch(_){}installEvt=null;renderShell();return}
+  openModal(`<h3>📲 ${T('تثبيت التطبيق على الآيفون','Install on iPhone')}</h3><ol style="line-height:2;padding-inline-start:20px;margin:0">
+   <li>${T('افتح البرنامج في متصفح <b>Safari</b>.','Open the app in <b>Safari</b>.')}</li>
+   <li>${T('اضغط زر المشاركة','Tap the Share button')} <span style="font-size:18px">⎋</span> ${T('أسفل الشاشة.','at the bottom.')}</li>
+   <li>${T('اختر <b>"إضافة إلى الشاشة الرئيسية"</b>.','Choose <b>"Add to Home Screen"</b>.')}</li>
+   <li>${T('اضغط <b>"إضافة"</b>.','Tap <b>"Add"</b>.')}</li></ol>
+   <div class="btns" style="margin-top:14px;justify-content:flex-end"><button class="btn pri" data-act="closeModal">${T('تم','OK')}</button></div>`);
+}
+let OFFLINE=!navigator.onLine;
+window.addEventListener('online',()=>{OFFLINE=false;renderShell();toast(T('عاد الاتصال، تتم مزامنة التعديلات ✓','Back online, syncing changes ✓'))});
+window.addEventListener('offline',()=>{OFFLINE=true;renderShell()});
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('sw',e)))}
+
+/* ---------- backup reminder ---------- */
+function backupReminder(){
+  if(!ADMIN||!allReady())return '';
+  const total=S.sales.length+S.purchases.length+S.payments.length+S.customers.length;if(total<3)return '';
+  const last=S.settings.lastBackupAt;const days=last?Math.floor((Date.now()-new Date(last))/864e5):null;
+  if(days!==null&&days<7)return '';
+  return `<div class="card" style="border-color:#e9cf8c;background:#fffaf0;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="font-size:24px">💾</span><div style="flex:1;min-width:180px"><b>${T('حان وقت النسخة الاحتياطية','Time for a backup')}</b><div class="muted" style="font-size:13px">${days===null?T('لم تُنزَّل أي نسخة احتياطية بعد.','No backup downloaded yet.'):T(`آخر نسخة قبل ${days} يوم.`,`Last backup ${days} days ago.`)} ${T('احفظها في Google Drive أو على جهازك.','Keep it in Google Drive or on your computer.')}</div></div><button class="btn pri" data-act="exportJson">⬇︎ ${T('تنزيل نسخة الآن','Download backup now')}</button></div>`;
+}
+async function markBackup(){if(ADMIN&&db&&!RO){try{await db.doc('meta/settings').update({lastBackupAt:nowIso()})}catch(e){try{await db.doc('meta/settings').set({...S.settings,lastBackupAt:nowIso()})}catch(_){}}}}
+
 /* ---------- dashboard quick actions ---------- */
 const QI={
  sales:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
@@ -750,6 +829,7 @@ VIEWS.dashboard=()=>{
     <div class="stat" data-act="nav" data-r="accounts" style="cursor:pointer"><div class="k">${T('النقد والبنوك','Cash & bank')}</div><div class="v">${money([...d.acc.values()].reduce((a,x)=>a+x,0))}</div></div>
     <div class="stat"><div class="k">أصناف تحت الحد الأدنى</div><div class="v num ${low.length?'neg':''}">${low.length}</div></div>
   </div>
+  ${backupReminder()}
   ${todayApptsBlock()}
   ${overdueBlock(overdue,overdueAmt)}
   ${dashCharts()}
@@ -1112,7 +1192,7 @@ VIEWS.settings=()=>{
   </div>
   ${staffCard()}
   <div class="card"><h3>${T('نقل البيانات (JSON)','Data transfer (JSON)')}</h3>
-   <p class="muted" style="margin-top:0;font-size:13.5px">${T('لنقل البيانات من النسخة السابقة أو أخذ نسخة كاملة يمكن استرجاعها.','To move data from the previous version, or take a full restorable copy.')}</p>
+   <p class="muted" style="margin-top:0;font-size:13.5px">${T('لنقل البيانات من النسخة السابقة أو أخذ نسخة كاملة يمكن استرجاعها.','To move data from the previous version, or take a full restorable copy.')}${S.settings.lastBackupAt?` · ${T('آخر نسخة','Last backup')}: <span class="num">${fdate(S.settings.lastBackupAt.slice(0,10))}</span>`:''}</p>
    <div class="btns"><button class="btn" data-act="exportJson">⬇︎ ${T('تنزيل نسخة JSON','Download JSON copy')}</button>${ADMIN?`<label class="btn" style="color:var(--ink)">⬆︎ ${T('استيراد نسخة JSON','Import JSON copy')}<input type="file" accept=".json,application/json" id="s-json" class="hide"></label>`:''}</div>
    <div id="json-prog" style="margin-top:8px"></div>
   </div>
@@ -1160,6 +1240,7 @@ function docView(kind,id){
    ${!RO&&ADMIN?`<button class="btn red" data-act="delDoc" data-k="${kind}" data-id="${id}">حذف</button>`:''}
   </div>
   ${kind!=='quotes'?`<div class="grid g3" style="margin-bottom:12px"><div class="stat"><div class="k">الإجمالي</div><div class="v">${money(d.total)}</div></div><div class="stat"><div class="k">المدفوع</div><div class="v pos">${money(cashPaid)}</div>${retAmt>0.0005?`<div class="s">${T('مرتجع','Returned')}: ${fmt(retAmt)}</div>`:''}</div>${rem<-0.0005?`<div class="stat" style="border-color:var(--amber)"><div class="k">مبلغ زائد (رصيد لصالح ${kind==='sales'?'العميل':'المورد'})</div><div class="v" style="color:var(--amber)">${money(-rem)}</div><div class="s">المدفوع أكثر من الإجمالي</div></div>`:`<div class="stat"><div class="k">المتبقي</div><div class="v ${rem>0.0005?'neg':''}">${money(rem)}</div></div>`}</div>`:''}
+  ${d.createdBy||d.updatedBy?`<div class="muted" style="font-size:12.5px;margin:-4px 0 6px">👤 ${T('أنشأها','Created by')} <span translate="no" dir="auto">${esc(staffName(d.createdBy)||'—')}</span>${d.updatedBy&&d.updatedBy!==d.createdBy?` · ${T('آخر تعديل','Last edit')} <span translate="no" dir="auto">${esc(staffName(d.updatedBy))}</span>`:''}${ADMIN?` · <a href="#" data-act="docHistory" data-id="${id}">${T('السجل','History')}</a>`:''}</div>`:''}
   ${d.lastEmail?`<div class="muted" style="font-size:12.5px;margin:-4px 0 10px">📧 آخر إرسال بالإيميل: <span translate="no" dir="ltr">${esc(d.lastEmail.to)}</span> · ${fdate((d.lastEmail.at||'').slice(0,10))}</div>`:''}
   ${pays.length?`<div class="card"><h3>الدفعات</h3><div class="list" style="border:0">${pays.map(payItem).join('')}</div></div>`:''}
   ${rets.length?`<div class="card"><h3>${T('المرتجعات','Returns')}</h3><div class="list" style="border:0">${rets.map(r=>docItem(retKindOf(kind),r)).join('')}</div></div>`:''}
@@ -1440,7 +1521,7 @@ function updTotals(){
 async function nextRef(col,prefix,filter){
   let max=0;for(const x of S[col]) if(!filter||filter(x)) max=Math.max(max,num(x.no));
   let n=max+1;
-  for(let i=0;i<30;i++){const id=prefix+'-'+String(n).padStart(5,'0');const ref=db.collection(col).doc(id);const g=await ref.get();if(!g.exists)return {ref,no:n,id};n++;}
+  for(let i=0;i<30;i++){const id=prefix+'-'+String(n).padStart(5,'0');const ref=db.collection(col).doc(id);let g;try{g=await ref.get()}catch(e){if(!navigator.onLine)return {ref,no:n,id};throw e}if(!g.exists)return {ref,no:n,id};n++;}
   throw new Error('numbering');
 }
 async function ensureParty(col,name){
@@ -1752,6 +1833,7 @@ async function backup(){
   add('raw_json',[{data:JSON.stringify({settings:{...S.settings,logo:''},...Object.fromEntries(COLS.map(c=>[c,S[c]]))}).slice(0,32000),note:'مختصر — الأوراق السابقة تحوي البيانات كاملة'}]);
   const out=XLSX.write(wb,{bookType:'xlsx',type:'array'});
   await saveFile(`نسخة-احتياطية-${today()}.xlsx`,new Blob([out]));
+  markBackup();
 }
 async function exportReport(from,to){
   try{await lib('xlsx')}catch(e){toast('تعذر تحميل مكتبة Excel');return}
@@ -1977,6 +2059,7 @@ function startData(){
     },e=>{if(c==='sreturns'||c==='preturns'||c==='appointments'){console.warn(c,e);S.ready.add(c);S.rulesOld=true;renderShell();schedule();return}onErr(c)(e)});
   });
   db.doc('meta/settings').onSnapshot(s=>{const local=s.metadata&&s.metadata.hasPendingWrites;S.settings=s.exists?s.data():{};S.settingsReady=true;schedule();if(local&&!RO){S.customers.filter(c=>c.portalToken).forEach(c=>queuePortalSync(c.id))}},onErr('settings'));
+  if(ADMIN)db.collection('activity').recent('at',500,list=>{S.activity=list;if(route==='activity'&&!sub&&!E)schedule()},e=>{console.warn('activity',e&&e.code);S.activityErr=true;if(route==='activity')schedule()});
   db.collection('staff').onSnapshot(s=>{STF.staff=s.docs.map(x=>({...x.data(),id:x.id}));if((route==='settings'||route==='appointments')&&!E)schedule()},()=>{});
   if(ADMIN){
     db.collection('invites').onSnapshot(s=>{STF.invites=s.docs.map(x=>({...x.data(),id:x.id}));if(route==='settings'&&!sub&&!E)schedule()},()=>{});
@@ -1989,6 +2072,7 @@ function startData(){
 async function exportJson(){
   const data={app:'smartclick-accounting',v:1,exportedAt:nowIso(),settings:S.settings,collections:Object.fromEntries(COLS.map(c=>[c,S[c]]))};
   await saveFile(`backup-${today()}.json`,new Blob([JSON.stringify(data)],{type:'application/json'}));
+  markBackup();
 }
 async function importJson(e){
   const f=e.target.files[0];if(!f)return;const prog=$('#json-prog');
@@ -2007,6 +2091,7 @@ async function importJson(e){
         await b.commit();done+=Math.min(400,rows.length-i);prog.innerHTML=`<span class="spin"></span> ${done} / ${total}`;
       }
     }
+    writeLog('import','meta','',null,null,{label:`${T('استيراد نسخة JSON','JSON import')}: ${done}`});
     prog.innerHTML=`<div class="banner info">${T('تم استيراد','Imported')} ${done} ✓</div>`;
   }catch(err){console.error(err);prog.innerHTML=`<div class="banner">${T('توقف الاستيراد بعد','Import stopped after')} ${done}: ${esc(err.code||err.message)}</div>`}
 }
@@ -2117,6 +2202,7 @@ async function importGo(col){
       await b.commit();done+=Math.min(400,ops.length-i);prog.innerHTML=`<span class="spin"></span> ${done} / ${ops.length}`;
     }
   }catch(e){console.error(e);failed=ops.length-done;created=Math.max(0,created-failed)}
+  writeLog('import',col,'',null,null,{label:`${T('استيراد من Excel','Excel import')}: ${created} ${T('جديد','new')} · ${updated} ${T('محدّث','updated')}`});
   prog.innerHTML=`<div class="banner info">تم: ${created} جديد · ${updated} محدّث${skipped?` · ${skipped} موجود مسبقاً`:''}${failed?` · <b>${failed} فشل</b>`:''}</div>`;
   btn.classList.add('hide');IMP=null;
 }
@@ -2219,6 +2305,8 @@ ${T('السيد/','Dear')} ${a.customerName}
 ${T('نذكّركم بموعد','Reminder of your appointment')}: ${T(ty[0],ty[1])}
 ${dayName(a.date)} ${fdate(a.date)} — ${fTime(a.time)}${a.location?'\n'+a.location:''}${a.mapUrl?'\n'+a.mapUrl:''}`),'_blank');if(!w)toast(T('تعذر فتح واتساب','Could not open WhatsApp'))},
   discType:(o,el)=>{const t=el.dataset.t==='a'?'p':'a';el.dataset.t=t;el.textContent=t==='a'?curSym():'%';const inp=el.previousElementSibling;if(inp)inp.focus();updTotals()},
+  docHistory:o=>{Q.activity=S._sales.get(o.id)?docNo('sales',S._sales.get(o.id).no):(S._purchases.get(o.id)?docNo('purchases',S._purchases.get(o.id).no):(S._quotes.get(o.id)?docNo('quotes',S._quotes.get(o.id).no):o.id));go('activity')},
+  install:()=>doInstall(),
   navToggle:o=>{NAVOPEN[o.g]=!NAVOPEN[o.g];try{localStorage.setItem('navopen',JSON.stringify(NAVOPEN))}catch(_){}renderShell()},
   newReturn:o=>{const inv=S['_'+o.k].get(o.id);if(!inv)return;const rk=retKindOf(o.k);const k=KIND[rk];const lines=returnableLines(o.k,inv,null);if(!lines.length){toast(T('كل أصناف هذه الفاتورة مُرتجعة مسبقاً','All items of this invoice were already returned'),3500);return}const dd=newDocData(rk,inv.partyId);Object.assign(dd,{due:'',lines,vatOn:inv.vatOn,vatRate:inv.vatRate,discount:0,partyName:inv.partyName,partyId:inv.partyId,invoiceId:inv.id,invoiceNo:docNo(o.k,inv.no)});openEditor(rk,null,dd)},
   refundRet:o=>refundRet(o.k,o.id),
@@ -2256,15 +2344,51 @@ document.addEventListener('keydown',e=>{
 window.addEventListener('beforeunload',e=>{if(E){e.preventDefault();e.returnValue=''}});
 
 /* ================= boot ================= */
+/* ---------- activity log ---------- */
+const LOG_SKIP=new Set(['activity','portal']);
+const LOG_FIELDS={total:'الإجمالي',amount:'المبلغ',date:'التاريخ',partyName:'الطرف',status:'الحالة',discount:'الخصم',price:'سعر البيع',cost:'التكلفة',opening:'الرصيد / الكمية الافتتاحية',name:'الاسم',phone:'الهاتف',email:'البريد',role:'الصلاحية',method:'طريقة الدفع',accountId:'الحساب',category:'البند',time:'الوقت',type:'النوع',minQty:'الحد الأدنى',vatRate:'نسبة الضريبة',company:'اسم الشركة',portalToken:'رابط العميل'};
+function cachedDoc(col,id){if(col==='meta'&&id==='settings')return S.settings;const m=S['_'+col];return m?m.get(id):undefined}
+function logLabel(col,id,d){
+  d=d||{};
+  if(KIND[col])return `${docNo(col,d.no)} · ${d.partyName||''}`;
+  if(col==='payments')return `${payNo(d)} · ${d.type==='tr'?accName(accById(d.fromAcc))+' → '+accName(accById(d.toAcc)):(d.partyType==='expense'?(d.category||''):(d.partyName||''))}${d.amount!=null?' · '+fmt(d.amount):''}`;
+  if(col==='appointments')return `${d.customerName||''} · ${d.date||''} ${d.time||''}`;
+  if(col==='meta')return id==='settings'?'الإعدادات':id;
+  if(col==='staff')return d.email||id;
+  if(col==='invites')return id;
+  return d.name||id;
+}
+function diffFields(a,b){
+  const out=[];if(!a||!b)return out;
+  for(const f of Object.keys(LOG_FIELDS)){if(!(f in b))continue;const x=a[f],y=b[f];if(JSON.stringify(x??'')!==JSON.stringify(y??''))out.push({f,from:x==null?'':String(x).slice(0,80),to:y==null?'':String(y).slice(0,80)})}
+  if(b.lines&&a.lines&&JSON.stringify(a.lines)!==JSON.stringify(b.lines))out.push({f:'lines',from:'',to:''});
+  if(b.accounts&&JSON.stringify(a.accounts||[])!==JSON.stringify(b.accounts))out.push({f:'accounts',from:'',to:''});
+  if('logo' in b&&(a.logo||'')!==(b.logo||''))out.push({f:'logo',from:'',to:''});
+  return out.slice(0,12);
+}
+function writeLog(action,col,id,before,after,extra){
+  if(!MYID||!db||LOG_SKIP.has(col))return;
+  const changes=action==='update'?diffFields(before,after):[];
+  if(action==='update'&&!changes.length&&!extra)return; // nothing meaningful (e.g. lastBackupAt, lastEmail)
+  const data={at:nowIso(),by:MYID,byEmail:(AUTHU&&AUTHU.email||'').toLowerCase(),action,col,docId:id||'',label:String(extra&&extra.label||logLabel(col,id,after||before)).slice(0,200),changes};
+  try{const F=window.FB.fns;const p=F.setDoc(F.doc(F.collection(FB.fs,'activity')),data);p&&p.catch&&p.catch(e=>console.warn('log',e&&e.code))}catch(e){console.warn('log',e)}
+}
 function makeDb(){
   const {fs,fns:F}=window.FB;
   const wrap=x=>({id:x.id,exists:x.exists(),data:()=>x.data(),metadata:x.metadata});
-  const dref=path=>{const r=F.doc(fs,path);return {id:r.id,path,
-    get:async()=>wrap(await F.getDoc(r)),set:d=>F.setDoc(r,d),update:d=>F.updateDoc(r,d),delete:()=>F.deleteDoc(r),
+  // offline: Firestore applies the write locally and syncs later; don't block the UI waiting for the server
+  const settle=p=>navigator.onLine?p:(p.catch(e=>console.error('offline write',e)),Promise.resolve());
+  const dref=path=>{const r=F.doc(fs,path);const parts=path.split('/');const col=parts[parts.length-2],id=parts[parts.length-1];
+    return {id:r.id,path,
+    get:async()=>wrap(await F.getDoc(r)),
+    set:d=>{const before=cachedDoc(col,id);return settle(F.setDoc(r,d)).then(()=>writeLog(before?'update':'create',col,id,before,d))},
+    update:d=>{const before=cachedDoc(col,id);return settle(F.updateDoc(r,d)).then(()=>writeLog('update',col,id,before,before?{...before,...d}:d))},
+    delete:()=>{const before=cachedDoc(col,id);return settle(F.deleteDoc(r)).then(()=>writeLog('delete',col,id,before,null))},
     onSnapshot:(n,e)=>F.onSnapshot(r,{includeMetadataChanges:true},x=>n(wrap(x)),e)}};
   const cref=path=>({path,
     doc:id=>dref(path+'/'+(id||F.doc(F.collection(fs,path)).id)),
-    onSnapshot:(n,e)=>F.onSnapshot(F.collection(fs,path),{includeMetadataChanges:true},q=>n({docs:q.docs.map(wrap),metadata:q.metadata,docChanges:()=>q.docChanges().map(c=>({type:c.type,doc:wrap(c.doc)}))}),e)});
+    onSnapshot:(n,e)=>F.onSnapshot(F.collection(fs,path),{includeMetadataChanges:true},q=>n({docs:q.docs.map(wrap),metadata:q.metadata,docChanges:()=>q.docChanges().map(c=>({type:c.type,doc:wrap(c.doc)}))}),e),
+    recent:(field,n,next,e)=>F.onSnapshot(F.query(F.collection(fs,path),F.orderBy(field,'desc'),F.limit(n)),q=>next(q.docs.map(x=>({...x.data(),id:x.id}))),e)});
   return {doc:dref,collection:cref};
 }
 function boot(){
