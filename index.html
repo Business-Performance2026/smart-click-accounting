@@ -1103,22 +1103,34 @@ VIEWS.stocktake=()=>{
   return `${loading()}<div class="head">${backBtn}<h2>📋 ${T('الجرد','Stocktake')}</h2></div>
   <p class="muted" style="margin:-6px 0 12px;font-size:13px">${T('امسح كل قطعة بالكاميرا (كل مسحة = +1، أبعد الكاميرا بين القطع المتشابهة) أو اكتب الكمية. الجرد محفوظ على هذا الجهاز حتى تطبّقه.','Scan each piece (each scan = +1; move the camera away between identical items) or type the count. The count is kept on this device until you apply it.')}</p>
   <div class="btns" style="margin-bottom:12px"><button class="btn pri" data-act="stkScan" style="min-height:46px">📷 ${T('مسح بالكاميرا','Scan with camera')}</button><input id="stk-add" list="dl-products" placeholder="${T('أو أضف صنفاً بالاسم أو الكود…','or add an item by name or code…')}" style="flex:1;min-width:180px" autocomplete="off"></div>
-  <div class="grid g3" style="margin-bottom:12px"><div class="stat"><div class="k">${T('أصناف تم عدّها','Items counted')}</div><div class="v num">${rows.length}</div></div><div class="stat"><div class="k">${T('أصناف بها فرق','Items with difference')}</div><div class="v num ${diffs.length?'neg':''}">${diffs.length}</div></div><div class="stat"><div class="k">${T('قيمة الفرق (بالتكلفة)','Difference value (cost)')}</div><div class="v">${money(diffs.reduce((a,r)=>a+r.diff*(derive().avg.get(r.p.id)||0),0))}</div></div></div>
-  <div class="list">${rows.length?rows.map(r=>`<div class="item" style="cursor:default"><div class="m"><div class="t" translate="no" dir="auto">${esc(dn(r.p))}</div><div class="d">${r.p.code?`<span class="num">${esc(r.p.code)}</span> · `:''}${T('النظام','System')}: <span class="num">${fq(r.sys)}</span> · ${T('الفرق','Diff')}: <b class="num ${r.diff<0?'neg':r.diff>0?'pos':''}">${r.diff>0?'+':''}${fq(r.diff)}</b></div></div>
+  <div class="grid g3" style="margin-bottom:12px"><div class="stat"><div class="k">${T('أصناف تم عدّها','Items counted')}</div><div class="v num">${rows.length}</div></div><div class="stat"><div class="k">${T('أصناف بها فرق','Items with difference')}</div><div class="v num ${diffs.length?'neg':''}" id="stk-nd">${diffs.length}</div></div><div class="stat"><div class="k">${T('قيمة الفرق (بالتكلفة)','Difference value (cost)')}</div><div class="v" id="stk-val">${money(diffs.reduce((a,r)=>a+r.diff*(derive().avg.get(r.p.id)||0),0))}</div></div></div>
+  <div class="list">${rows.length?rows.map(r=>`<div class="item" style="cursor:default"><div class="m"><div class="t" translate="no" dir="auto">${esc(dn(r.p))}</div><div class="d">${r.p.code?`<span class="num">${esc(r.p.code)}</span> · `:''}${T('النظام','System')}: <span class="num">${fq(r.sys)}</span> · ${T('الفرق','Diff')}: <b class="num stk-d ${r.diff<0?'neg':r.diff>0?'pos':''}" data-id="${r.p.id}">${r.diff>0?'+':''}${fq(r.diff)}</b></div></div>
     <button class="btn sm icon" data-act="stkInc" data-id="${r.p.id}" data-v="-1">−</button><input class="stk-q" data-id="${r.p.id}" inputmode="decimal" value="${fq(r.cnt)}" style="width:64px;text-align:center;min-height:36px;padding:4px"><button class="btn sm icon" data-act="stkInc" data-id="${r.p.id}" data-v="1">+</button></div>`).join(''):`<div class="empty">${T('لم يتم عدّ أي صنف بعد','Nothing counted yet')}</div>`}</div>
-  ${rows.length?`<div class="sticky-act"><div class="btns">${RO?'':`<button class="btn pri" data-act="stkApply" style="flex:1;min-height:46px" ${diffs.length?'':'disabled'}>✓ ${T('تطبيق التسوية','Apply adjustment')} (${diffs.length})</button>`}<button class="btn red" data-act="stkClear" style="min-height:46px">${T('مسح الجرد','Clear count')}</button></div></div>`:''}`;
+  ${rows.length?`<div class="sticky-act"><div class="btns">${RO?'':`<button class="btn pri" id="stk-apply" data-act="stkApply" style="flex:1;min-height:46px" ${diffs.length?'':'disabled'}>✓ ${T('تطبيق التسوية','Apply adjustment')} (<span id="stk-n">${diffs.length}</span>)</button>`}<button class="btn red" data-act="stkClear" style="min-height:46px">${T('مسح الجرد','Clear count')}</button></div></div>`:''}`;
 };
 AFTER.stocktake=()=>{
   const a=$('#stk-add');if(a)a.onchange=()=>{const f=lookupCode(a.value);if(f){STK[f.product.id]=num(STK[f.product.id])+1;saveSTK();render()}else if(a.value.trim())toast(T('غير موجود','Not found'))};
-  $$('.stk-q').forEach(i=>i.onchange=()=>{STK[i.dataset.id]=num(i.value);saveSTK();render()});
+  // update live while typing (no re-render, so a tap on the button right after typing isn't lost)
+  $$('.stk-q').forEach(i=>{i.oninput=()=>{if(i.value.trim()==='')return;STK[i.dataset.id]=num(i.value);saveSTK();stkRefresh()};i.onchange=()=>{STK[i.dataset.id]=num(i.value);saveSTK();stkRefresh()}});
+};
+function stkSync(){$$('.stk-q').forEach(i=>{if(i.value.trim()!=='')STK[i.dataset.id]=num(i.value)});saveSTK()}
+function stkRefresh(){
+  const st=derive().stock,avg=derive().avg;let n=0,val=0;
+  Object.keys(STK).forEach(id=>{if(!S._products.get(id))return;const d=r3(num(STK[id])-r3(st.get(id)||0));if(Math.abs(d)>0.0005){n++;val+=d*(avg.get(id)||0)}
+    const b=$(`.stk-d[data-id="${id}"]`);if(b){b.textContent=(d>0?'+':'')+fq(d);b.className='num stk-d '+(d<0?'neg':d>0?'pos':'')}});
+  if($('#stk-nd')){$('#stk-nd').textContent=n;$('#stk-nd').classList.toggle('neg',n>0)}
+  if($('#stk-val'))$('#stk-val').innerHTML=money(val);
+  if($('#stk-n'))$('#stk-n').textContent=n;
+  if($('#stk-apply'))$('#stk-apply').disabled=!n;
 };
 async function stkApply(){
-  const st=derive().stock;const ch=Object.keys(STK).map(id=>{const p=S._products.get(id);if(!p)return null;const sys=r3(st.get(id)||0),cnt=num(STK[id]);return Math.abs(cnt-sys)>0.0005?{p,sys,cnt}:null}).filter(Boolean);
-  if(!ch.length)return;
+  stkSync();const st=derive().stock;const ch=Object.keys(STK).map(id=>{const p=S._products.get(id);if(!p)return null;const sys=r3(st.get(id)||0),cnt=num(STK[id]);return Math.abs(cnt-sys)>0.0005?{p,sys,cnt}:null}).filter(Boolean);
+  if(!ch.length){toast(T('لا توجد فروقات — الكميات مطابقة للنظام','No differences — counts match the system'));return}
   if(!(await ask(T(`تعديل كميات ${ch.length} صنف لتطابق الجرد الفعلي؟`,`Adjust ${ch.length} items to match the physical count?`),T('تطبيق','Apply'))))return;
   let ok=0;
-  for(const c of ch){if(await W(()=>db.collection('products').doc(c.p.id).update({opening:r3(num(c.p.opening)+(c.cnt-c.sys)),updatedAt:nowIso(),lastAdjust:{date:today(),from:c.sys,to:c.cnt,by:MYID||'',via:'stocktake'}})))ok++}
-  STK={};saveSTK();toast(T(`تمت تسوية ${ok} صنف ✓`,`${ok} items adjusted ✓`));render();
+  for(const c of ch){if(await W(()=>db.collection('products').doc(c.p.id).update({opening:r3(num(c.p.opening)+(c.cnt-c.sys)),updatedAt:nowIso(),lastAdjust:{date:today(),from:c.sys,to:c.cnt,by:MYID||'',via:'stocktake'}}))){ok++;c.done=true}}
+  if(!ok){toast(T('لم يتم تعديل أي صنف. تأكد من الاتصال وصلاحية التعديل ثم حاول مرة أخرى','Nothing was adjusted. Check your connection and permissions, then try again'),5000);render();return}
+  if(ok===ch.length)STK={};else ch.forEach(c=>{if(c.done)delete STK[c.p.id]});saveSTK();toast(T(`تمت تسوية ${ok} صنف ✓`,`${ok} items adjusted ✓`)+(ok<ch.length?T(` — تعذر ${ch.length-ok}`,` — ${ch.length-ok} failed`):''),4000);render();
 }
 
 /* ---------- dashboard quick actions ---------- */
@@ -2797,7 +2809,7 @@ ${dayName(a.date)} ${fdate(a.date)} — ${fTime(a.time)}${a.location?'\n'+a.loca
   scanSearch:()=>openScanner({title:T('بحث بالباركود','Search by barcode'),onCode:c=>{const f=lookupCode(c);if(f){setTimeout(()=>openSub('product',f.product.id),300);return {ok:true,msg:f.product.name}}Q.products=c;setTimeout(render,300);return {ok:true,msg:T('غير موجود — تم وضعه في البحث','Not found — placed in search')}}}),
   scanWarranty:()=>openScanner({title:T('مسح الرقم التسلسلي','Scan serial number'),onCode:c=>{Q.warranty=c;setTimeout(render,300);return {ok:true,msg:c}}}),
   stkScan:()=>openScanner({title:T('الجرد — امسح كل قطعة','Stocktake — scan each piece'),continuous:true,onClose:()=>{if(sub&&sub.type==='stocktake')render()},onCode:c=>{const f=lookupCode(c);if(!f)return {ok:false,msg:T('غير موجود: ','Not found: ')+c};STK[f.product.id]=num(STK[f.product.id])+1;saveSTK();return {ok:true,msg:`${f.product.name} — ${fq(STK[f.product.id])}`}}}),
-  stkInc:o=>{STK[o.id]=Math.max(0,num(STK[o.id])+num(o.v));saveSTK();render()},
+  stkInc:o=>{stkSync();STK[o.id]=Math.max(0,num(STK[o.id])+num(o.v));saveSTK();render()},
   stkApply:()=>stkApply(),
   stkClear:async()=>{if(await ask(T('مسح كل الأعداد في هذا الجرد؟','Clear all counts in this stocktake?'),T('مسح','Clear'),true)){STK={};saveSTK();render()}},
   pimgRemove:()=>{PIMG={remove:true};const id=null;$('#pimg-box').outerHTML=productImgField({});wirePimg({})},
