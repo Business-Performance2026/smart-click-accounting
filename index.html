@@ -130,6 +130,8 @@ table.t td.num,table.t td.n{white-space:nowrap}
 .ln{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;background:#fcfcfd}
 .ln .r1{display:flex;gap:8px;align-items:center}
 .ln .r1 input{flex:1}
+.ln .l-desc{width:100%;min-height:38px;margin-top:8px;resize:vertical;font-size:13.5px;padding:7px 10px}
+.paper td.ldesc{white-space:pre-wrap;color:#333;font-size:12px;max-width:260px}
 .ln .r2{display:grid;grid-template-columns:.9fr 1.2fr 1.5fr 1.1fr;gap:8px;margin-top:8px}
 .ln .r2>label{min-width:0}
 .ln .r2 input{min-width:0;width:100%}
@@ -1638,7 +1640,7 @@ function paperDoc(kind,d){
   const title=kind==='quotes'?['عرض سعر','Quotation']:kind==='sales'?(d.vatOn?['فاتورة ضريبية','Tax Invoice']:['فاتورة','Invoice']):kind==='sreturns'?['إشعار دائن — مرتجع مبيعات','Credit Note']:kind==='preturns'?['إشعار مدين — مرتجع مشتريات','Debit Note']:kind==='workorders'?['أمر عمل','Work Order']:['فاتورة مشتريات','Purchase Invoice'];
   const isInv=kind==='sales'||kind==='purchases';
   const paid=isInv?derive().cash.get(d.id)||0:0,retA=isInv?derive().ret.get(d.id)||0:0,settled=isInv?derive().paid.get(d.id)||0:0;
-  const hasDisc=(d.lines||[]).some(l=>num(l.disc)>0);
+  const hasDisc=(d.lines||[]).some(l=>num(l.disc)>0);const hasDesc=(d.lines||[]).some(l=>String(l.desc||'').trim());
   const showImg=s.printImages!==false&&(d.lines||[]).some(l=>pThumb(prodOf(l)));
   const imgCell=l=>{const p=prodOf(l);if(!showImg)return '';if(!pThumb(p))return '<td class="pimg"></td>';if(PORTAL_RENDER){PORTAL_IMGS.add(p.id);return `<td class="pimg"><img data-pimg="${esc(p.id)}" alt=""></td>`}return `<td class="pimg"><img src="${esc(p.img)}" alt=""></td>`};
   const pl=k.party==='suppliers'?PL('المورد','Supplier'):PL('العميل','Customer');
@@ -1648,8 +1650,8 @@ function paperDoc(kind,d){
    <div class="bx"><div><span>${pl}</span><b>${PN(d.partyName,party.nameEn)}</b></div>${party.phone?`<div><span>${PL('الهاتف','Phone')}</span><span class="num">${esc(party.phone)}</span></div>`:''}${party.vatNo?`<div><span>${PL('الرقم الضريبي','VATIN')}</span><span class="num">${esc(party.vatNo)}</span></div>`:''}${party.address?`<div><span>${PL('العنوان','Address')}</span><span>${esc(party.address)}</span></div>`:''}</div>
    <div class="bx"><div><span>${PL('الرقم','No.')}</span><b class="num">${docNo(kind,d.no)}</b></div><div><span>${PL('التاريخ','Date')}</span><span class="num">${fdate(d.date)}</span></div>${d.due?`<div><span>${kind==='quotes'?PL('صالح حتى','Valid until'):isWO(kind)?PL('تاريخ التنفيذ','Scheduled'):PL('تاريخ الاستحقاق','Due date')}</span><span class="num">${fdate(d.due)}</span></div>`:''}${d.ref?`<div><span>${isWO(kind)?PL('العمل','Job'):PL('المرجع','Ref.')}</span><span class="num">${esc(d.ref)}</span></div>`:''}${isRet(kind)&&d.invoiceNo?`<div><span>${PL('الفاتورة الأصلية','Original invoice')}</span><span class="num">${esc(d.invoiceNo)}</span></div>`:''}${isWO(kind)&&d.location?`<div><span>${PL('الموقع','Location')}</span><span>${esc(d.location)}</span></div>`:''}${isWO(kind)&&(d.techs||[]).length?`<div><span>${PL('الفني','Technician')}</span><span>${esc(d.techs.map(u=>(staffName(u)||'').split('@')[0]).join('، '))}</span></div>`:''}</div>
   </div>
-  <table><tr><th style="width:30px">#</th>${showImg?'<th class="pimg"></th>':''}<th>${PL('الصنف / الوصف','Item / Description',1)}</th><th class="n">${PL('الكمية','Qty',1)}</th><th class="n">${PL('السعر','Price',1)}</th>${hasDisc?`<th class="n">${PL('الخصم','Discount',1)}</th>`:''}<th class="n">${PL('الإجمالي','Amount',1)}</th></tr>
-  ${(d.lines||[]).map((l,i)=>`<tr><td>${i+1}</td>${imgCell(l)}<td>${PN(l.name,lineEn(l))}${(l.serials||[]).length?`<div style="color:#555;font-size:11px" dir="ltr">S/N: ${esc(l.serials.join(', '))}</div>`:''}${num(l.warranty)&&(kind==='sales'||isWO(kind))?`<div style="color:#555;font-size:11px">${PL('الضمان','Warranty')}: ${fq(l.warranty)} ${PL('شهر','months')}${kind==='sales'?` — ${PL('حتى','until')} <span class="num">${fdate(addMonths(d.date,l.warranty))}</span>`:''}</div>`:''}</td><td class="n num">${fq(l.qty)}</td><td class="n num">${fmt(l.price)}</td>${hasDisc?`<td class="n num">${discLabel(l)}</td>`:''}<td class="n num">${fmt(l.total)}</td></tr>`).join('')}</table>
+  <table><tr><th style="width:30px">#</th>${showImg?'<th class="pimg"></th>':''}<th>${hasDesc?PL('الصنف','Item',1):PL('الصنف / الوصف','Item / Description',1)}</th>${hasDesc?`<th>${PL('الوصف','Description',1)}</th>`:''}<th class="n">${PL('الكمية','Qty',1)}</th><th class="n">${PL('السعر','Price',1)}</th>${hasDisc?`<th class="n">${PL('الخصم','Discount',1)}</th>`:''}<th class="n">${PL('الإجمالي','Amount',1)}</th></tr>
+  ${(d.lines||[]).map((l,i)=>`<tr><td>${i+1}</td>${imgCell(l)}<td>${PN(l.name,lineEn(l))}${(l.serials||[]).length?`<div style="color:#555;font-size:11px" dir="ltr">S/N: ${esc(l.serials.join(', '))}</div>`:''}${num(l.warranty)&&(kind==='sales'||isWO(kind))?`<div style="color:#555;font-size:11px">${PL('الضمان','Warranty')}: ${fq(l.warranty)} ${PL('شهر','months')}${kind==='sales'?` — ${PL('حتى','until')} <span class="num">${fdate(addMonths(d.date,l.warranty))}</span>`:''}</div>`:''}</td>${hasDesc?`<td class="ldesc" dir="auto">${esc(l.desc||'')}</td>`:''}<td class="n num">${fq(l.qty)}</td><td class="n num">${fmt(l.price)}</td>${hasDisc?`<td class="n num">${discLabel(l)}</td>`:''}<td class="n num">${fmt(l.total)}</td></tr>`).join('')}</table>
   <div class="sum"><div class="notes">${esc(d.notes||'')}</div><table>
    <tr><td>${PL('المجموع','Subtotal')}</td><td class="n num">${fmt(d.sub)}</td></tr>
    ${num(d.discount)?`<tr><td>${PL('الخصم','Discount')}${d.discType==='p'&&num(d.discPct)?` (${fq(d.discPct)}%)`:''}</td><td class="n num">-${fmt(d.discount)}</td></tr>`:''}
@@ -1835,13 +1837,14 @@ function renderLines(){
     const p=l.productId?S._products.get(l.productId):null;
     return `<div class="ln" data-i="${i}" data-pid="${esc(l.productId||'')}" ${l.noStock?'data-ns="1"':''}>
     <div class="r1">${p&&p.img?`<img class="l-img" src="${esc(p.img)}" alt="">`:''}<input class="l-name" list="dl-products" value="${esc(l.name)}" placeholder="اسم الصنف أو الكود أو وصف حر" autocomplete="off"><button class="btn sm ghost" data-act="rmLine" data-i="${i}" title="حذف السطر">✕</button></div>
+    <textarea class="l-desc" rows="${Math.max(1,Math.min(4,String(l.desc||'').split('\n').length))}" placeholder="${T('الوصف / ملاحظات عن الصنف (اختياري)','Description / item notes (optional)')}">${esc(l.desc||'')}</textarea>
     <div class="r2"><label>الكمية<input class="l-qty" inputmode="decimal" value="${esc(l.qty)}"></label><label>السعر<input class="l-price" inputmode="decimal" value="${esc(l.price)}" placeholder="0.000"></label><label>${T('الخصم','Discount')}<span class="dsc"><input class="l-disc" inputmode="decimal" value="${num(l.disc)||''}" placeholder="0"><button type="button" class="dsc-t" data-act="discType" data-t="${l.discType==='a'?'a':'p'}" title="${T('تبديل بين النسبة والمبلغ','Switch percent / amount')}">${l.discType==='a'?esc(curSym()):'%'}</button></span></label><label>الإجمالي<div class="tot num l-tot"></div></label></div>
     ${snRow(l,p)}
     <div class="stk">${p&&!p.service?'المتوفر: '+fq(st.get(p.id)||0)+' '+esc(p.unit||''):''}</div></div>`}).join('');
   linesBusy=false;
 }
 function readLines(){
-  return $$('#e-lines .ln').map(el=>({nameEn:(el.dataset.pid&&S._products.get(el.dataset.pid)&&S._products.get(el.dataset.pid).nameEn)||'',productId:el.dataset.pid||'',name:$('.l-name',el).value.trim(),qty:num($('.l-qty',el).value),price:num($('.l-price',el).value),disc:num($('.l-disc',el).value),discType:$('.dsc-t',el).dataset.t==='a'?'a':'p',serials:$('.l-sn',el)?splitSN($('.l-sn',el).value):[],warranty:$('.l-war',el)?num($('.l-war',el).value):0,noStock:el.dataset.ns==='1'}));
+  return $$('#e-lines .ln').map(el=>({nameEn:(el.dataset.pid&&S._products.get(el.dataset.pid)&&S._products.get(el.dataset.pid).nameEn)||'',productId:el.dataset.pid||'',name:$('.l-name',el).value.trim(),desc:($('.l-desc',el)?$('.l-desc',el).value.trim():''),qty:num($('.l-qty',el).value),price:num($('.l-price',el).value),disc:num($('.l-disc',el).value),discType:$('.dsc-t',el).dataset.t==='a'?'a':'p',serials:$('.l-sn',el)?splitSN($('.l-sn',el).value):[],warranty:$('.l-war',el)?num($('.l-war',el).value):0,noStock:el.dataset.ns==='1'}));
 }
 function onLineProduct(inp){
   if(linesBusy||!E)return;
@@ -1865,7 +1868,7 @@ function readEditor(){
 }
 function returnableLines(invKind,inv,exceptId){
   const done=returnedQty(inv.id,exceptId);
-  return (inv.lines||[]).map(l=>{const key=l.productId||'n:'+l.name;const used=Math.min(done.get(key)||0,num(l.qty));done.set(key,Math.max(0,(done.get(key)||0)-num(l.qty)));return {productId:l.productId||'',name:l.name,nameEn:l.nameEn||'',qty:r3(num(l.qty)-used),price:num(l.price),disc:num(l.disc),discType:l.discType||'p',serials:l.serials||[],warranty:l.warranty||0}}).filter(l=>l.qty>0.0005);
+  return (inv.lines||[]).map(l=>{const key=l.productId||'n:'+l.name;const used=Math.min(done.get(key)||0,num(l.qty));done.set(key,Math.max(0,(done.get(key)||0)-num(l.qty)));return {productId:l.productId||'',name:l.name,nameEn:l.nameEn||'',...(l.desc?{desc:l.desc}:{}),qty:r3(num(l.qty)-used),price:num(l.price),disc:num(l.disc),discType:l.discType||'p',serials:l.serials||[],warranty:l.warranty||0}}).filter(l=>l.qty>0.0005);
 }
 function fillFromInvoice(invId){
   if(!E||!invId)return;const k=KIND[E.kind];const inv=S['_'+k.ret].get(invId);if(!inv)return;
@@ -1952,7 +1955,7 @@ async function saveDoc(then){
     if(d.partyName){party=await ensureParty(k.party,d.partyName)}
     const c=calc(d);
     const body={date:d.date,due:d.due||'',partyId:party?party.id:'',partyName:party?party.name:(kind==='purchases'?'مورد نقدي':'عميل نقدي'),ref:d.ref,
-      lines:d.lines.map(l=>({productId:l.productId||'',name:l.name,nameEn:l.nameEn||'',qty:r3(l.qty),price:r3(l.price),disc:r3(l.disc),discType:l.discType==='a'?'a':'p',...((l.serials||[]).length?{serials:l.serials}:{}),...(num(l.warranty)>0?{warranty:num(l.warranty)}:{}),...(l.noStock&&l.productId?{noStock:true}:{}),total:r3(l.total)})),
+      lines:d.lines.map(l=>({productId:l.productId||'',name:l.name,nameEn:l.nameEn||'',...(l.desc?{desc:l.desc}:{}),qty:r3(l.qty),price:r3(l.price),disc:r3(l.disc),discType:l.discType==='a'?'a':'p',...((l.serials||[]).length?{serials:l.serials}:{}),...(num(l.warranty)>0?{warranty:num(l.warranty)}:{}),...(l.noStock&&l.productId?{noStock:true}:{}),total:r3(l.total)})),
       discount:c.discount,discType:d.discType==='p'?'p':'a',discPct:d.discType==='p'?r3(d.discPct):0,vatOn:!!d.vatOn,vatRate:d.vatRate,sub:c.sub,vat:c.vat,total:c.total,notes:d.notes||'',updatedAt:nowIso(),updatedBy:MYID||''};
     let id=E.id,no;
     if(isRet(kind)){body.invoiceId=d.invoiceId||'';body.invoiceNo=d.invoiceNo||'';body.due=''}
@@ -2213,7 +2216,7 @@ async function backup(){
   add('الأصناف',S.products.map(p=>({id:p.id,الاسم:p.name,الكود:p.code,الوحدة:p.unit,سعر_البيع:num(p.price),التكلفة:num(p.cost),كمية_افتتاحية:num(p.opening),الكمية_الحالية:r3(d.stock.get(p.id)||0),متوسط_التكلفة:r3(d.avg.get(p.id)||0),الحد_الأدنى:num(p.minQty),التصنيف:p.category,خدمة:p.service?'نعم':''})));
   for(const k of ['sales','purchases','quotes','sreturns','preturns','workorders']){
     add(KIND[k].many,S[k].map(x=>({id:x.id,الرقم:docNo(k,x.no),التاريخ:x.date,الاستحقاق:x.due,الطرف:x.partyName,المجموع:num(x.sub),الخصم:num(x.discount),الضريبة:num(x.vat),الإجمالي:num(x.total),المدفوع:k==='quotes'?'':r3(d.paid.get(x.id)||0),الحالة:invStatus(k,x)[0]})));
-    add('بنود '+KIND[k].many,S[k].flatMap(x=>(x.lines||[]).map(l=>({الرقم:docNo(k,x.no),التاريخ:x.date,الطرف:x.partyName,الصنف:l.name,الكمية:num(l.qty),السعر:num(l.price),الخصم_نسبة:num(l.disc),الإجمالي:num(l.total)}))));
+    add('بنود '+KIND[k].many,S[k].flatMap(x=>(x.lines||[]).map(l=>({الرقم:docNo(k,x.no),التاريخ:x.date,الطرف:x.partyName,الصنف:l.name,الوصف:l.desc||'',الكمية:num(l.qty),السعر:num(l.price),الخصم_نسبة:num(l.disc),الإجمالي:num(l.total)}))));
   }
   add('السندات',S.payments.map(p=>({id:p.id,الرقم:payNo(p),النوع:p.type==='in'?'قبض':p.type==='tr'?'تحويل':'صرف',الحساب:p.type==='tr'?`${accName(accById(p.fromAcc))} → ${accName(accById(p.toAcc))}`:accName(accById(payAcc(p))),التاريخ:p.date,الطرف:p.partyName,البند:p.category,الفاتورة:p.invoiceNo,المبلغ:num(p.amount),الطريقة:METHODS[p.method]||'',ملاحظات:p.notes})));
   add('raw_json',[{data:JSON.stringify({settings:{...S.settings,logo:''},...Object.fromEntries(COLS.map(c=>[c,S[c]]))}).slice(0,32000),note:'مختصر — الأوراق السابقة تحوي البيانات كاملة'}]);
