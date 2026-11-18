@@ -2469,6 +2469,7 @@ function editPay(o){
    <label>طريقة الدفع<select id="y-method">${Object.entries(METHODS).map(([k,v])=>`<option value="${k}" ${p.method===k?'selected':''}>${v}</option>`).join('')}</select></label>
    <label>${p.type==='in'?T('إلى خزينة / حساب','Into cash box / account'):T('من خزينة / حساب','From cash box / account')}<select id="y-acc">${accOptions(o.id?payAcc(p):(o.acc||defAcc(p.method)))}</select></label>
    <label style="grid-column:1/-1">البيان / ملاحظات<input id="y-notes" value="${esc(p.notes||'')}"></label>
+   ${ADMIN&&p.partyType!=='expense'&&p.type!=='tr'?`<label style="grid-column:1/-1;display:flex;gap:8px;align-items:flex-start;color:var(--ink);font-size:13px"><input type="checkbox" id="y-mig" ${p.noCash?'checked':''}> <span>${T('دفعة قديمة منقولة من النظام السابق (تسدّد الفاتورة ورصيد العميل، وما تدخل الخزينة)','Old payment moved from the previous system (settles the invoice and balance, not counted in cash/bank)')}</span></label>`:''}
   </div>
   <div id="y-warn"></div><div class="btns" style="margin-top:14px;justify-content:flex-end"><button class="btn" data-act="closeModal">إلغاء</button><button class="btn pri" data-act="savePay" data-id="${o.id||''}">حفظ</button></div></div>`);
   const sync=()=>{
@@ -2499,7 +2500,7 @@ async function savePay(id){
   if(!exp&&!pname){toast('اختر '+(pt==='customer'?'العميل':'المورد'));return}
   if(exp&&!$('#y-cat').value.trim()){toast('اكتب بند المصروف');return}
   const invId=exp?'':$('#y-inv').value;const ik=$('#y-inv').dataset.k;
-  const V={date:$('#y-date').value||today(),cat:$('#y-cat').value.trim(),method:$('#y-method').value,acc:$('#y-acc').value,notes:$('#y-notes').value.trim()};
+  const V={date:$('#y-date').value||today(),cat:$('#y-cat').value.trim(),method:$('#y-method').value,acc:$('#y-acc').value,notes:$('#y-notes').value.trim(),mig:$('#y-mig')?$('#y-mig').checked:null};
   if(invId){const inv=S['_'+ik].get(invId);if(inv){const oldP=id?S._payments.get(id):null;const other=(derive().paid.get(invId)||0)-(oldP&&oldP.invoiceId===invId?num(oldP.amount):0);const rem=r3(num(inv.total)-other);
     const sb=$('[data-act=savePay]');const key=invId+'|'+amount;
     if(amount>rem+0.0005&&sb.dataset.ok!==key){sb.dataset.ok=key;sb.textContent='حفظ رغم ذلك';$('#y-warn').innerHTML=`<div class="banner" style="margin:12px 0 0">المبلغ (${fmt(amount)}) أكبر من المتبقي على الفاتورة (${fmt(rem)}). الفرق ${fmt(amount-rem)} سيُحسب رصيداً زائداً. عدّل المبلغ أو اضغط «حفظ رغم ذلك».</div>`;return}}}
@@ -2507,7 +2508,7 @@ async function savePay(id){
     let party=null;if(!exp){party=await ensureParty(pt==='customer'?'customers':'suppliers',pname)}
     const inv=invId?S['_'+ik].get(invId):null;
     const body={type,date:V.date,partyType:pt,partyId:party?party.id:'',partyName:party?party.name:pname,category:exp?V.cat:'',invoiceKind:inv?ik:'',invoiceId:inv?invId:'',invoiceNo:inv?docNo(ik,inv.no):'',amount,method:V.method,accountId:V.acc,notes:V.notes,updatedAt:nowIso()};
-    if(id){const old=S._payments.get(id)||{};body.no=old.no;body.createdAt=old.createdAt||nowIso();body.createdBy=old.createdBy||'';if(old.returnId)Object.assign(body,{returnId:old.returnId,returnKind:old.returnKind||'',returnNo:old.returnNo||''});if(old.noCash)Object.assign(body,{noCash:true,migrated:old.migrated||''});
+    if(id){const old=S._payments.get(id)||{};body.no=old.no;body.createdAt=old.createdAt||nowIso();body.createdBy=old.createdBy||'';if(old.returnId)Object.assign(body,{returnId:old.returnId,returnKind:old.returnKind||'',returnNo:old.returnNo||''});if(V.mig===null?old.noCash:V.mig)Object.assign(body,{noCash:true,migrated:old.migrated||T('النظام السابق','previous system')});
       if(old.type!==type){const r=await nextRef('payments',type==='in'?'RV':'PV',x=>x.type===type);body.no=r.no}
       await db.collection('payments').doc(id).set(body);return id}
     const r=await nextRef('payments',type==='in'?'RV':'PV',x=>x.type===type);
