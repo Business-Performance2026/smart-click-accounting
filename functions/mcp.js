@@ -85,7 +85,7 @@ async function derive() {
   pays.forEach(p => { if (p.type === 'tr') return; add(paid, p.invoiceId, num(p.amount)); add(cash, p.invoiceId, num(p.amount)); if (p.returnId) { const r = retById.get(p.returnId); if (r) { add(paid, r.invoiceId, -num(p.amount)); add(cash, r.invoiceId, -num(p.amount)); } } });
   const st = new Map(prods.map(p => [p.id, num(p.opening)]));
   const mv = (lines, sign, skip) => (lines || []).forEach(l => { if (l.productId && st.has(l.productId) && !(skip && l.noStock)) st.set(l.productId, st.get(l.productId) + sign * num(l.qty)); });
-  purchases.forEach(d => mv(d.lines, 1)); sales.forEach(d => mv(d.lines, -1, true)); sret.forEach(d => mv(d.lines, 1)); pret.forEach(d => mv(d.lines, -1));
+  purchases.forEach(d => mv(d.lines, 1, true)); sales.forEach(d => mv(d.lines, -1, true)); sret.forEach(d => mv(d.lines, 1)); pret.forEach(d => mv(d.lines, -1));
   wos.forEach(d => { if (d.status === 'done' || d.status === 'invoiced') mv(d.lines, -1); });
   const cust = new Map(custs.map(c => [c.id, num(c.opening)])), sup = new Map(sups.map(c => [c.id, num(c.opening)]));
   sales.forEach(d => d.partyId && cust.has(d.partyId) && cust.set(d.partyId, cust.get(d.partyId) + num(d.total)));
@@ -156,12 +156,14 @@ async function buildDoc(kind, a, old, s, D) {
       if (desc) line.desc = desc;
       if (!line.name) return { error: `Line ${i + 1}: name is required.` };
       if (!p) warn.push(`Line ${i + 1} "${line.name}" is free text (not linked to a stock item).`);
-      if (p && kind === 'sales' && !p.service && (D.stock.get(p.id) || 0) < qty) warn.push(`Stock for "${p.name}" is ${D.stock.get(p.id) || 0}, less than ${qty}.`);
-      if (p && kind === 'sales' && p.trackSerial) warn.push(`"${p.name}" tracks serial numbers — add them later in the app.`);
+      if (a.migrated_from && p && !p.service) line.noStock = true;
+      if (!a.migrated_from && p && kind === 'sales' && !p.service && (D.stock.get(p.id) || 0) < qty) warn.push(`Stock for "${p.name}" is ${D.stock.get(p.id) || 0}, less than ${qty}.`);
+      if (!a.migrated_from && p && kind === 'sales' && p.trackSerial) warn.push(`"${p.name}" tracks serial numbers — add them later in the app.`);
       lines.push(line);
     }
   } else if (old) { lines = JSON.parse(JSON.stringify(old.lines || [])); }
   else return { error: 'lines are required.' };
+  if (old && old.migrated && Array.isArray(a.lines)) lines.forEach(l => { const p = D.prods.find(x => x.id === l.productId); if (p && !p.service) l.noStock = true; });
   const date = a.date || (old ? old.date : todayM());
   let due = a.due != null ? a.due : old ? old.due : (kind === 'quotes' ? addDays(date, num(s.quoteDays) || 15) : kind === 'sales' && num(s.dueDays) ? addDays(date, num(s.dueDays)) : '');
   const d = {
@@ -174,7 +176,8 @@ async function buildDoc(kind, a, old, s, D) {
   if (c.discount < 0 || c.discount > c.sub + 0.0005 || (d.discType === 'p' && dv > 100)) return { error: 'Invoice discount must be between 0 and the subtotal.' };
   const body = {
     date, due: due || '', partyId: party && party.id ? party.id : '', partyName: partyName || (k.party === 'suppliers' ? 'مورد نقدي' : 'عميل نقدي'),
-    ref: a.ref != null ? String(a.ref) : old ? old.ref || '' : '',
+    ref: a.ref != null ? String(a.ref) : a.migrated_from ? String(a.migrated_from) : old ? old.ref || '' : '',
+    ...(a.migrated_from ? { migrated: String(a.migrated_from) } : old && old.migrated ? { migrated: old.migrated } : {}),
     lines: lines.map(l => ({ ...l, total: r3(l.total) })), discount: c.discount, discType: d.discType, discPct: d.discType === 'p' ? d.discPct : 0,
     vatOn: d.vatOn, vatRate: d.vatRate, sub: c.sub, vat: c.vat, total: c.total, notes: a.notes != null ? String(a.notes) : old ? old.notes || '' : '',
     updatedAt: nowIso(), updatedBy: 'claude', portalDirty: k.party === 'customers',
@@ -214,7 +217,8 @@ const S_DOC_FIELDS = {
   create_party_if_missing: { type: 'boolean', description: 'Create the party if not found (ask the user first)' },
   date: { type: 'string', description: 'YYYY-MM-DD (default today)' }, due: { type: 'string', description: 'YYYY-MM-DD; quotes: valid until; porders: expected delivery' },
   lines: S_LINES, discount: { type: 'number', description: 'Overall discount' }, discount_type: { type: 'string', enum: ['amount', 'percent'] },
-  vat: { type: 'boolean', description: 'Apply VAT (default true, rate from settings)' }, notes: { type: 'string' }, ref: { type: 'string', description: 'Reference / customer PO number' },
+  vat: { type: 'boolean', description: 'Apply VAT (default true, rate from settings)' },
+  migrated_from: { type: 'string', description: 'For documents moved from the old system (e.g. "دفترة 000798"): stored as the reference and the lines do NOT change stock (stock was already counted).' }, notes: { type: 'string' }, ref: { type: 'string', description: 'Reference / customer PO number' },
   confirm: { type: 'boolean', description: 'false/omitted = preview only. true = save (only after the user approved the preview).' },
 };
 const TOOLS = [
