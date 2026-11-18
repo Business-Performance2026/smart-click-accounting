@@ -1072,7 +1072,7 @@ function scanIntoEditor(){
     if(l){if(f.serial){if((l.serials||[]).some(x=>norm(x)===norm(f.serial)))return {ok:false,msg:T('الرقم مضاف مسبقاً: ','Already added: ')+f.serial};l.serials=[...(l.serials||[]),f.serial]}l.qty=r3(num(l.qty)+1)}
     else{
       const price=KIND[E.kind].party==='suppliers'?num(p.cost):num(p.price);
-      l={productId:p.id,name:p.name,qty:1,price,disc:0,serials:f.serial?[f.serial]:[]};
+      l={productId:p.id,name:p.name,...(p.desc?{desc:String(p.desc).trim()}:{}),qty:1,price,disc:0,serials:f.serial?[f.serial]:[]};
       const empty=E.d.lines.findIndex(x=>!x.name);if(empty>=0)E.d.lines.splice(empty,1,l);else E.d.lines.push(l);
     }
     if(!E.d.lines.some(x=>!x.name))E.d.lines.push({productId:'',name:'',qty:1,price:'',disc:0});
@@ -1849,7 +1849,7 @@ function readLines(){
 function onLineProduct(inp){
   if(linesBusy||!E)return;
   const el=inp.closest('.ln');const p=productByKey(inp.value);
-  if(p){el.dataset.pid=p.id;inp.value=p.name;{const r1=inp.closest('.r1');let im=r1.querySelector('.l-img');if(p.img){if(!im){im=document.createElement('img');im.className='l-img';im.alt='';r1.insertBefore(im,inp)}im.src=p.img}else if(im)im.remove()}const pr=$('.l-price',el);pr.value=fmt(KIND[E.kind].party==='suppliers'?(num(p.cost)||''):p.price).replace(/,/g,'');
+  if(p){el.dataset.pid=p.id;inp.value=p.name;{const r1=inp.closest('.r1');let im=r1.querySelector('.l-img');if(p.img){if(!im){im=document.createElement('img');im.className='l-img';im.alt='';r1.insertBefore(im,inp)}im.src=p.img}else if(im)im.remove()}{const dt=$('.l-desc',el);const pd=String(p.desc||'').trim();if(dt&&pd&&(!dt.value.trim()||dt.dataset.auto===dt.value)){dt.value=pd;dt.dataset.auto=pd;dt.rows=Math.max(1,Math.min(4,pd.split('\n').length))}else if(dt&&!pd&&dt.dataset.auto===dt.value){dt.value='';dt.dataset.auto=''}}const pr=$('.l-price',el);pr.value=fmt(KIND[E.kind].party==='suppliers'?(num(p.cost)||''):p.price).replace(/,/g,'');
     $('.stk',el).textContent=p.service?'':'المتوفر: '+fq(derive().stock.get(p.id)||0)+' '+(p.unit||'');
     const needSn=SN_KINDS.has(E.kind)&&(p.trackSerial||num(p.warrantyMonths)>0)&&!$('.l-sn',el);
     if(el===$$('#e-lines .ln').pop()){E.d.lines=readLines();E.d.lines.push({productId:'',name:'',qty:1,price:'',disc:0});renderLines();const n=$$('#e-lines .l-name').pop();if(n&&window.innerWidth>860)n.focus();}
