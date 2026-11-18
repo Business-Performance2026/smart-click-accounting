@@ -56,6 +56,16 @@ service cloud.firestore {
       allow write: if canWrite();
     }
 
+    // Outgoing email queue (sent by the "Trigger Email from Firestore" extension).
+    match /mail/{id} {
+      allow create: if canWrite()
+        && request.resource.data.keys().hasOnly(['to', 'message', 'meta'])
+        && request.resource.data.to is list && request.resource.data.to.size() <= 10
+        && request.resource.data.meta.by == request.auth.uid;
+      allow get: if canWrite();
+      allow list, update, delete: if false;
+    }
+
     // Business data
     match /{col}/{id} {
       allow read: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages'];

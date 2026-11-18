@@ -761,8 +761,8 @@ function todayApptsBlock(){
 }
 
 /* ---------- activity view ---------- */
-const COL_NAMES={sales:['فاتورة مبيعات','Sales invoice'],purchases:['فاتورة مشتريات','Purchase invoice'],quotes:['عرض سعر','Quotation'],sreturns:['مرتجع مبيعات','Sales return'],preturns:['مرتجع مشتريات','Purchase return'],payments:['سند','Voucher'],customers:['عميل','Customer'],suppliers:['مورد','Supplier'],products:['صنف','Item'],appointments:['موعد','Appointment'],workorders:['أمر عمل','Work order'],meta:['الإعدادات','Settings'],staff:['مستخدم','User'],invites:['دعوة','Invite']};
-const ACT_INFO={create:['➕','أضاف','added','b-green'],update:['✏️','عدّل','edited','b-pri'],delete:['🗑️','حذف','deleted','b-red'],import:['⬆️','استورد','imported','b-amber']};
+const COL_NAMES={sales:['فاتورة مبيعات','Sales invoice'],purchases:['فاتورة مشتريات','Purchase invoice'],quotes:['عرض سعر','Quotation'],sreturns:['مرتجع مبيعات','Sales return'],preturns:['مرتجع مشتريات','Purchase return'],payments:['سند','Voucher'],customers:['عميل','Customer'],suppliers:['مورد','Supplier'],products:['صنف','Item'],appointments:['موعد','Appointment'],workorders:['أمر عمل','Work order'],meta:['الإعدادات','Settings'],staff:['مستخدم','User'],invites:['دعوة','Invite'],mail:['إيميل','Email']};
+const ACT_INFO={create:['➕','أضاف','added','b-green'],update:['✏️','عدّل','edited','b-pri'],delete:['🗑️','حذف','deleted','b-red'],import:['⬆️','استورد','imported','b-amber'],email:['📧','أرسل','sent','b-pri']};
 function activityOpen(a){
   if(a.action==='delete'||!a.docId)return '';
   if(KIND[a.col])return `data-act="openSub" data-type="doc" data-k="${a.col}" data-id="${esc(a.docId)}"`;
@@ -1514,6 +1514,7 @@ VIEWS.settings=()=>{
     <label>اعتبار الفاتورة بدون تاريخ استحقاق متأخرة بعد (أيام)<input id="s-overdueDays" type="number" value="${esc(s.overdueDays)}"></label>
     <label>لغة الفواتير المطبوعة<select id="s-printLang">${[['both','عربي + إنجليزي'],['ar','عربي'],['en','إنجليزي']].map(([v,t])=>`<option value="${v}" ${(s.printLang||'both')===v?'selected':''}>${t}</option>`).join('')}</select></label>
     <label style="display:flex;gap:8px;align-items:center;color:var(--ink);margin-top:22px"><input type="checkbox" id="s-printImages" ${s.printImages!==false?'checked':''}> ${T('إظهار صور الأصناف في الفواتير','Show item photos on invoices')}</label>
+    <label style="display:flex;gap:8px;align-items:flex-start;color:var(--ink);margin-top:22px"><input type="checkbox" id="s-emailAuto" ${s.emailAuto?'checked':''}> <span>${T('إرسال الإيميل تلقائياً من البرنامج مع PDF مرفق','Send emails automatically from the app with PDF attached')}<br><span class="muted" style="font-size:12px">${T('يتطلب تثبيت إضافة Trigger Email في Firebase','Requires the Trigger Email extension in Firebase')}</span></span></label>
     <label>لغة البرنامج<select id="s-uiLang" onchange="setLang(this.value)" translate="no"><option value="ar" ${LANG==='ar'?'selected':''}>العربية</option><option value="en" ${LANG==='en'?'selected':''}>English</option></select></label>
     <label style="grid-column:1/-1">الشروط والملاحظات أسفل الفاتورة<textarea id="s-terms">${esc(s.terms||'')}</textarea></label>
     <label style="grid-column:1/-1">بيانات الحساب البنكي (تظهر أسفل الفاتورة)<textarea id="s-bank">${esc(s.bank||'')}</textarea></label>
@@ -2272,28 +2273,79 @@ async function emailStart(o){
     subject=(L==='en'?'Statement of account':'كشف حساب')+(co?` — ${co}`:'');
     body=emailText('رصيد حسابكم الحالي','your current balance is','','',bal,0,party.name,party.nameEn,link);
   }
-  EM={sections,filename,party,partyCol};
+  const src=o.kind?{col:o.kind,id:o.id}:o.pay?{col:'payments',id:o.pay}:{col:o.col,id:o.id};
+  EM={sections,filename,party,partyCol,src};const AUTO=!!s.emailAuto;
   openModal(`<div data-keep><h3>إرسال بالإيميل</h3>
    <div class="grid" style="gap:10px">
     <label>إلى (البريد الإلكتروني)<input id="m-to" type="email" dir="ltr" value="${esc(party&&party.email||'')}" placeholder="name@example.com"></label>
     <label>الموضوع<input id="m-subj" value="${esc(subject)}"></label>
     <label>الرسالة<textarea id="m-body" style="min-height:170px">${esc(body)}</textarea></label>
-    <div class="muted" style="font-size:12.5px">${T('يفتح تطبيق البريد في جهازك برسالة جاهزة. لإرفاق الـ PDF أيضاً: نزّله أولاً ثم أرفقه في الرسالة.','Opens your mail app with a ready message. To also attach the PDF: download it first, then attach it.')}</div>
+    ${AUTO?`<label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="m-att" checked> 📎 ${T('إرفاق الملف PDF','Attach the PDF')} <span class="muted" translate="no" dir="ltr" style="font-size:12px">${esc(filename)}</span></label>
+    <div class="muted" style="font-size:12.5px">${T('يُرسل مباشرة من بريد الشركة إلى العميل.','Sent directly from the company email to the customer.')}</div>`
+    :`<div class="muted" style="font-size:12.5px">${T('يفتح تطبيق البريد في جهازك برسالة جاهزة. لإرفاق الـ PDF أيضاً: نزّله أولاً ثم أرفقه في الرسالة.','Opens your mail app with a ready message. To also attach the PDF: download it first, then attach it.')}</div>`}
     ${party&&!party.email?`<label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="m-save" checked> حفظ الإيميل في بيانات العميل</label>`:''}
     <div id="m-err"></div>
    </div>
-   <div class="btns" style="margin-top:14px;justify-content:flex-end"><button class="btn" data-act="closeModal">إلغاء</button><button class="btn" data-act="emailPdf">⬇︎ PDF</button><button class="btn pri" id="m-send" data-act="sendEmail">📧 ${T('فتح البريد','Open mail')}</button></div></div>`);
+   <div class="btns" style="margin-top:14px;justify-content:flex-end"><button class="btn" data-act="closeModal">إلغاء</button><button class="btn" data-act="emailPdf">⬇︎ PDF</button>${AUTO?`<button class="btn" data-act="sendEmailMailto">${T('تطبيق البريد','Mail app')}</button><button class="btn pri" id="m-send" data-act="sendEmailAuto">📧 ${T('إرسال','Send')}</button>`:`<button class="btn pri" id="m-send" data-act="sendEmail">📧 ${T('فتح البريد','Open mail')}</button>`}</div></div>`);
+}
+function emailTargets(){
+  const to=$('#m-to').value.split(/[,;\s]+/).filter(Boolean);
+  if(!to.length||!to.every(x=>EMAIL_RE.test(x))){$('#m-err').innerHTML=`<div class="banner" style="margin:0">${T('أدخل بريداً إلكترونياً صحيحاً','Enter a valid email address')}</div>`;return null}
+  return to;
+}
+async function afterEmail(ctx,to,extra){
+  if(!db||RO)return;
+  if($('#m-save')&&$('#m-save').checked&&ctx.party)await W(()=>db.collection(ctx.partyCol).doc(ctx.party.id).update({email:to[0]}));
+  if(ctx.src&&ctx.src.id&&cachedDoc(ctx.src.col,ctx.src.id)){try{await db.collection(ctx.src.col).doc(ctx.src.id).update({lastEmail:{to:to.join(', '),at:nowIso(),by:MYID||'',...(extra||{})}})}catch(e){console.warn(e)}}
 }
 async function sendEmail(){
-  if(!EM)return;
-  const to=$('#m-to').value.split(/[,;\s]+/).filter(Boolean);
-  if(!to.length||!to.every(x=>EMAIL_RE.test(x))){$('#m-err').innerHTML=`<div class="banner" style="margin:0">${T('أدخل بريداً إلكترونياً صحيحاً','Enter a valid email address')}</div>`;return}
+  if(!EM)return;const to=emailTargets();if(!to)return;
   const url=`mailto:${to.map(encodeURIComponent).join(',')}?subject=${encodeURIComponent($('#m-subj').value)}&body=${encodeURIComponent($('#m-body').value)}`;
-  const saveMail=$('#m-save')&&$('#m-save').checked;const ctx=EM;
+  const ctx=EM;
   location.href=url;
-  closeModal();
-  if(saveMail&&ctx.party&&db&&!RO)await W(()=>db.collection(ctx.partyCol).doc(ctx.party.id).update({email:to[0]}));
+  await afterEmail(ctx,to);closeModal();
 }
+const blobB64=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]||'');r.onerror=rej;r.readAsDataURL(b)});
+const MAIL_MAX=900000; // Firestore document limit is ~1MB
+function emailHtml(text){
+  const rtl=/[؀-ۿ]/.test(text.slice(0,40));
+  const body=esc(text).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1">$1</a>').replace(/\n/g,'<br>');
+  return `<div dir="${rtl?'rtl':'ltr'}" style="font-family:Tahoma,Arial,sans-serif;font-size:14px;line-height:1.7;color:#1f2937">${body}</div>`;
+}
+async function sendEmailAuto(){
+  if(!EM)return;const to=emailTargets();if(!to)return;
+  if(!db||RO){toast(T('ليست لديك صلاحية','No permission'));return}
+  const ctx=EM;const subject=$('#m-subj').value.trim()||ctx.filename;const text=$('#m-body').value;const attach=$('#m-att')&&$('#m-att').checked;
+  const btn=$('#m-send');btn.disabled=true;btn.innerHTML=`<span class="spin"></span> ${T('جارِ الإرسال…','Sending…')}`;
+  const fail=m=>{btn.disabled=false;btn.innerHTML='📧 '+T('إرسال','Send');$('#m-err').innerHTML=`<div class="banner" style="margin:0">${m}</div>`};
+  let attachments=[],note='';
+  if(attach){
+    const blob=await htmlToPdf(ctx.sections,ctx.filename,{blob:true});
+    if(!blob)return fail(T('تعذر تجهيز ملف PDF','Could not prepare the PDF'));
+    const b64=await blobB64(blob);
+    if(b64.length>MAIL_MAX)note=T('الملف كبير جداً للإرفاق، أُرسل الإيميل مع الرابط فقط.','The file is too large to attach; the email was sent with the link only.');
+    else attachments=[{filename:ctx.filename,content:b64,encoding:'base64',contentType:'application/pdf'}];
+  }
+  const F=window.FB.fns;const ref=F.doc(F.collection(FB.fs,'mail'));
+  const data={to,message:{subject,text,html:emailHtml(text),...(attachments.length?{attachments}:{})},meta:{at:nowIso(),by:MYID||'',byEmail:(AUTHU&&AUTHU.email||'').toLowerCase(),col:ctx.src&&ctx.src.col||'',docId:ctx.src&&ctx.src.id||''}};
+  try{const p=F.setDoc(ref,data);if(navigator.onLine)await p;else p.catch(e=>console.error('mail offline',e))}
+  catch(e){console.error(e);return fail(e&&e.code==='permission-denied'?T('لا توجد صلاحية للإرسال. الصق ملف firestore.rules الجديد في Firebase ← Firestore ← Rules ثم Publish.','No permission to send. Paste the new firestore.rules into Firebase → Firestore → Rules, then Publish.'):T('تعذر الإرسال، حاول مرة أخرى','Could not send, try again'))}
+  writeLog('email','mail',ref.id,null,null,{label:`${subject} → ${to.join(', ')}`});
+  await afterEmail(ctx,to,{mailId:ref.id});
+  closeModal();
+  toast(navigator.onLine?(note||T('جارِ إرسال الإيميل…','Sending email…')):T('سيُرسل الإيميل عند عودة الاتصال','The email will be sent when you are back online'),note?6000:3000);
+  watchMail(ref,to);
+}
+function watchMail(ref,to){
+  const F=window.FB.fns;let done=false,un=null;
+  const stop=()=>{done=true;try{un&&un()}catch(_){}};
+  const t=setTimeout(()=>{if(done)return;stop();toast(T('لم يتأكد إرسال الإيميل بعد. تأكد أن إضافة Trigger Email مثبتة في Firebase.','Email delivery not confirmed yet. Make sure the Trigger Email extension is installed in Firebase.'),7000)},90000);
+  try{un=F.onSnapshot(ref,x=>{if(done)return;const d=x.data&&x.data();const st=d&&d.delivery&&d.delivery.state;
+    if(st==='SUCCESS'){stop();clearTimeout(t);toast(T('تم إرسال الإيميل ✓ إلى ','Email sent ✓ to ')+to.join(', '),4000)}
+    else if(st==='ERROR'){stop();clearTimeout(t);console.error('mail',d.delivery.error);toast(T('فشل إرسال الإيميل: ','Email failed: ')+String(d.delivery.error||'').slice(0,140),8000)}
+  },()=>{})}catch(_){}
+}
+async function sendEmailMailto(){return sendEmail()}
 async function emailPdf(){if(EM)await htmlToPdf(EM.sections,EM.filename)}
 
 /* ---------- customer portal ---------- */
@@ -2597,7 +2649,7 @@ async function importGo(col){
 async function saveSettings(){
   const f=['company','companyEn','crNo','vatNo','phone','email','address','currency','terms','bank'];
   const body={...S.settings};f.forEach(k=>body[k]=$('#s-'+k).value.trim());
-  body.vatRate=num($('#s-vatRate').value);body.printImages=$('#s-printImages').checked;body.printLang=$('#s-printLang').value;body.quoteDays=num($('#s-quoteDays').value)||15;body.dueDays=num($('#s-dueDays').value);body.overdueDays=num($('#s-overdueDays').value)||30;
+  body.vatRate=num($('#s-vatRate').value);body.printImages=$('#s-printImages').checked;body.emailAuto=$('#s-emailAuto').checked;body.printLang=$('#s-printLang').value;body.quoteDays=num($('#s-quoteDays').value)||15;body.dueDays=num($('#s-dueDays').value);body.overdueDays=num($('#s-overdueDays').value)||30;
   await W(()=>db.doc('meta/settings').set(body),'تم حفظ الإعدادات ✓');
 }
 function onLogo(e){
@@ -2637,7 +2689,7 @@ const ACT={
   addInvite:()=>addInvite(),
   rmInvite:async o=>{if(await ask(T('حذف الدعوة؟','Delete invite?'),T('حذف','Delete'),true))await W(()=>db.doc('invites/'+o.id).delete(),T('تم','Done'))},
   rmStaff:async o=>{if(await ask(T('إزالة هذا المستخدم من البرنامج؟','Remove this user from the app?'),T('إزالة','Remove'),true))await W(()=>db.doc('staff/'+o.id).delete(),T('تم','Done'))},
-  emailDoc:o=>emailStart({kind:o.k,id:o.id}),emailPay:o=>emailStart({pay:o.id}),emailStatement:o=>emailStart({col:o.col,id:o.id,stmt:o.detail?'detail':'simple'}),sendEmail:()=>sendEmail(),
+  emailDoc:o=>emailStart({kind:o.k,id:o.id}),emailPay:o=>emailStart({pay:o.id}),emailStatement:o=>emailStart({col:o.col,id:o.id,stmt:o.detail?'detail':'simple'}),sendEmail:()=>sendEmail(),sendEmailAuto:()=>sendEmailAuto(),sendEmailMailto:()=>sendEmailMailto(),
   pdfStatementDetail:o=>{const p=S['_'+o.col].get(o.id);htmlToPdf(detailedStatement(o.col,o.id),`${T('كشف حساب مفصل','Detailed statement')} - ${p.name}.pdf`)},
   rep:o=>{Q.rep=o.v;render()},
   newDoc:o=>openEditor(o.k,null,newDocData(o.k,o.party)),

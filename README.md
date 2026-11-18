@@ -34,3 +34,10 @@
 
 - إعدادات `firebase-config.js` ليست سرية؛ الحماية كلها في `firestore.rules`.
 - لا ترفع أي نسخة احتياطية أو بيانات عملاء إلى هذا المستودع (المستودع عام).
+
+## الإرسال التلقائي بالإيميل (خطة Blaze)
+1. Firebase ← Extensions ← ثبّت **Trigger Email from Firestore**.
+2. Email documents collection: `mail` — SMTP connection URI: `smtps://Smartclick.om%40gmail.com@smtp.gmail.com:465` مع كلمة مرور التطبيق في خانة SMTP password.
+3. Default FROM: `SMART CLICK <Smartclick.om@gmail.com>`.
+4. الصق `firestore.rules` في Firebase ← Firestore ← Rules ← Publish.
+5. في البرنامج: الإعدادات ← فعّل "إرسال الإيميل تلقائياً من البرنامج مع PDF مرفق".
