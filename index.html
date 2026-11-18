@@ -617,6 +617,7 @@ function renderShell(){
 const allReady=()=>COLS.every(c=>S.ready.has(c));
 
 function render(fromData){
+  if(allReady()&&S.settingsReady)setTimeout(maybeDaily,1500);
   hideTip();renderShell();
   const v=$('#view');
   if(!NODB&&!ROLE)return; // auth screens own the view until access is resolved
@@ -837,6 +838,73 @@ window.addEventListener('offline',()=>{OFFLINE=true;renderShell()});
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('sw',e)))}
 
 /* ---------- backup reminder ---------- */
+/* ---------- low stock ---------- */
+function lowStockItems(){
+  const st=derive().stock;
+  return S.products.filter(p=>!p.service&&num(p.minQty)>0&&(st.get(p.id)||0)<=num(p.minQty)+0.0005)
+    .map(p=>{const q=r3(st.get(p.id)||0);return {p,q,min:num(p.minQty),sug:Math.max(1,Math.ceil(num(p.minQty)*2-q))}})
+    .sort((a,b)=>(a.q-a.min)-(b.q-b.min));
+}
+function lastSupplierOf(pid){let best=null;for(const d of S.purchases)if(d.partyId&&(d.lines||[]).some(l=>l.productId===pid)&&(!best||(d.date||'')>(best.date||'')))best=d;return best?best.partyId:''}
+function lowStockPO(){
+  const items=lowStockItems();if(!items.length){toast(T('لا توجد أصناف ناقصة','No low-stock items'));return}
+  const cnt=new Map();items.forEach(it=>{const s=lastSupplierOf(it.p.id);if(s)cnt.set(s,(cnt.get(s)||0)+1)});
+  const sup=[...cnt].sort((a,b)=>b[1]-a[1])[0];const sid=sup?sup[0]:'';
+  const pick=sid?items.filter(it=>{const s=lastSupplierOf(it.p.id);return !s||s===sid}):items;
+  const d=newDocData('porders',sid);
+  d.lines=pick.map(it=>({productId:it.p.id,name:it.p.name,nameEn:it.p.nameEn||'',qty:it.sug,price:num(it.p.cost),disc:0}));
+  openEditor('porders',null,d);
+  if(pick.length<items.length)toast(T(`أُضيفت أصناف المورد الأكثر توريداً. باقي ${items.length-pick.length} صنف لموردين آخرين.`,`Added items for the main supplier. ${items.length-pick.length} items belong to other suppliers.`),6000);
+}
+let DAILY_DONE=false;
+async function maybeDaily(){
+  if(DAILY_DONE||!ADMIN||RO||!db||!allReady())return;DAILY_DONE=true;
+  const s=S.settings||{};const t=today();
+  if(!s.lowStockAlert||!s.emailAuto||s.lowStockDay===t)return;
+  const to=String(s.lowStockTo||s.email||'').split(/[,;\s]+/).filter(x=>EMAIL_RE.test(x));if(!to.length)return;
+  try{await db.doc('meta/settings').update({lowStockDay:t})}catch(e){return}
+  const items=lowStockItems();if(!items.length)return;
+  const rows=items.map(it=>`<tr><td style="padding:6px 8px;border-bottom:1px solid #eee">${esc(it.p.name)}${it.p.code?` <span style="color:#888">(${esc(it.p.code)})</span>`:''}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;color:${it.q<=0?'#b91c1c':'#b45309'};font-weight:700">${fq(it.q)}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">${fq(it.min)}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">${fq(it.sug)}</td></tr>`).join('');
+  const html=`<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;font-size:14px;color:#1f2937"><p>تنبيه يومي: <b>${items.length}</b> صنف وصل للحد الأدنى أو أقل.</p><table style="border-collapse:collapse;width:100%;max-width:640px"><tr style="background:#0f766e;color:#fff"><th style="padding:8px;text-align:right">الصنف</th><th style="padding:8px">المتوفر</th><th style="padding:8px">الحد الأدنى</th><th style="padding:8px">الكمية المقترحة للطلب</th></tr>${rows}</table><p style="color:#666;font-size:12px">لإنشاء أمر شراء بهذه الأصناف: افتح البرنامج ← الأصناف والمخزون ← نافد / تحت الحد ← «أمر شراء للناقص».</p><p style="color:#666;font-size:12px">${esc(s.company||'')}</p></div>`;
+  const text=`تنبيه نقص المخزون (${items.length} صنف):\n`+items.map(it=>`- ${it.p.name}: المتوفر ${fq(it.q)} / الحد الأدنى ${fq(it.min)} / اطلب ${fq(it.sug)}`).join('\n');
+  try{const F=window.FB.fns;await F.setDoc(F.doc(F.collection(FB.fs,'mail')),{to,message:{subject:`تنبيه نقص المخزون — ${items.length} صنف — ${fdate(t)}`,text,html},meta:{at:nowIso(),by:MYID||'',byEmail:(AUTHU&&AUTHU.email||'').toLowerCase(),col:'products',docId:'lowstock'}})}catch(e){console.warn('lowstock mail',e)}
+}
+
+/* ---------- e-invoicing (Fawtara) readiness ---------- */
+function einvIssues(kind,d){
+  const s=ST(),out=[];
+  if(!s.vatNo)out.push(T('الرقم الضريبي للشركة','Company VATIN'));
+  if(!s.crNo)out.push(T('السجل التجاري للشركة','Company CR number'));
+  if(!s.address||!s.city)out.push(T('عنوان الشركة والمدينة','Company address & city'));
+  const c=d.partyId?S._customers.get(d.partyId):null;
+  if(c&&c.vatNo&&(!c.address||!c.city))out.push(T('عنوان العميل ومدينته (عميل مسجّل ضريبياً)','Customer address & city (VAT-registered customer)'));
+  if(kind==='sreturns'&&!d.invoiceId)out.push(T('ربط إشعار الدائن بالفاتورة الأصلية','Link the credit note to the original invoice'));
+  if((d.lines||[]).some(l=>!String(l.name||'').trim()))out.push(T('اسم كل صنف','Every item name'));
+  return out;
+}
+function einvType(d){const c=d.partyId?S._customers.get(d.partyId):null;return c&&c.vatNo?['فاتورة ضريبية (B2B)','Tax invoice (B2B)']:['فاتورة ضريبية مبسطة (B2C)','Simplified tax invoice (B2C)']}
+function einvBadge(kind,d){
+  if(!ST().einvCheck||(kind!=='sales'&&kind!=='sreturns'))return '';
+  const iss=einvIssues(kind,d);const ty=einvType(d);
+  return `<div class="muted" style="font-size:12.5px;margin:-4px 0 10px">🧾 ${T('فوترة','Fawtara')}: ${iss.length?`<span style="color:var(--amber);font-weight:600">⚠ ${T('ناقص','Missing')}: ${esc(iss.join('، '))}</span>`:`<span style="color:var(--green,#17803d);font-weight:600">✓ ${T('البيانات مكتملة','Data complete')}</span> · ${T(ty[0],ty[1])}`}</div>`;
+}
+const xe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+function ublXml(kind,d){
+  const s=ST(),cn=kind==='sreturns',c=d.partyId?S._customers.get(d.partyId)||{}:{};
+  const A=v=>`currencyID="OMR">${r3(v).toFixed(3)}`;
+  const lines=d.lines||[];const lineNet=lines.reduce((a,l)=>a+num(l.total),0);
+  const disc=num(d.discount),taxable=r3(num(d.sub)-disc),vat=num(d.vat),cat=d.vatOn?'S':'O',pct=d.vatOn?num(d.vatRate):0;
+  const tm=(()=>{const x=new Date(d.createdAt||Date.now());return isNaN(x)?'00:00:00':x.toTimeString().slice(0,8)})();
+  const party=(nm,vat,cr,addr,city,postal,role)=>`<cac:${role}><cac:Party>${cr?`<cac:PartyIdentification><cbc:ID schemeID="CRN">${xe(cr)}</cbc:ID></cac:PartyIdentification>`:''}<cac:PartyName><cbc:Name>${xe(nm)}</cbc:Name></cac:PartyName><cac:PostalAddress><cbc:StreetName>${xe(addr||'')}</cbc:StreetName><cbc:CityName>${xe(city||'')}</cbc:CityName><cbc:PostalZone>${xe(postal||'')}</cbc:PostalZone><cac:Country><cbc:IdentificationCode>OM</cbc:IdentificationCode></cac:Country></cac:PostalAddress>${vat?`<cac:PartyTaxScheme><cbc:CompanyID>${xe(vat)}</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>`:''}<cac:PartyLegalEntity><cbc:RegistrationName>${xe(nm)}</cbc:RegistrationName></cac:PartyLegalEntity></cac:Party></cac:${role}>`;
+  const L=cn?'CreditNoteLine':'InvoiceLine',Q=cn?'CreditedQuantity':'InvoicedQuantity';
+  const body=lines.map((l,i)=>{const g=r3(num(l.qty)*num(l.price)),ld=r3(g-num(l.total));return `<cac:${L}><cbc:ID>${i+1}</cbc:ID><cbc:${Q} unitCode="C62">${num(l.qty)}</cbc:${Q}><cbc:LineExtensionAmount ${A(l.total)}</cbc:LineExtensionAmount>${ld>0.0005?`<cac:AllowanceCharge><cbc:ChargeIndicator>false</cbc:ChargeIndicator><cbc:Amount ${A(ld)}</cbc:Amount></cac:AllowanceCharge>`:''}<cac:Item>${l.desc?`<cbc:Description>${xe(l.desc)}</cbc:Description>`:''}<cbc:Name>${xe(l.name)}</cbc:Name>${l.productId&&S._products.get(l.productId)&&S._products.get(l.productId).code?`<cac:SellersItemIdentification><cbc:ID>${xe(S._products.get(l.productId).code)}</cbc:ID></cac:SellersItemIdentification>`:''}<cac:ClassifiedTaxCategory><cbc:ID>${cat}</cbc:ID><cbc:Percent>${pct}</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:ClassifiedTaxCategory></cac:Item><cac:Price><cbc:PriceAmount ${A(l.price)}</cbc:PriceAmount></cac:Price></cac:${L}>`}).join('');
+  const root=cn?'CreditNote':'Invoice';
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- SMART CLICK — preparatory UBL 2.1 export for Oman Fawtara (PINT OM). Not validated by an accredited service provider. -->
+<${root} xmlns="urn:oasis:names:specification:ubl:schema:xsd:${root}-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"><cbc:CustomizationID>urn:peppol:pint:billing-1@om-1</cbc:CustomizationID><cbc:ProfileID>urn:peppol:bis:billing</cbc:ProfileID><cbc:ID>${xe(docNo(kind,d.no))}</cbc:ID><cbc:IssueDate>${xe(d.date)}</cbc:IssueDate><cbc:IssueTime>${tm}</cbc:IssueTime>${!cn&&d.due?`<cbc:DueDate>${xe(d.due)}</cbc:DueDate>`:''}<cbc:${cn?'CreditNoteTypeCode':'InvoiceTypeCode'}>${cn?381:388}</cbc:${cn?'CreditNoteTypeCode':'InvoiceTypeCode'}>${d.notes?`<cbc:Note>${xe(d.notes)}</cbc:Note>`:''}<cbc:DocumentCurrencyCode>OMR</cbc:DocumentCurrencyCode>${cn&&d.invoiceNo?`<cac:BillingReference><cac:InvoiceDocumentReference><cbc:ID>${xe(d.invoiceNo)}</cbc:ID>${(()=>{const o=d.invoiceId&&S._sales.get(d.invoiceId);return o?`<cbc:IssueDate>${xe(o.date)}</cbc:IssueDate>`:''})()}</cac:InvoiceDocumentReference></cac:BillingReference>`:''}${party(s.company||'',s.vatNo,s.crNo,s.address,s.city,s.postal,'AccountingSupplierParty')}${party(d.partyName||c.name||'',c.vatNo,'',c.address,c.city,'','AccountingCustomerParty')}${disc>0.0005?`<cac:AllowanceCharge><cbc:ChargeIndicator>false</cbc:ChargeIndicator><cbc:AllowanceChargeReason>Discount</cbc:AllowanceChargeReason><cbc:Amount ${A(disc)}</cbc:Amount><cac:TaxCategory><cbc:ID>${cat}</cbc:ID><cbc:Percent>${pct}</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:AllowanceCharge>`:''}<cac:TaxTotal><cbc:TaxAmount ${A(vat)}</cbc:TaxAmount><cac:TaxSubtotal><cbc:TaxableAmount ${A(taxable)}</cbc:TaxableAmount><cbc:TaxAmount ${A(vat)}</cbc:TaxAmount><cac:TaxCategory><cbc:ID>${cat}</cbc:ID><cbc:Percent>${pct}</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal></cac:TaxTotal><cac:LegalMonetaryTotal><cbc:LineExtensionAmount ${A(lineNet)}</cbc:LineExtensionAmount><cbc:TaxExclusiveAmount ${A(taxable)}</cbc:TaxExclusiveAmount><cbc:TaxInclusiveAmount ${A(d.total)}</cbc:TaxInclusiveAmount>${disc>0.0005?`<cbc:AllowanceTotalAmount ${A(disc)}</cbc:AllowanceTotalAmount>`:''}<cbc:PayableAmount ${A(d.total)}</cbc:PayableAmount></cac:LegalMonetaryTotal>${body}</${root}>`;
+}
+async function xmlDoc(k,id){const d=S['_'+k].get(id);if(!d)return;const iss=einvIssues(k,d);if(iss.length)toast(T('تنبيه: بيانات ناقصة: ','Warning: missing data: ')+iss.join('، '),5000);await saveFile(`${docNo(k,d.no)}.xml`,new Blob([ublXml(k,d)],{type:'application/xml'}))}
+
 function backupReminder(){
   if(!ADMIN||!allReady())return '';
   const total=S.sales.length+S.purchases.length+S.payments.length+S.customers.length;if(total<3)return '';
@@ -1395,6 +1463,7 @@ VIEWS.products=()=>{
   return `${loading()}<div class="head"><h1>الأصناف والمخزون</h1><button class="btn" data-act="openSub" data-type="stocktake" data-id="x">📋 ${T('جرد','Stocktake')}${Object.keys(STK).length?` <span class="badge b-amber">${Object.keys(STK).length}</span>`:''}</button>${addBtn('editProduct','صنف')}</div>
   <div class="search"><input id="q-products" placeholder="بحث بالاسم أو الكود أو الباركود…" value="${esc(Q.products||'')}" data-q="products"><button class="btn icon" data-act="scanSearch" title="${T('مسح باركود','Scan barcode')}">📷</button></div>
   <div class="tabs">${[['all','الكل'],['in','متوفر'],['low','نافد / تحت الحد']].map(([v,t])=>`<button class="${f===v?'on':''}" data-act="filt" data-k="products" data-v="${v}">${t}</button>`).join('')}<span class="muted" style="margin-inline-start:auto;font-size:13px;align-self:center">${arr.length} صنف · قيمة المخزون ${fmt(val)}</span></div>
+  ${f==='low'&&!RO&&lowStockItems().length?`<div class="card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-color:#e9cf8c;background:#fffaf0"><div style="flex:1;min-width:180px;font-size:13.5px">${T(`${lowStockItems().length} صنف وصل للحد الأدنى.`,`${lowStockItems().length} items at or below minimum.`)}</div><button class="btn pri" data-act="lowStockPO">📋 ${T('أمر شراء للناقص','Purchase order for low stock')}</button></div>`:''}
   <div class="list">${arr.length?arr.slice(0,400).map(p=>{const s=d.stock.get(p.id)||0;const low=!p.service&&s<=num(p.minQty);return `<div class="item" data-act="openSub" data-type="product" data-id="${p.id}">${thumbHtml(p)}<div class="m"><div class="t" translate="no" dir="auto">${esc(dn(p))}</div><div class="d">${p.code?`<span class="num">${esc(p.code)}</span> · `:''}سعر البيع ${fmt(p.price)}${p.category?' · '+esc(p.category):''}</div></div><div class="a">${p.service?'<span class="badge">خدمة</span>':`<span class="num ${s<=0?'neg':low?'neg':''}">${fq(s)}</span> <span class="muted" style="font-weight:400;font-size:12px">${esc(p.unit||'')}</span>`}</div></div>`}).join(''):`<div class="empty">لا توجد أصناف ${q?'مطابقة':'بعد'}</div>`}</div>
   ${arr.length>400?`<p class="muted">يتم عرض أول 400، استخدم البحث.</p>`:''}`;
 };
@@ -1602,7 +1671,13 @@ VIEWS.reports=()=>{
 /* ---------- settings ---------- */
 VIEWS.settings=()=>{
   const s=ST();
+  const eiss=einvIssues('sales',{lines:[]});
   return `<div class="head"><h1>الإعدادات والاستيراد</h1></div>
+  <div class="card" style="border-color:#bfd7f5;background:#f5f9ff"><h3>🧾 ${T('الفوترة الإلكترونية (فوترة)','E-invoicing (Fawtara)')}</h3>
+   <p style="margin:4px 0 8px;font-size:13.5px">${T('حسب قرار جهاز الضرائب 189/2026: الشركات التي توريداتها السنوية 5 ملايين ر.ع. أو أقل تبدأ الإلزام في <b>1 أكتوبر 2027</b> (والأكبر في 1 أبريل 2027). الإرسال يتم عبر مزوّد خدمة معتمد من الجهاز، وبعدها لا تُقبل فواتير PDF كفاتورة ضريبية.','Per OTA Decision 189/2026: businesses with annual supplies of OMR 5M or less must comply from <b>1 October 2027</b> (larger ones from 1 April 2027). Invoices go through an OTA-accredited service provider; after that, PDF invoices no longer count as tax invoices.')}</p>
+   <div style="font-size:13px;margin-bottom:8px">${T('جاهزية بيانات الشركة','Company data readiness')}: ${eiss.length?`<span style="color:var(--amber);font-weight:600">⚠ ${T('ناقص','Missing')}: ${esc(eiss.join('، '))}</span>`:`<span style="color:#17803d;font-weight:600">✓ ${T('مكتملة','Complete')}</span>`}</div>
+   <label style="display:flex;gap:8px;align-items:flex-start;color:var(--ink)"><input type="checkbox" id="s-einvCheck" ${s.einvCheck?'checked':''}> <span>${T('إظهار فحص جاهزية «فوترة» في الفواتير وزر تصدير XML','Show Fawtara readiness on invoices and the XML export button')}<br><span class="muted" style="font-size:12px">${T('ملف XML تجهيزي بصيغة UBL — يُعتمد فقط بعد الربط مع مزوّد الخدمة.','Preparatory UBL XML — only valid once connected to a service provider.')}</span></span></label>
+  </div>
   <div class="card"><h3>بيانات الشركة (تظهر في الفواتير)</h3>
    <div class="grid g2 f">
     <label>اسم الشركة<input id="s-company" value="${esc(s.company)}"></label>
@@ -1612,6 +1687,8 @@ VIEWS.settings=()=>{
     <label>الهاتف<input id="s-phone" value="${esc(s.phone||'')}" dir="ltr"></label>
     <label>البريد الإلكتروني<input id="s-email" value="${esc(s.email||'')}" dir="ltr"></label>
     <label style="grid-column:1/-1">العنوان<input id="s-address" value="${esc(s.address||'')}"></label>
+    <label>${T('المدينة / الولاية','City / Wilayat')}<input id="s-city" value="${esc(s.city||'')}"></label>
+    <label>${T('الرمز البريدي','Postal code')}<input id="s-postal" value="${esc(s.postal||'')}" dir="ltr"></label>
     <label>نسبة ضريبة القيمة المضافة %<input id="s-vatRate" type="number" step="0.01" value="${esc(s.vatRate)}"></label>
     <label>رمز العملة<input id="s-currency" value="${esc(s.currency)}"></label>
     <label>صلاحية عرض السعر (أيام)<input id="s-quoteDays" type="number" value="${esc(s.quoteDays)}"></label>
@@ -1620,6 +1697,8 @@ VIEWS.settings=()=>{
     <label>لغة الفواتير المطبوعة<select id="s-printLang">${[['both','عربي + إنجليزي'],['ar','عربي'],['en','إنجليزي']].map(([v,t])=>`<option value="${v}" ${(s.printLang||'both')===v?'selected':''}>${t}</option>`).join('')}</select></label>
     <label style="display:flex;gap:8px;align-items:center;color:var(--ink);margin-top:22px"><input type="checkbox" id="s-printImages" ${s.printImages!==false?'checked':''}> ${T('إظهار صور الأصناف في الفواتير','Show item photos on invoices')}</label>
     <label style="display:flex;gap:8px;align-items:flex-start;color:var(--ink);margin-top:22px"><input type="checkbox" id="s-emailAuto" ${s.emailAuto?'checked':''}> <span>${T('إرسال الإيميل تلقائياً من البرنامج مع PDF مرفق','Send emails automatically from the app with PDF attached')}<br><span class="muted" style="font-size:12px">${T('يتطلب تثبيت إضافة Trigger Email في Firebase','Requires the Trigger Email extension in Firebase')}</span></span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;color:var(--ink);margin-top:22px"><input type="checkbox" id="s-lowStockAlert" ${s.lowStockAlert?'checked':''}> <span>${T('تنبيه يومي بالإيميل بالأصناف الناقصة','Daily email alert for low-stock items')}<br><span class="muted" style="font-size:12px">${T('للأصناف اللي لها «حد أدنى» في بطاقتها. يتطلب تفعيل الإرسال التلقائي','For items with a minimum quantity set. Requires automatic email')}</span></span></label>
+    <label>${T('إيميل تنبيه المخزون','Stock alert email')}<input id="s-lowStockTo" value="${esc(s.lowStockTo||'')}" dir="ltr" placeholder="${esc(s.email||'name@example.com')}"></label>
     <label>لغة البرنامج<select id="s-uiLang" onchange="setLang(this.value)" translate="no"><option value="ar" ${LANG==='ar'?'selected':''}>العربية</option><option value="en" ${LANG==='en'?'selected':''}>English</option></select></label>
     <label style="grid-column:1/-1">الشروط والملاحظات أسفل الفاتورة<textarea id="s-terms">${esc(s.terms||'')}</textarea></label>
     <label style="grid-column:1/-1">بيانات الحساب البنكي (تظهر أسفل الفاتورة)<textarea id="s-bank">${esc(s.bank||'')}</textarea></label>
@@ -1679,6 +1758,7 @@ function docView(kind,id){
    ${RO?'':`<button class="btn" data-act="editDoc" data-k="${kind}" data-id="${id}">✏️ تعديل</button>`}
    ${downloads?`<button class="btn pri" data-act="pdfDoc" data-k="${kind}" data-id="${id}">⬇︎ PDF</button>`:''}
    ${MCP?`<button class="btn" data-act="emailDoc" data-k="${kind}" data-id="${id}">📧 إيميل</button>`:''}
+   ${ST().einvCheck&&kind==='sales'&&downloads?`<button class="btn" data-act="xmlDoc" data-k="${kind}" data-id="${id}">XML</button>`:''}
    ${k.party==='customers'&&d.partyId?`<button class="btn" data-act="waDoc" data-k="${kind}" data-id="${id}">واتساب</button>`:wa?`<a class="btn" href="${wa}" target="_blank" rel="noopener">واتساب</a>`:''}
    ${!RO&&!isQuo(kind)&&rem>0.0005?`<button class="btn" data-act="newPay" data-t="${kind==='sales'?'in':'out'}" data-inv="${id}" data-k="${kind}">💵 تسجيل دفعة</button>`:''}
    ${!RO&&kind==='quotes'?`<button class="btn" data-act="newWO" data-quote="${id}">🛠️ ${T('أمر عمل','Work order')}</button>`:''}
@@ -1694,6 +1774,7 @@ function docView(kind,id){
   </div>
   ${!isQuo(kind)?`<div class="grid g3" style="margin-bottom:12px"><div class="stat"><div class="k">الإجمالي</div><div class="v">${money(d.total)}</div></div><div class="stat"><div class="k">المدفوع</div><div class="v pos">${money(cashPaid)}</div>${retAmt>0.0005?`<div class="s">${T('مرتجع','Returned')}: ${fmt(retAmt)}</div>`:''}</div>${rem<-0.0005?`<div class="stat" style="border-color:var(--amber)"><div class="k">مبلغ زائد (رصيد لصالح ${kind==='sales'?'العميل':'المورد'})</div><div class="v" style="color:var(--amber)">${money(-rem)}</div><div class="s">المدفوع أكثر من الإجمالي</div></div>`:`<div class="stat"><div class="k">المتبقي</div><div class="v ${rem>0.0005?'neg':''}">${money(rem)}</div></div>`}</div>`:''}
   ${d.createdBy||d.updatedBy?`<div class="muted" style="font-size:12.5px;margin:-4px 0 6px">👤 ${T('أنشأها','Created by')} <span translate="no" dir="auto">${esc(staffName(d.createdBy)||'—')}</span>${d.updatedBy&&d.updatedBy!==d.createdBy?` · ${T('آخر تعديل','Last edit')} <span translate="no" dir="auto">${esc(staffName(d.updatedBy))}</span>`:''}${ADMIN?` · <a href="#" data-act="docHistory" data-id="${id}">${T('السجل','History')}</a>`:''}</div>`:''}
+  ${einvBadge(kind,d)}
   ${d.lastEmail?`<div class="muted" style="font-size:12.5px;margin:-4px 0 10px">📧 آخر إرسال بالإيميل: <span translate="no" dir="ltr">${esc(d.lastEmail.to)}</span> · ${fdate((d.lastEmail.at||'').slice(0,10))}</div>`:''}
   ${pays.length?`<div class="card"><h3>الدفعات</h3><div class="list" style="border:0">${pays.map(payItem).join('')}</div></div>`:''}
   ${rets.length?`<div class="card"><h3>${T('المرتجعات','Returns')}</h3><div class="list" style="border:0">${rets.map(r=>docItem(retKindOf(kind),r)).join('')}</div></div>`:''}
@@ -2134,6 +2215,7 @@ function editParty(col,id){
   <label>الرقم الضريبي<input id="p-vatNo" value="${esc(p.vatNo||'')}" dir="ltr"></label>
   <label>رصيد افتتاحي ${isC?'(عليه)':'(له)'}<input id="p-opening" inputmode="decimal" value="${num(p.opening)||''}" placeholder="0.000"></label>
   <label style="grid-column:1/-1">العنوان<input id="p-address" value="${esc(p.address||'')}"></label>
+  <label>${T('المدينة / الولاية','City / Wilayat')}<input id="p-city" value="${esc(p.city||'')}"></label>
   <label style="grid-column:1/-1">ملاحظات<textarea id="p-notes">${esc(p.notes||'')}</textarea></label>
   </div><div class="btns" style="margin-top:14px;justify-content:flex-end"><button class="btn" data-act="closeModal">إلغاء</button><button class="btn pri" data-act="saveParty" data-col="${col}" data-id="${id||''}">حفظ</button></div></div>`);
 }
@@ -2141,7 +2223,7 @@ async function saveParty(col,id){
   const name=$('#p-name').value.trim();if(!name){toast('الاسم مطلوب');return}
   const dup=S[col].find(x=>norm(x.name)===norm(name)&&x.id!==id);if(dup){toast('يوجد سجل بنفس الاسم');return}
   const old=id?S['_'+col].get(id)||{}:{};
-  const body={...old,name,nameEn:$('#p-nameEn').value.trim(),phone:$('#p-phone').value.trim(),email:$('#p-email').value.trim(),vatNo:$('#p-vatNo').value.trim(),opening:r3(num($('#p-opening').value)),address:$('#p-address').value.trim(),notes:$('#p-notes').value.trim(),updatedAt:nowIso()};
+  const body={...old,name,nameEn:$('#p-nameEn').value.trim(),phone:$('#p-phone').value.trim(),email:$('#p-email').value.trim(),vatNo:$('#p-vatNo').value.trim(),opening:r3(num($('#p-opening').value)),address:$('#p-address').value.trim(),city:($('#p-city')?$('#p-city').value.trim():(old.city||'')),notes:$('#p-notes').value.trim(),updatedAt:nowIso()};
   delete body.id;if(!id){body.createdAt=nowIso();body.createdBy=MYID||''}
   const ref=id?db.collection(col).doc(id):db.collection(col).doc();
   const ok=await W(()=>ref.set(body),'تم الحفظ ✓');
@@ -2625,7 +2707,7 @@ function startData(){
       schedule();
     },e=>{if(c==='sreturns'||c==='preturns'||c==='appointments'||c==='workorders'||c==='porders'){console.warn(c,e);S.ready.add(c);S.rulesOld=true;renderShell();schedule();return}onErr(c)(e)});
   });
-  db.doc('meta/settings').onSnapshot(s=>{const local=s.metadata&&s.metadata.hasPendingWrites;S.settings=s.exists?s.data():{};S.settingsReady=true;schedule();if(local&&!RO){S.customers.filter(c=>c.portalToken).forEach(c=>queuePortalSync(c.id))}},onErr('settings'));
+  db.doc('meta/settings').onSnapshot(s=>{const local=s.metadata&&s.metadata.hasPendingWrites;const prev=S.settings||{};S.settings=s.exists?s.data():{};S.settingsReady=true;schedule();const PF=['company','companyEn','crNo','vatNo','phone','email','address','city','postal','currency','terms','bank','logo','printLang','printImages','vatRate'];if(local&&!RO&&PF.some(k=>JSON.stringify(prev[k])!==JSON.stringify(S.settings[k]))){S.customers.filter(c=>c.portalToken).forEach(c=>queuePortalSync(c.id))}},onErr('settings'));
   if(ADMIN)db.collection('activity').recent('at',500,list=>{S.activity=list;if(route==='activity'&&!sub&&!E)schedule()},e=>{console.warn('activity',e&&e.code);S.activityErr=true;if(route==='activity')schedule()});
   db.collection('staff').onSnapshot(s=>{STF.staff=s.docs.map(x=>({...x.data(),id:x.id}));if((route==='settings'||route==='appointments')&&!E)schedule()},()=>{});
   if(ADMIN){
@@ -2776,9 +2858,9 @@ async function importGo(col){
 
 /* ---------- settings save ---------- */
 async function saveSettings(){
-  const f=['company','companyEn','crNo','vatNo','phone','email','address','currency','terms','bank'];
+  const f=['company','companyEn','crNo','vatNo','phone','email','address','city','postal','currency','terms','bank','lowStockTo'];
   const body={...S.settings};f.forEach(k=>body[k]=$('#s-'+k).value.trim());
-  body.vatRate=num($('#s-vatRate').value);body.printImages=$('#s-printImages').checked;body.emailAuto=$('#s-emailAuto').checked;body.printLang=$('#s-printLang').value;body.quoteDays=num($('#s-quoteDays').value)||15;body.dueDays=num($('#s-dueDays').value);body.overdueDays=num($('#s-overdueDays').value)||30;
+  body.vatRate=num($('#s-vatRate').value);body.printImages=$('#s-printImages').checked;body.emailAuto=$('#s-emailAuto').checked;body.lowStockAlert=$('#s-lowStockAlert').checked;body.einvCheck=!!($('#s-einvCheck')&&$('#s-einvCheck').checked);body.printLang=$('#s-printLang').value;body.quoteDays=num($('#s-quoteDays').value)||15;body.dueDays=num($('#s-dueDays').value);body.overdueDays=num($('#s-overdueDays').value)||30;
   await W(()=>db.doc('meta/settings').set(body),'تم حفظ الإعدادات ✓');
 }
 function onLogo(e){
@@ -2802,7 +2884,7 @@ const ACT={
   filt:o=>{Q[o.k+'_f']=o.v;render()},
   showLate:()=>{Q.sales_f='late';go('sales')},
   lang:()=>{closeSide();setLang(LANG==='en'?'ar':'en');if(!ROLE&&AUTHU!==undefined)resolveAccess()},
-  emailPdf:()=>emailPdf(),supBalPdf:()=>supBalPdf(),custBalPdf:()=>custBalPdf(),exportJson:()=>exportJson(),
+  emailPdf:()=>emailPdf(),supBalPdf:()=>supBalPdf(),xmlDoc:o=>xmlDoc(o.k,o.id),lowStockPO:()=>lowStockPO(),custBalPdf:()=>custBalPdf(),exportJson:()=>exportJson(),
   portalWa:o=>portalWa(o.id),
   portalCopy:async o=>{try{const l=await portalLink(o.id);await navigator.clipboard.writeText(l);toast(T('تم نسخ الرابط ✓','Link copied ✓'))}catch(e){toast(T('تعذر النسخ','Could not copy'))}},
   portalOpen:o=>{const w=window.open('','_blank');portalLink(o.id).then(l=>{if(w)w.location.href=l}).catch(()=>w&&w.close())},
