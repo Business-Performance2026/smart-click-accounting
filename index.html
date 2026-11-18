@@ -868,17 +868,36 @@ function pushCard(){
   return `<div class="card"><h3>🔔 ${T('الإشعارات على هذا الجهاز','Notifications on this device')}</h3>
    <p class="muted" style="margin:2px 0 10px;font-size:13px">${T('تصلك حتى لو التطبيق مغلق. كل جهاز يُفعَّل لوحده.','Delivered even when the app is closed. Enable on each device separately.')}</p>
    ${warn?`<div class="banner" style="margin:0 0 10px">${warn}</div>`:''}
+   <div class="muted" style="font-size:12px;margin:-4px 0 10px">${T('حالة هذا الجهاز','This device')}: ${typeof Notification==='undefined'?T('غير مدعوم','not supported'):Notification.permission==='granted'?(on?'✅ '+T('مفعّلة','enabled'):T('مسموح، اضغط تفعيل','allowed — press Enable')):Notification.permission==='denied'?'⛔ '+T('محظورة من المتصفح','blocked by the browser'):T('لم تُفعّل بعد','not enabled yet')}${isIOS()?(isStandalone()?' · '+T('مفتوح من الشاشة الرئيسية ✓','opened from Home Screen ✓'):' · '+T('مفتوح من Safari — لازم من أيقونة الشاشة الرئيسية','opened in Safari — must open from the Home Screen icon')):''}</div>
    <div class="grid" style="gap:8px;margin-bottom:12px">${PUSH_CATS.filter(c=>ADMIN||!c[4]).map(c=>`<label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" class="push-c" data-c="${c[0]}" ${prefs[c[0]]?'checked':''}> ${c[1]} ${T(c[2],c[3])}</label>`).join('')}</div>
    <div class="btns">${on?`<button class="btn pri" data-act="pushSave">💾 ${T('حفظ الاختيارات','Save choices')}</button><button class="btn" data-act="pushTest">${T('إشعار تجريبي','Test notification')}</button><button class="btn red" data-act="pushOff">${T('إيقاف على هذا الجهاز','Turn off on this device')}</button>`:`<button class="btn pri" data-act="pushOn" ${warn&&!(!s.vapidKey&&ADMIN)?'':''}>🔔 ${T('تفعيل الإشعارات','Enable notifications')}</button>`}</div>
    ${ADMIN?`<details style="margin-top:12px"><summary class="muted" style="font-size:12.5px;cursor:pointer">${T('إعداد المدير: مفتاح الإشعارات (VAPID)','Admin setup: notification key (VAPID)')}</summary><div style="margin-top:8px;font-size:12.5px" class="muted">${T('من Firebase ← إعدادات المشروع ← Cloud Messaging ← Web Push certificates ← Generate key pair، انسخ المفتاح والصقه هنا.','Firebase → Project settings → Cloud Messaging → Web Push certificates → Generate key pair; copy the key and paste it here.')}</div><div class="btns" style="margin-top:8px"><input id="s-vapid" dir="ltr" value="${esc(s.vapidKey||'')}" placeholder="BPx…" style="flex:1;min-width:200px"><button class="btn" data-act="saveVapid">${T('حفظ','Save')}</button></div></details>`:''}
   </div>`;
 }
 function pushPrefsFromUI(){const p={};PUSH_CATS.forEach(c=>p[c[0]]=false);$$('.push-c').forEach(i=>p[i.dataset.c]=i.checked);return p}
+function pushBlockedHelp(){
+  openModal(`<div class="mh"><h3>🔔 ${T('الإشعارات محظورة لهذا الموقع','Notifications are blocked for this site')}</h3><button class="btn ghost" data-act="closeModal">✕</button></div>
+   <p>${T('المتصفح محفوظ عنده «رفض» للإشعارات. غيّرها مرة وحدة:','Your browser has “Block” saved for notifications. Change it once:')}</p>
+   <ul style="line-height:1.9;padding-inline-start:18px">
+    <li><b>${T('كروم على الكمبيوتر أو أندرويد','Chrome (computer or Android)')}</b>: ${T('اضغط أيقونة 🔒 أو ⚙️ جنب الرابط فوق ← الإشعارات (Notifications) ← سماح (Allow) ← حدّث الصفحة.','tap the 🔒 / ⚙️ icon next to the address → Notifications → Allow → reload.')}</li>
+    <li><b>${T('الآيفون','iPhone')}</b>: ${T('الإعدادات ← الإشعارات ← اختر تطبيق البرنامج ← السماح بالإشعارات. لازم يكون التطبيق مضاف للشاشة الرئيسية ومفتوح منها.','Settings → Notifications → pick the app → Allow Notifications. The app must be added to the Home Screen and opened from there.')}</li>
+   </ul>
+   <div class="btns"><button class="btn pri" data-act="closeModal">${T('تمام','OK')}</button></div>`);
+}
 async function pushOn(){
-  const s=ST();
+  const s=ST();const btn=$('[data-act=pushOn]');const reset=()=>{if(btn){btn.disabled=false;btn.innerHTML='🔔 '+T('تفعيل الإشعارات','Enable notifications')}};
+  if(btn){btn.disabled=true;btn.innerHTML=`<span class="spin"></span> ${T('جارِ التفعيل…','Enabling…')}`}
+  try{await pushOn2(s)}catch(e){console.error(e);toast(T('تعذر التفعيل: ','Could not enable: ')+((e&&e.message)||e||'').toString().slice(0,100),7000)}finally{reset()}
+}
+async function pushOn2(s){
   if(!pushSupported()){toast(isIOS()?T('أضف التطبيق للشاشة الرئيسية أولاً','Add the app to your Home Screen first'):T('المتصفح لا يدعم الإشعارات','Browser does not support notifications'),5000);return}
   if(!s.vapidKey){toast(T('مفتاح الإشعارات غير مُعدّ بعد','Notification key not set yet'),4000);return}
-  const perm=await Notification.requestPermission();if(perm!=='granted'){toast(T('لم يتم السماح بالإشعارات','Notifications were not allowed'),4000);return}
+  if(Notification.permission==='denied'){pushBlockedHelp();return}
+  let hint=setTimeout(()=>toast(T('إذا ما طلع لك طلب «السماح بالإشعارات»، اضغط أيقونة 🔔 أو 🔒 جنب الرابط فوق واختر «سماح».','If no “Allow notifications” prompt appears, click the 🔔 or 🔒 icon next to the address and choose “Allow”.'),9000),2500);
+  const perm=await new Promise(res=>{try{const r=Notification.requestPermission(res);if(r&&r.then)r.then(res)}catch(e){res('error')}});
+  clearTimeout(hint);
+  if(perm==='denied'){pushBlockedHelp();return}
+  if(perm!=='granted'){toast(T('لم يتم السماح بالإشعارات','Notifications were not allowed'),4000);return}
   try{
     toast(T('جارِ التفعيل…','Enabling…'),8000);
     const reg=await navigator.serviceWorker.register('sw.js');await navigator.serviceWorker.ready;
@@ -1959,8 +1978,8 @@ function paperDoc(kind,d){
   <table><tr><th style="width:30px">#</th>${showImg?'<th class="pimg"></th>':''}<th>${hasDesc?PL('الصنف','Item',1):PL('الصنف / الوصف','Item / Description',1)}</th>${hasDesc?`<th>${PL('الوصف','Description',1)}</th>`:''}<th class="n">${PL('الكمية','Qty',1)}</th><th class="n">${PL('السعر','Price',1)}</th>${hasDisc?`<th class="n">${PL('الخصم','Discount',1)}</th>`:''}<th class="n">${PL('الإجمالي','Amount',1)}</th></tr>
   ${(d.lines||[]).map((l,i)=>`<tr><td>${i+1}</td>${imgCell(l)}<td>${PN(l.name,lineEn(l))}${d.vatOn&&l.noVat?' <sup title="No VAT">*</sup>':''}${(l.serials||[]).length?`<div style="color:#555;font-size:11px" dir="ltr">S/N: ${esc(l.serials.join(', '))}</div>`:''}${num(l.warranty)&&(kind==='sales'||isWO(kind))?`<div style="color:#555;font-size:11px">${PL('الضمان','Warranty')}: ${fq(l.warranty)} ${PL('شهر','months')}${kind==='sales'?` — ${PL('حتى','until')} <span class="num">${fdate(addMonths(d.date,l.warranty))}</span>`:''}</div>`:''}</td>${hasDesc?`<td class="ldesc" dir="auto">${esc(l.desc||'')}</td>`:''}<td class="n num">${fq(l.qty)}</td><td class="n num">${fmt(l.price)}</td>${hasDisc?`<td class="n num">${discLabel(l)}</td>`:''}<td class="n num">${fmt(l.total)}</td></tr>`).join('')}</table>
   <div class="sum"><div class="notes">${esc(d.notes||'')}</div><table>
-   <tr><td>${PL('المجموع','Subtotal')}</td><td class="n num">${fmt(d.sub)}</td></tr>
-   ${num(d.discount)?`<tr><td>${PL('الخصم','Discount')}${d.discType==='p'&&num(d.discPct)?` (${fq(d.discPct)}%)`:''}</td><td class="n num">-${fmt(d.discount)}</td></tr>`:''}
+   ${(()=>{const gross=r3((d.lines||[]).reduce((a,l)=>a+num(l.qty)*num(l.price),0)),lineDisc=Math.max(0,r3(gross-num(d.sub))),totDisc=r3(lineDisc+num(d.discount));
+     return `<tr><td>${PL('المجموع','Subtotal')}</td><td class="n num">${fmt(lineDisc>0.0005?gross:d.sub)}</td></tr>${totDisc>0.0005?`<tr><td>${PL('الخصم','Discount')}${lineDisc<=0.0005&&d.discType==='p'&&num(d.discPct)?` (${fq(d.discPct)}%)`:''}</td><td class="n num">-${fmt(totDisc)}</td></tr>`:''}`})()}
    ${d.vatOn?`<tr><td>${PL('المبلغ الخاضع للضريبة','Taxable amount')}</td><td class="n num">${fmt(d.vatBase!=null?d.vatBase:num(d.sub)-num(d.discount))}</td></tr>${(d.lines||[]).some(l=>l.noVat)?`<tr><td>* ${PL('بدون ضريبة','Not subject to VAT')}</td><td class="n num">${fmt(r3(num(d.sub)-num(d.discount)-(d.vatBase!=null?num(d.vatBase):num(d.sub)-num(d.discount))))}</td></tr>`:''}<tr><td>${PL('ضريبة القيمة المضافة','VAT')} ${fq(d.vatRate)}%</td><td class="n num">${fmt(d.vat)}</td></tr>`:''}
    <tr class="big"><td>${PL('الإجمالي','Total')} (${esc(s.currency)})</td><td class="n num">${fmt(d.total)}</td></tr>
    ${isInv&&(paid>0||retA>0)?`${retA>0?`<tr><td>${PL('المرتجع','Returned')}</td><td class="n num">-${fmt(retA)}</td></tr>`:''}${paid>0?`<tr><td>${PL('المدفوع','Paid')}</td><td class="n num">${fmt(paid)}</td></tr>`:''}<tr><td><b>${PL('المتبقي','Balance due')}</b></td><td class="n num"><b>${fmt(Math.max(0,num(d.total)-settled))}</b></td></tr>${settled-num(d.total)>0.0005?`<tr><td>${PL('مبلغ زائد (رصيد لصالحكم)','Overpaid (your credit)')}</td><td class="n num">${fmt(settled-num(d.total))}</td></tr>`:''}`:''}
