@@ -1665,16 +1665,67 @@ async function supBalPdf(){
   await htmlToPdf(html,`${T('أرصدة الموردين','Supplier balances')} ${today()}.pdf`);
 }
 
+/* ---------- product categories (type of work) ---------- */
+const CATS=['📹 كاميرات المراقبة','🌐 الإنترنت والشبكات','💡 المفاتيح الذكية','🚨 الحساسات والإنذار','🔐 الأقفال الذكية','📞 الإنتركوم وجرس الباب','🚪 محركات الأبواب والبوابات','🔊 الصوتيات','🔌 الكهرباء والتمديدات','🎧 الإكسسوارات والمنوعات','🛠️ التركيب والبرمجة'];
+const CAT_RULES=[
+ [10,/fixed|program|تركيب|برمج|صيان|installation fee|labou?r/],
+ [8,/delviz|tawoia|normal.*switch|switch.*normal|socket universal/],
+ [2,/mcb|irrigation|ري /],
+ [9,/porodo|charger|شاحن|usb|type-c|lightning|watch|ساعة|massag|مساج|اشتراك|subscription|otg|card re[a-z]*er|powerology|designo|pocket size|haino|power ?bank|earbud|headphone|airpod/],
+ [0,/camera stand|stand camera|camera bracket/],
+ [5,/intercom|انتركوم|doorbell|door bell|جرس|hikvision frame|hikvison screen|hikvision screen|monitor 7|7 ?inch.*(monitor|screen)|10 ?inch.*(screen|set)|outdoor station/],
+ [0,/\bnvr|\bdvr|hard ?disk|hardisk|\bhdd\b|sandisk|memory card/],
+ [6,/gate|door opener|door machine|sliding|بوابة|raling|railing|bush button|push button.*door|motris|crage|real ?viber|garage|شتر|shutter/],
+ [4,/lock|قفل|getway|gateway g2|g2 wifi|keyb?a[dp]|access contro|ttlock|slyinder|cylinder|fingerprint|بصمة/],
+ [3,/sensor|sonser|سنسر|حساس|detect|alarm|siren|serin|\bgas\b|valve|water level|smoke|motion|present|leak|\bpir\b|vibration|door window/],
+ [8,/pdu/],
+ [1,/rack|fan cooling|cooling fan/],
+ [8,/electrical|كهرب|e ?box|\bbox\b|بوكس|conduit|trunking|pipe|ماسور|timer|breaker|extension|power strip/],
+ [1,/router|راوتر|access ?point|acsess|\beap|wifi6|wi-fi ?6|ax3000|ac1200|ax1500|ac1350|port.*switch|switch.*port|poe|ethernet|eathernt|gigabit|cat ?6|rj45|\bups\b|extender|mesh|network|شبك|fiber|deco|tp-?link|tplink|ip-com|mi router|sfp|archer|coupler|cat5/],
+ [0,/camera|camra|كاميرا|memory|ذاكرة|\btv\b|tv monitor|monitor \d|ezvi[sz]|imilab|weisky|crony|hikvision|hikvison|dahua|\bunv\b|arenti|\d+ ?mp\b|ptz|bullet|dome/],
+ [7,/speaker|amplif|سماع|daspa|dspa|tianlai|abk|\bsound\b|subwoofer|bluetooth active/],
+ [2,/switch|mavava|dim+er|curve glass|panel|controller|ir remote|remote control|zigbee|tuya|smart plug|socket|curtain|ستار|مفتاح|gng|gang|heater|\b[24]0a\b|smart home|monitor f3/],
+];
+function autoCat(p){if(p.service)return CATS[10];const s=[p.name,p.nameEn,p.desc||p.description].filter(Boolean).join(' ').toLowerCase();for(const [i,re] of CAT_RULES)if(re.test(s))return CATS[i];return ''}
+let AC=null;
+function autoCatView(){
+  if(!AC)AC={over:false,sel:{},f:''};for(const p of S.products)if(!(p.id in AC.sel))AC.sel[p.id]=AC.over?(autoCat(p)||p.category||''):(p.category||autoCat(p));
+  const list=[...S.products].sort((a,b)=>String(a.name).localeCompare(String(b.name),'ar'));
+  const cnt={};list.forEach(p=>{const c=AC.sel[p.id]||'';cnt[c]=(cnt[c]||0)+1});
+  const ch=list.filter(p=>(AC.sel[p.id]||'')!==(p.category||'')).length;
+  const rows=AC.f==='__none'?list.filter(p=>!AC.sel[p.id]):AC.f==='__ch'?list.filter(p=>(AC.sel[p.id]||'')!==(p.category||'')):AC.f?list.filter(p=>AC.sel[p.id]===AC.f):list;
+  const opts=v=>`<option value="">— ${T('بدون','None')} —</option>`+[...new Set([...CATS,...S.products.map(x=>x.category).filter(Boolean)])].map(c=>`<option ${c===v?'selected':''}>${esc(c)}</option>`).join('');
+  return `<div class="head">${backBtn}<h2>🏷️ ${T('تصنيف الأصناف تلقائياً','Auto-categorise items')}</h2></div>
+  <div class="card"><p style="margin:0 0 8px;font-size:13.5px">${T('اقترحت تصنيف لكل صنف حسب اسمه. راجع الجدول وغيّر أي واحد، وبعدين اضغط «حفظ».','Each item got a suggested category from its name. Review, change any, then save.')}</p>
+   <label style="display:flex;gap:8px;align-items:center;font-size:13.5px"><input type="checkbox" ${AC.over?'checked':''} data-act="acOver"> ${T('استبدل التصنيفات الموجودة أيضاً','Also replace existing categories')}</label>
+   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${[['',T('الكل','All')+' '+list.length],['__ch',T('سيتغيّر','Will change')+' '+ch],['__none',T('بدون تصنيف','Uncategorised')+' '+(cnt['']||0)],...CATS.map(c=>[c,c+' '+(cnt[c]||0)])].map(([k,l])=>`<button class="btn sm ${AC.f===k?'pri':''}" data-act="acF" data-v="${esc(k)}">${esc(l)}</button>`).join('')}</div>
+   <div class="btns" style="margin-top:12px"><button class="btn pri" data-act="acSave" ${ch?'':'disabled'}>💾 ${T('حفظ','Save')} (${ch})</button></div></div>
+  <div class="list">${rows.map(p=>{const v=AC.sel[p.id]||'';const changed=v!==(p.category||'');return `<div class="item" style="cursor:default;${changed?'background:#f3faf5':''}">${thumbHtml(p)}<div class="m"><div class="t" translate="no" dir="auto">${esc(dn(p))}</div>${p.category&&changed?`<div class="d">${T('الحالي','Current')}: ${esc(p.category)}</div>`:''}</div><select data-acid="${p.id}" style="max-width:52%;min-height:38px" onchange="acSet(this)">${opts(v)}</select></div>`}).join('')||`<div class="empty">—</div>`}</div>`;
+}
+function acSet(el){
+  const id=el.dataset.acid;AC.sel[id]=el.value;const p=S._products.get(id);const ch=el.value!==((p&&p.category)||'');
+  const it=el.closest('.item');if(it)it.style.background=ch?'#f3faf5':'';
+  const n=S.products.filter(x=>(AC.sel[x.id]||'')!==(x.category||'')).length;const b=document.querySelector('[data-act=acSave]');if(b){b.disabled=!n;b.textContent=`💾 ${T('حفظ','Save')} (${n})`}
+}
+async function acSave(){
+  const ch=S.products.filter(p=>(p.id in AC.sel)&&(AC.sel[p.id]||'')!==(p.category||''));if(!ch.length)return;
+  if(!(await ask(T(`حفظ التصنيف لـ ${ch.length} صنف؟`,`Save categories for ${ch.length} items?`),T('حفظ','Save'))))return;
+  const F=window.FB.fns;let done=0;
+  const ok=await W(async()=>{for(let i=0;i<ch.length;i+=400){const b=F.writeBatch(FB.fs);for(const p of ch.slice(i,i+400))b.update(F.doc(FB.fs,'products',p.id),{category:AC.sel[p.id]||'',updatedAt:nowIso()});await b.commit();done+=Math.min(400,ch.length-i)}
+    writeLog('update','products','',null,null,{label:T('تصنيف تلقائي للأصناف','Auto-categorised items')+': '+done})},T(`تم تصنيف ${ch.length} صنف ✓`,`Categorised ${ch.length} items ✓`));
+  if(ok){AC=null;back()}
+}
 VIEWS.products=()=>{
   const q=norm(Q.products);const d=derive();const f=Q.products_f||'all';
   let arr=[...S.products].sort((a,b)=>String(a.name).localeCompare(String(b.name),'ar'));
   if(q) arr=arr.filter(x=>norm(x.name).includes(q)||norm(x.nameEn).includes(q)||norm(x.code).includes(q)||norm(x.category).includes(q));
   if(f==='low') arr=arr.filter(p=>!p.service&&(d.stock.get(p.id)||0)<=Math.max(num(p.minQty),0));
   if(f==='in') arr=arr.filter(p=>(d.stock.get(p.id)||0)>0);
+  const pc=Q.products_cat||'';if(pc)arr=arr.filter(p=>pc==='__none'?!p.category:p.category===pc);
   const val=arr.reduce((a,p)=>a+Math.max(d.stock.get(p.id)||0,0)*(d.avg.get(p.id)||0),0);
-  return `${loading()}<div class="head"><h1>الأصناف والمخزون</h1><button class="btn" data-act="openSub" data-type="stocktake" data-id="x">📋 ${T('جرد','Stocktake')}${Object.keys(STK).length?` <span class="badge b-amber">${Object.keys(STK).length}</span>`:''}</button>${addBtn('editProduct','صنف')}</div>
+  return `${loading()}<div class="head"><h1>الأصناف والمخزون</h1>${ADMIN&&!RO?`<button class="btn" data-act="acOpen">🏷️ ${T('تصنيف تلقائي','Auto-categorise')}</button>`:''}<button class="btn" data-act="openSub" data-type="stocktake" data-id="x">📋 ${T('جرد','Stocktake')}${Object.keys(STK).length?` <span class="badge b-amber">${Object.keys(STK).length}</span>`:''}</button>${addBtn('editProduct','صنف')}</div>
   <div class="search"><input id="q-products" placeholder="بحث بالاسم أو الكود أو الباركود…" value="${esc(Q.products||'')}" data-q="products"><button class="btn icon" data-act="scanSearch" title="${T('مسح باركود','Scan barcode')}">📷</button></div>
-  <div class="tabs">${[['all','الكل'],['in','متوفر'],['low','نافد / تحت الحد']].map(([v,t])=>`<button class="${f===v?'on':''}" data-act="filt" data-k="products" data-v="${v}">${t}</button>`).join('')}<span class="muted" style="margin-inline-start:auto;font-size:13px;align-self:center">${arr.length} صنف · قيمة المخزون ${fmt(val)}</span></div>
+  <div class="tabs">${[['all','الكل'],['in','متوفر'],['low','نافد / تحت الحد']].map(([v,t])=>`<button class="${f===v?'on':''}" data-act="filt" data-k="products" data-v="${v}">${t}</button>`).join('')}<select style="min-height:34px;max-width:190px" onchange="Q.products_cat=this.value;render()"><option value="">${T('كل التصنيفات','All categories')}</option>${[...new Set([...CATS,...S.products.map(x=>x.category).filter(Boolean)])].map(c=>`<option ${Q.products_cat===c?'selected':''}>${esc(c)}</option>`).join('')}<option value="__none" ${Q.products_cat==='__none'?'selected':''}>${T('بدون تصنيف','Uncategorised')}</option></select><span class="muted" style="margin-inline-start:auto;font-size:13px;align-self:center">${arr.length} صنف · قيمة المخزون ${fmt(val)}</span></div>
   ${f==='low'&&!RO&&lowStockItems().length?`<div class="card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-color:#e9cf8c;background:#fffaf0"><div style="flex:1;min-width:180px;font-size:13.5px">${T(`${lowStockItems().length} صنف وصل للحد الأدنى.`,`${lowStockItems().length} items at or below minimum.`)}</div><button class="btn pri" data-act="lowStockPO">📋 ${T('أمر شراء للناقص','Purchase order for low stock')}</button></div>`:''}
   <div class="list">${arr.length?arr.slice(0,400).map(p=>{const s=d.stock.get(p.id)||0;const low=!p.service&&s<=num(p.minQty);return `<div class="item" data-act="openSub" data-type="product" data-id="${p.id}">${thumbHtml(p)}<div class="m"><div class="t" translate="no" dir="auto">${esc(dn(p))}</div><div class="d">${p.code?`<span class="num">${esc(p.code)}</span> · `:''}سعر البيع ${fmt(p.price)}${p.category?' · '+esc(p.category):''}</div></div><div class="a">${p.service?'<span class="badge">خدمة</span>':`<span class="num ${s<=0?'neg':low?'neg':''}">${fq(s)}</span> <span class="muted" style="font-weight:400;font-size:12px">${esc(p.unit||'')}</span>`}</div></div>`}).join(''):`<div class="empty">لا توجد أصناف ${q?'مطابقة':'بعد'}</div>`}</div>
   ${arr.length>400?`<p class="muted">يتم عرض أول 400، استخدم البحث.</p>`:''}`;
@@ -1987,6 +2038,7 @@ AFTER.reports=()=>{const a=$('#rep-from'),b=$('#rep-to');if(a){a.onchange=()=>{Q
 /* ================= detail pages ================= */
 function renderSub(){
   {const m=sub.type==='doc'?KMOD[sub.k]:sub.type==='party'?sub.col:sub.type==='product'||sub.type==='stocktake'?'products':sub.type==='pay'||sub.type==='account'?'finance':sub.type==='appt'?'appointments':sub.type==='staffu'?'admin':null;if(m&&!can(m,1))return noPerm()}
+  if(sub.type==='autocat') return ADMIN?autoCatView():noPerm();
   if(sub.type==='inst') return canInst(1)?instView(sub.id):noPerm();
   if(sub.type==='staffu') return staffUserView(sub.id);
   if(sub.type==='doc') return docView(sub.k,sub.id);
@@ -2622,7 +2674,7 @@ async function saveParty(col,id){
 }
 function editProduct(id){
   const p=id?S._products.get(id)||{}:{unit:'حبة'};PIMG=null;
-  const cats=[...new Set(S.products.map(x=>x.category).filter(Boolean))];
+  const cats=[...new Set([...CATS,...S.products.map(x=>x.category).filter(Boolean)])];
   openModal(`<div data-keep><h3>${id?'تعديل صنف':'إضافة صنف'}</h3><div class="grid g2 f">
   ${productImgField(p)}
   <label>اسم الصنف *<input id="i-name" value="${esc(p.name||'')}"></label>
@@ -3588,6 +3640,8 @@ ${dayName(a.date)} ${fdate(a.date)} — ${fTime(a.time)}${a.location?'\n'+a.loca
   dlStart:async o=>{if(!canInst(2))return deny();const d=S._sales.get(o.id);if(d)await W(()=>db.collection('sales').doc(o.id).update({dl:{},dlog:[{at:nowIso(),by:MYID||'',txt:T('بدء تتبع التسليم','Tracking started')}],dlAt:nowIso()}),T('تم ✓','Done ✓'))},
   dlNote:o=>{const d=S._sales.get(o.id);if(d)htmlToPdf(dlNoteHtml(d),`${T('سند تسليم','Delivery note')} ${docNo('sales',d.no)}.pdf`)},
   instF:o=>{Q.inst_f=o.v;render()},
+  acOpen:()=>{if(!ADMIN)return deny();AC=null;openSub('autocat','x')},acF:o=>{AC.f=o.v;render()},acSave:()=>ADMIN?acSave():deny(),
+  acOver:()=>{AC.over=!AC.over;for(const p of S.products)AC.sel[p.id]=AC.over?(autoCat(p)||p.category||''):(p.category||autoCat(p));render()},
   snOpen:o=>{Q.warranty=o.sn;go('warranty')},
   scanClose:()=>closeScanner(),scanTorch:()=>scanTorch(),
   scanLines:()=>scanIntoEditor(),
