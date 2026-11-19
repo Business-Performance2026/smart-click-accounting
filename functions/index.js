@@ -174,6 +174,13 @@ exports.createStaff = onCall(async req => {
   return { uid: user.uid };
 });
 
+// 🖼️ copy product photos from Daftra (admin only; the API key is used for the call and not stored)
+exports.daftraImages = onCall({ timeoutSeconds: 300, memory: '1GiB' }, async req => {
+  const uid = req.auth && req.auth.uid; if (!uid) throw new HttpsError('unauthenticated', 'Sign in first');
+  const admins = await adminUids(); if (!admins.has(uid)) throw new HttpsError('permission-denied', 'Admins only');
+  return require('./daftraImages').run(req.data || {}, uid, req.auth.token.email || '');
+});
+
 // 📨 new join request → notify admins (push + email to the company address)
 exports.onJoinRequest = onDocumentCreated('requests/{uid}', async e => {
   const r = e.data && e.data.data(); if (!r) return;

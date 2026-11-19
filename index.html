@@ -1855,7 +1855,7 @@ VIEWS.settings=()=>{
   </div>
   <div class="card"><h3>استيراد من دفترة أو Excel</h3>
    <p class="muted" style="margin-top:0;font-size:13.5px">من دفترة: صدّر قائمة العملاء أو الأصناف أو الموردين إلى Excel، ثم ارفع الملف هنا. ستختار أي عمود يقابل كل حقل.</p>
-   ${RO?'':`<div class="btns"><button class="btn" data-act="import" data-col="products">📦 استيراد أصناف</button><button class="btn" data-act="import" data-col="customers">👥 استيراد عملاء</button><button class="btn" data-act="import" data-col="suppliers">🏭 استيراد موردين</button></div>`}
+   ${RO?'':`<div class="btns">${ADMIN?`<button class="btn" data-act="dImgs">🖼️ ${T('نقل صور الأصناف من دفترة','Copy item photos from Daftra')}</button>`:''}<button class="btn" data-act="import" data-col="products">📦 استيراد أصناف</button><button class="btn" data-act="import" data-col="customers">👥 استيراد عملاء</button><button class="btn" data-act="import" data-col="suppliers">🏭 استيراد موردين</button></div>`}
   </div>
   <div class="card"><h3>نسخة احتياطية</h3>
    <p class="muted" style="margin-top:0;font-size:13.5px">نزّل كل البيانات في ملف Excel واحد. يُنصح بذلك أسبوعياً.</p>
@@ -2910,6 +2910,46 @@ function addStaff(){
    <div class="btns" style="margin-top:10px"><button class="btn pri" data-act="saveAddStaff">✓ ${T('إضافة','Add')}</button><button class="btn" data-act="closeModal">${T('إلغاء','Cancel')}</button></div>`);
   $('#as-mode').onclick=e=>{const b=e.target.closest('button');if(!b)return;$$('#as-mode button').forEach(x=>x.classList.toggle('on',x===b));const inv=b.dataset.m==='invite';$('#as-pass-l').hidden=inv;$('#as-hint').textContent=inv?T('يفتح الموظف رابط البرنامج ويسجّل بنفس البريد ويؤكده، ويدخل تلقائياً بهذي الصلاحيات.','The employee opens the app link, signs up with the same email and verifies it, then gets these permissions automatically.'):T('يدخل الموظف بالبريد وكلمة المرور هذي مباشرة، ويقدر يغيّرها من «نسيت كلمة المرور».','The employee signs in right away with this email and password, and can change it via “Forgot password”.')};
 }
+/* ---------- Daftra product photos (server copies them; key not stored) ---------- */
+function dImgs(){
+  openModal(`<div class="mh"><h3>🖼️ ${T('نقل صور الأصناف من دفترة','Copy item photos from Daftra')}</h3><button class="btn ghost" data-act="closeModal">✕</button></div>
+   <p class="muted" style="margin-top:0;font-size:13.5px">${T('من دفترة: الإعدادات ← API ← انسخ المفتاح والصقه هنا. المفتاح يُستخدم لهذه العملية فقط ولا يُحفظ. الصور تنحفظ على الصنف اللي بنفس الاسم أو الكود، والأصناف اللي عندها صورة ما تتغير.','In Daftra: Settings → API → copy the key and paste it here. It is used for this run only and not saved. Photos go to the item with the same name or code; items that already have a photo are left as they are.')}</p>
+   <div class="f"><label>${T('مفتاح API من دفترة','Daftra API key')}<input id="di-key" dir="ltr" autocomplete="off" spellcheck="false"></label></div>
+   <label style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="di-over"> ${T('استبدل الصور الموجودة أيضاً','Also replace existing photos')}</label>
+   <div class="btns"><button class="btn" data-act="dImgsGo" data-test="1">🧪 ${T('تجربة على صنف واحد (EC5)','Test on one item (EC5)')}</button><button class="btn pri" data-act="dImgsGo">▶︎ ${T('ابدأ النقل','Start')}</button></div>
+   <div id="di-out" style="margin-top:12px;font-size:13.5px;white-space:pre-wrap"></div>`);
+}
+async function dImgsGo(test){
+  const key=$('#di-key').value.trim();if(!key){toast(T('الصق مفتاح API أولاً','Paste the API key first'));return}
+  const over=$('#di-over').checked,out=$('#di-out');
+  document.querySelectorAll('[data-act=dImgsGo]').forEach(b=>b.disabled=true);
+  const say=h=>{out.innerHTML=h};
+  try{
+    const m=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js');
+    const fn=m.httpsCallable(m.getFunctions(FB.app,'me-central1'),'daftraImages',{timeout:330000});
+    const L={saved:T('✅ تم','✅ saved'),'no-image':T('⬜ بدون صورة في دفترة','⬜ no photo in Daftra'),'no-match':T('❓ ما له صنف بنفس الاسم','❓ no matching item'),'has-image':T('⏭️ عنده صورة','⏭️ already has photo'),error:T('⚠️ خطأ','⚠️ error')};
+    if(test){
+      say(`<span class="spin"></span> ${T('جاري التجربة…','Testing…')}`);
+      const r=(await fn({key,test:32})).data;const x=r.result||{};
+      say(`<b>${esc(x.name||'')}</b> → ${L[x.status]||esc(x.status)}${x.error?' · '+esc(x.error):''}\n<span class="muted" dir="ltr" style="font-size:11.5px;word-break:break-all">${esc(r.imageUrl||'')}\n${esc(r.raw||'')}</span>`);
+      if(x.status==='saved')PFULL.clear();
+    }else{
+      const all=[];let page=1,pc=1;
+      while(true){
+        say(`<span class="spin"></span> ${T('صفحة','Page')} ${page} / ${pc} · ${T('تم','saved')} ${all.filter(x=>x.status==='saved').length}`);
+        const r=(await fn({key,page,overwrite:over})).data;pc=r.pageCount||pc;all.push(...(r.results||[]));
+        if(r.done)break;page++;
+      }
+      const n=k=>all.filter(x=>x.status===k);
+      const miss=n('no-match'),err=n('error');
+      say(`<b>${T('انتهى ✓','Done ✓')}</b>\n${L.saved}: ${n('saved').length}\n${L['has-image']}: ${n('has-image').length}\n${L['no-image']}: ${n('no-image').length}\n${L['no-match']}: ${miss.length}${err.length?`\n${L.error}: ${err.length}`:''}`
+        +(miss.length?`\n\n<b>${T('أصناف دفترة اللي ما لقيت لها صنف بنفس الاسم:','Daftra items with no matching name:')}</b>\n${miss.map(x=>'• '+esc(x.name)).join('\n')}`:'')
+        +(err.length?`\n\n<b>${T('أخطاء:','Errors:')}</b>\n${err.map(x=>'• '+esc(x.name)+' — '+esc(x.error||'')).join('\n')}`:''));
+      PFULL.clear();
+    }
+  }catch(e){console.error(e);say(`<span style="color:var(--red)">⚠️ ${esc(e.message||String(e))}</span>`)}
+  document.querySelectorAll('[data-act=dImgsGo]').forEach(b=>b.disabled=false);
+}
 async function saveAddStaff(){
   const mode=($('#as-mode button.on')||{}).dataset.m;const name=$('#as-name').value.trim(),email=$('#as-email').value.trim().toLowerCase(),role=$('#as-role').value;
   const perms=role==='admin'?null:readPerms('as');
@@ -3320,6 +3360,7 @@ ${dayName(a.date)} ${fdate(a.date)} — ${fTime(a.time)}${a.location?'\n'+a.loca
   saveSettings,
   rmLogo:()=>W(()=>db.doc('meta/settings').set({...S.settings,logo:''}),'تم'),
   import:o=>importStart(o.col),importGo:o=>importGo(o.col),
+  dImgs:()=>{if(!ADMIN)return deny();dImgs()},dImgsGo:o=>dImgsGo(!!o.test),
   backup,exportReport:o=>exportReport(o.from,o.to),
 };
 {const NEED={newDoc:o=>[KMOD[o.k],2],editDoc:o=>[KMOD[o.k],2],dupDoc:o=>[KMOD[o.k],2],saveDoc:()=>[E&&KMOD[E.kind],2],delDoc:o=>[KMOD[o.k],3],
