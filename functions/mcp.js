@@ -333,6 +333,8 @@ async function callTool(name, a) {
       const date = a.date || todayM();
       const body = { ...q, date, due: isQ && num(s.dueDays) ? addDays(date, num(s.dueDays)) : '', status: 'open', invoiceId: '', quoteId: isQ ? q.id : '', ...(isQ ? {} : { poId: q.id }), createdAt: nowIso(), createdBy: 'claude', updatedAt: nowIso(), updatedBy: 'claude', portalDirty: isQ };
       delete body.id; delete body.no; delete body.lastEmail; delete body.invoiceNo; delete body.remind1h;
+      // a quote moved from Daftra never touched stock; the real sale made from it must deduct stock
+      if (isQ) { body.lines = (q.lines || []).map(l => { const x = { ...l }; delete x.noStock; return x; }); delete body.migrated; }
       if (!a.confirm) return ok(preview(dst, body, [], { action: `create ${KIND[dst].ar} from ${docNo(src, q.no)}` }));
       const { id, no } = await createNumbered(dst, KIND[dst].prefix, body);
       await db.collection(src).doc(q.id).update({ status: isQ ? 'converted' : 'received', invoiceId: id, ...(isQ ? {} : { invoiceNo: docNo(dst, no) }), updatedAt: nowIso(), portalDirty: isQ });
@@ -442,7 +444,8 @@ exports.mcpHandler = async (req, res) => {
   if (req.method === 'GET') { res.status(405).set('Allow', 'POST').send('Use POST'); return; }
   if (req.method === 'DELETE') { res.status(200).send(''); return; }
   if (req.method !== 'POST') { res.status(405).send(''); return; }
-  const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body;
+  let body;
+  try { body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body; } catch (_) { res.status(400).json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }); return; }
   if (Array.isArray(body)) { const out = (await Promise.all(body.map(handle))).filter(Boolean); if (!out.length) { res.status(202).send(''); return; } res.json(out); return; }
   const r = await handle(body);
   if (!r) { res.status(202).send(''); return; }

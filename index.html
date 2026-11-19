@@ -2527,7 +2527,8 @@ function convertPO(id){
 async function convertQuote(id){
   const q=S._quotes.get(id);if(!q)return;
   const d=newDocData('sales',q.partyId);
-  Object.assign(d,{partyName:q.partyName,lines:JSON.parse(JSON.stringify(q.lines||[])),discount:q.discount,discType:q.discType,discPct:q.discPct,vatOn:q.vatOn,vatRate:q.vatRate,notes:q.notes,ref:q.ref||''});
+  // a quote moved from Daftra carries noStock (it never touched stock); the real sale must deduct stock
+  Object.assign(d,{partyName:q.partyName,lines:JSON.parse(JSON.stringify(q.lines||[])).map(l=>{delete l.noStock;return l}),discount:q.discount,discType:q.discType,discPct:q.discPct,vatOn:q.vatOn,vatRate:q.vatRate,notes:q.notes,ref:q.ref||''});
   openEditor('sales',null,d,{quoteId:id});
 }
 
