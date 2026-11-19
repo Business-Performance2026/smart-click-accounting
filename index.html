@@ -1846,8 +1846,8 @@ VIEWS.reports=()=>{
   const exp=pays.filter(p=>p.partyType==='expense').reduce((a,p)=>a+num(p.amount),0);
   const col=pays.filter(p=>p.type==='in'&&p.partyType==='customer').reduce((a,p)=>a+num(p.amount),0);
   let cogs=0;const prod=new Map();
-  for(const s of sales){const ratio=num(s.sub)>0?(num(s.sub)-num(s.discount))/num(s.sub):1;for(const l of s.lines||[]){const key=l.productId||('x:'+l.name);const e=prod.get(key)||{name:l.productId&&S._products.get(l.productId)?dn(S._products.get(l.productId)):l.name,qty:0,val:0,cost:0};const c=l.productId?num(l.qty)*(d.avg.get(l.productId)||0):0;e.qty+=num(l.qty);e.val+=num(l.total)*ratio;e.cost+=c;cogs+=c;prod.set(key,e)}}
-  for(const s of sRet){const ratio=num(s.sub)>0?(num(s.sub)-num(s.discount))/num(s.sub):1;for(const l of s.lines||[]){const key=l.productId||('x:'+l.name);const e=prod.get(key);const c=l.productId?num(l.qty)*(d.avg.get(l.productId)||0):0;cogs-=c;if(e){e.qty-=num(l.qty);e.val-=num(l.total)*ratio;e.cost-=c}}}
+  for(const s of sales){const ratio=num(s.sub)>0?(num(s.sub)-num(s.discount))/num(s.sub):1;for(const l of s.lines||[]){const key=l.productId||('x:'+l.name);const e=prod.get(key)||{name:l.productId&&S._products.get(l.productId)?dn(S._products.get(l.productId)):l.name,qty:0,val:0,cost:0};const c=num(l.qty)*unitCost(l,d.avg);e.qty+=num(l.qty);e.val+=num(l.total)*ratio;e.cost+=c;cogs+=c;prod.set(key,e)}}
+  for(const s of sRet){const ratio=num(s.sub)>0?(num(s.sub)-num(s.discount))/num(s.sub):1;for(const l of s.lines||[]){const key=l.productId||('x:'+l.name);const e=prod.get(key);const c=num(l.qty)*unitCost(l,d.avg);cogs-=c;if(e){e.qty-=num(l.qty);e.val-=num(l.total)*ratio;e.cost-=c}}}
   const gp=sN-cogs;
   const stockVal=S.products.reduce((a,p)=>a+Math.max(d.stock.get(p.id)||0,0)*(d.avg.get(p.id)||0),0);
   const recv=[...d.cust.values()].reduce((a,x)=>a+(x>0?x:0),0),payb=[...d.sup.values()].reduce((a,x)=>a+(x>0?x:0),0);
@@ -1884,7 +1884,7 @@ function pfData(from,to,D){
   D=D||derive();const inR=x=>x.date>=from&&x.date<=to;
   const rows=S.sales.filter(x=>inR(x)&&pfIncluded(x,D)).map(d=>({d,P:profitOf(d,D)}));
   const tot={rev:0,cost:0,extra:0,net:0};rows.forEach(({P})=>{tot.rev+=P.rev;tot.cost+=P.cost;tot.extra+=P.extra;tot.net+=P.net});
-  const overhead=S.payments.filter(p=>inR(p)&&p.type==='out'&&p.partyType==='expense'&&!p.projId&&!p.woId).reduce((a,p)=>a+num(p.amount),0);
+  const overhead=S.payments.filter(p=>inR(p)&&p.type==='out'&&p.partyType==='expense'&&!(p.projId&&S._sales.get(p.projId))&&!(p.woId&&S.sales.some(x=>x.woId===p.woId))).reduce((a,p)=>a+num(p.amount),0);
   const cat=new Map(),cus=new Map();
   rows.forEach(({d,P})=>{P.lines.forEach(l=>{const k=l.svc?T('خدمات وتركيب','Services & installation'):l.free?T('بنود أخرى (شحن، رسوم…)','Other lines (shipping, fees…)'):(l.cat||T('بدون تصنيف','Uncategorised'));const e=cat.get(k)||{k,rev:0,cost:0};e.rev+=l.rev;e.cost+=l.cost;cat.set(k,e)});
     const k=d.partyId||d.partyName;const e=cus.get(k)||{name:d.partyName,id:d.partyId,rev:0,net:0,n:0};e.rev+=P.rev;e.net+=P.net;e.n++;cus.set(k,e)});
