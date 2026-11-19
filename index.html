@@ -187,6 +187,7 @@ table.t td.num,table.t td.n{white-space:nowrap}
 .paper .sum tr.big td{font-weight:700;font-size:15px;background:#e5f3f1;border-radius:4px}
 .paper .foot{margin-top:28px;display:flex;justify-content:space-between;font-size:12px;color:#555}
 .paper .foot div{border-top:1px solid #bbb;padding-top:6px;width:180px;text-align:center}
+.paper .foot .stp{position:relative}.paper .foot .stp img{position:absolute;bottom:20px;left:50%;width:150px;height:150px;margin-left:-75px;transform:rotate(-8deg);opacity:.93;pointer-events:none}
 .paper .terms{margin-top:18px;font-size:11.5px;color:#555;white-space:pre-wrap;border-top:1px dashed #ccc;padding-top:8px}
 .paper td.num,.paper td.n{white-space:nowrap}
 @container (max-width:620px){
@@ -1887,6 +1888,9 @@ VIEWS.settings=()=>{
    </div>
    <div style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">${s.logo?`<img src="${esc(s.logo)}" style="max-height:60px;max-width:160px;border:1px solid var(--line);border-radius:8px;padding:4px">`:'<span class="muted">لا يوجد شعار</span>'}
     ${ADMIN&&!RO?`<label class="btn sm" style="color:var(--ink)">رفع الشعار<input type="file" accept="image/*" id="s-logo" class="hide"></label>${s.logo?`<button class="btn sm red" data-act="rmLogo">حذف الشعار</button>`:''}`:''}</div>
+   <div style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">${s.stamp?`<img src="${esc(s.stamp)}" style="height:70px;width:70px;border:1px solid var(--line);border-radius:8px;padding:2px;background:#fff">`:`<span class="muted">${T('لا يوجد ختم','No stamp')}</span>`}
+    <div style="flex:1;min-width:200px;font-size:12.5px" class="muted">${T('ختم الشركة يظهر تلقائياً على فواتير المبيعات وعروض الأسعار — للمدير ولمن عنده صلاحية كاملة على القسم فقط.','The company stamp appears automatically on sales invoices and quotations — only for the admin and staff with full access to that section.')}</div>
+    ${ADMIN&&!RO?`<label class="btn sm" style="color:var(--ink)">${T('رفع الختم','Upload stamp')}<input type="file" accept="image/*" id="s-stamp" class="hide"></label>${s.stamp?`<label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" ${s.stampOff?'':'checked'} data-act="stampToggle"> ${T('مفعّل','On')}</label><button class="btn sm red" data-act="rmStamp">${T('حذف الختم','Remove stamp')}</button>`:''}`:''}</div>
    ${ADMIN&&!RO?`<div style="margin-top:14px"><button class="btn pri" data-act="saveSettings">حفظ الإعدادات</button></div>`:`<p class="muted">تعديل الإعدادات متاح لمالك البرنامج والمحررين فقط.</p>`}
   </div>
   <div class="card"><h3>استيراد من دفترة أو Excel</h3>
@@ -1906,7 +1910,7 @@ VIEWS.settings=()=>{
   </div>
   <div class="card"><h3>${T('الحساب','Account')}</h3><p class="muted" style="margin:0 0 10px;font-size:13.5px" translate="no" dir="auto">${esc(AUTHU&&AUTHU.email||'')} · ${roleName(ROLE)}</p><button class="btn red" data-act="signOut">${T('تسجيل الخروج','Sign out')}</button></div>`;
 };
-AFTER.settings=()=>{const f=$('#s-logo');if(f)f.onchange=onLogo;const j=$('#s-json');if(j)j.onchange=importJson;};
+AFTER.settings=()=>{const f=$('#s-logo');if(f)f.onchange=onLogo;const fs=$('#s-stamp');if(fs)fs.onchange=onStamp;const j=$('#s-json');if(j)j.onchange=importJson;};
 AFTER.reports=()=>{const a=$('#rep-from'),b=$('#rep-to');if(a){a.onchange=()=>{Q.repFrom=a.value;render()};b.onchange=()=>{Q.repTo=b.value;render()}}};
 
 /* ================= detail pages ================= */
@@ -2137,7 +2141,7 @@ function paperDoc(kind,d){
   </table></div>`}
   ${isWO(kind)?`<div class="terms" style="white-space:normal"><b>${PL('ملاحظات التنفيذ','Completion notes')}:</b> ${esc(d.result||'')}<br><br>${PL('أقر باستلام العمل بحالة جيدة','I confirm the work was received in good condition')}</div><div class="foot"><div>${PL('توقيع الفني','Technician signature')}</div><div>${PL('توقيع العميل','Customer signature')}</div></div>`:''}
   ${k.party==='customers'&&kind!=='sreturns'&&!isWO(kind)&&(s.terms||s.bank)?`<div class="terms">${esc(s.terms||'')}${s.terms&&s.bank?'\n\n':''}${esc(s.bank||'')}</div>`:''}
-  ${isWO(kind)?'':`<div class="foot"><div>${PL('التوقيع','Signature')}</div><div>${PL('الختم','Stamp')}</div></div>`}`;
+  ${isWO(kind)?'':stampFor(kind)?`<div class="foot" style="margin-top:175px"><div>${PL('التوقيع','Signature')}</div><div class="stp"><img src="${esc(s.stamp)}" alt="">${PL('الختم','Stamp')}</div></div>`:`<div class="foot"><div>${PL('التوقيع','Signature')}</div><div>${PL('الختم','Stamp')}</div></div>`}`;
 }
 function partyView(col,id){
   const p=S['_'+col].get(id);const isC=col==='customers';
@@ -2973,6 +2977,7 @@ function deny(){toast('🔒 '+T('ليس لديك صلاحية','You do not have 
 const KMOD={sales:'sales',sreturns:'sales',quotes:'quotes',purchases:'purchases',preturns:'purchases',porders:'porders',workorders:'workorders'};
 const ROUTE_MOD={sales:'sales',sreturns:'sales',quotes:'quotes',purchases:'purchases',preturns:'purchases',porders:'porders',customers:'customers','+customer':'customers',custbal:'customers',suppliers:'suppliers',supbal:'suppliers',products:'products',warranty:'workorders',accounts:'finance',receipts:'finance',payouts:'finance',expenses:'finance',appointments:'appointments',workorders:'workorders',reports:'reports',activity:'admin',staff:'admin','+staff':'admin',requests:'admin'};
 function routeOk(r){if(r==='installs')return canInst(1);const m=ROUTE_MOD[r];if(!m)return true;if(r==='+customer')return can('customers',2);return can(m,1)}
+const stampFor=kind=>{const s=ST();return !!s.stamp&&!s.stampOff&&(kind==='sales'||kind==='quotes')&&(ADMIN||can(kind,3))};
 const canInst=(l=1)=>can('install',l)||can('sales',l);
 const NOPRICE=()=>!ADMIN&&!['sales','quotes','purchases','porders','finance'].some(m=>can(m,1));
 const noPerm=()=>`<div class="empty" style="padding:50px 16px"><div style="font-size:40px">🔒</div><h3 style="margin:10px 0 4px">${T('ليس لديك صلاحية','You do not have permission')}</h3><div class="muted">${T('اطلب من المدير إعطاءك صلاحية لهذا القسم.','Ask the admin to give you access to this section.')}</div></div>`;
@@ -3374,6 +3379,21 @@ async function saveSettings(){
   {const ns={};$$('.s-num').forEach(i=>{const v=Math.floor(num(i.value));if(v>1)ns[i.dataset.k]=v});body.numStart=ns}
   await W(()=>db.doc('meta/settings').set(body),'تم حفظ الإعدادات ✓');
 }
+function onStamp(e){
+  const f=e.target.files[0];if(!f)return;
+  const img=new Image();const url=URL.createObjectURL(f);
+  img.onload=async()=>{
+    const max=400;const sc=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+    const g=c.getContext('2d');g.drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);
+    // light pixels → transparent (keeps the ink, drops the paper)
+    const px=g.getImageData(0,0,c.width,c.height),a=px.data;
+    for(let i=0;i<a.length;i+=4){const l=(a[i]+a[i+1]+a[i+2])/3;const al=Math.max(0,Math.min(255,(255-l)*1.9));a[i+3]=Math.min(a[i+3],al<18?0:al)}
+    g.putImageData(px,0,0);
+    const data=c.toDataURL('image/png');if(data.length>400000){toast(T('صورة الختم كبيرة، جرّب صورة أصغر','Stamp image too large'));return}
+    await W(()=>db.doc('meta/settings').set({...S.settings,stamp:data,stampOff:false}),T('تم رفع الختم ✓','Stamp uploaded ✓'));
+  };
+  img.onerror=()=>toast('صورة غير صالحة');img.src=url;
+}
 function onLogo(e){
   const f=e.target.files[0];if(!f)return;
   const img=new Image();const url=URL.createObjectURL(f);
@@ -3514,6 +3534,8 @@ ${dayName(a.date)} ${fdate(a.date)} — ${fTime(a.time)}${a.location?'\n'+a.loca
   delPay:async o=>{const p=S._payments.get(o.id);if(await ask(`حذف السند ${payNo(p)}؟`,'حذف',true)&&await W(()=>db.collection('payments').doc(o.id).delete(),'تم الحذف'))back()},
   saveSettings,
   rmLogo:()=>W(()=>db.doc('meta/settings').set({...S.settings,logo:''}),'تم'),
+  rmStamp:()=>{if(!ADMIN)return deny();return W(()=>db.doc('meta/settings').set({...S.settings,stamp:'',stampOff:false}),'تم')},
+  stampToggle:()=>{if(!ADMIN)return deny();return W(()=>db.doc('meta/settings').set({...S.settings,stampOff:!S.settings.stampOff}),'تم')},
   import:o=>importStart(o.col),importGo:o=>importGo(o.col),
   dImgs:()=>{if(!ADMIN)return deny();dImgs()},dImgsGo:o=>dImgsGo(!!o.test),
   backup,exportReport:o=>exportReport(o.from,o.to),
