@@ -95,7 +95,7 @@ async function derive() {
   const st = new Map(prods.map(p => [p.id, num(p.opening)]));
   const mv = (lines, sign, skip) => (lines || []).forEach(l => { if (l.productId && st.has(l.productId) && !(skip && l.noStock)) st.set(l.productId, st.get(l.productId) + sign * num(l.qty)); });
   purchases.forEach(d => mv(d.lines, 1, true)); sales.forEach(d => mv(d.lines, -1, true)); sret.forEach(d => mv(d.lines, 1)); pret.forEach(d => mv(d.lines, -1));
-  wos.forEach(d => { if (d.status === 'done' || d.status === 'invoiced') mv(d.lines, -1); });
+  wos.forEach(d => { if (d.status === 'done' || d.status === 'invoiced') mv(d.lines, -1, true); });
   const cust = new Map(custs.map(c => [c.id, num(c.opening)])), sup = new Map(sups.map(c => [c.id, num(c.opening)]));
   sales.forEach(d => d.partyId && cust.has(d.partyId) && cust.set(d.partyId, cust.get(d.partyId) + num(d.total)));
   purchases.forEach(d => d.partyId && sup.has(d.partyId) && sup.set(d.partyId, sup.get(d.partyId) + num(d.total)));

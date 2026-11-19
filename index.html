@@ -273,6 +273,10 @@ table.t td.num,table.t td.n{white-space:nowrap}
 .tabs button.on{background:var(--pri);border-color:var(--pri);color:#fff}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px}
 .kv span:nth-child(odd){color:var(--mute)}
+/* technicians: no prices */
+body.noprice .ln .r2>label:not(:first-child),body.noprice .l-nv-l,body.noprice table.totals{display:none!important}
+.dlt td,.dlt th{padding:7px 6px;border-bottom:1px solid var(--line);text-align:start;font-size:13.5px}.dlt .n{text-align:center;white-space:nowrap}
+.dlin{width:70px;text-align:center;min-height:36px;padding:4px}
 </style>
 </head>
 <body>
@@ -306,7 +310,7 @@ const r3=n=>Math.round((+n||0)*1000)/1000;
 const num=v=>{const x=parseFloat(String(v??'').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/,/g,''));return isFinite(x)?x:0};
 const fmt=n=>r3(n).toLocaleString('en-US',{minimumFractionDigits:3,maximumFractionDigits:3});
 const fq=n=>{const v=r3(n);return Number.isInteger(v)?String(v):v.toLocaleString('en-US',{maximumFractionDigits:3})};
-const money=n=>`<span class="num">${fmt(n)}</span>`;
+const money=n=>(typeof NOPRICE==='function'&&NOPRICE())?'<span class="muted">—</span>':`<span class="num">${fmt(n)}</span>`;
 const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
 const addDays=(s,n)=>{const d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
 const fdate=s=>{s=String(s||'');const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:s};
@@ -430,6 +434,7 @@ const NAV=[
  ['custbal','أرصدة العملاء','⚖️','s'],
  ['appointments','المواعيد والزيارات','📅','s'],
  ['workorders','أوامر العمل والتركيب','🛠️','s'],
+ ['installs','التسليم والتركيب','📦','s'],
  ['warranty','الضمان والأرقام التسلسلية','🛡️','s'],
  ['finance','المالية','💰','h'],
  ['accounts','الخزائن والبنوك','🏦','s'],
@@ -487,7 +492,7 @@ function derive(){
   const dRatio=d=>num(d.sub)>0?(num(d.sub)-num(d.discount))/num(d.sub):1;
   for(const d of S.purchases){const rt=dRatio(d);for(const l of d.lines||[]){if(!l.productId||l.noStock||!stock.has(l.productId))continue;const q=num(l.qty);stock.set(l.productId,stock.get(l.productId)+q);cq.set(l.productId,cq.get(l.productId)+q);cv.set(l.productId,cv.get(l.productId)+num(l.total)*rt);}}
   for(const d of S.sales){for(const l of d.lines||[]){if(!l.productId||l.noStock||!stock.has(l.productId))continue;stock.set(l.productId,stock.get(l.productId)-num(l.qty));}}
-  for(const d of S.workorders){if(d.status!=='done'&&d.status!=='invoiced')continue;for(const l of d.lines||[]){if(!l.productId||!stock.has(l.productId))continue;stock.set(l.productId,stock.get(l.productId)-num(l.qty));}}
+  for(const d of S.workorders){if(d.status!=='done'&&d.status!=='invoiced')continue;for(const l of d.lines||[]){if(!l.productId||l.noStock||!stock.has(l.productId))continue;stock.set(l.productId,stock.get(l.productId)-num(l.qty));}}
   for(const d of S.sreturns){for(const l of d.lines||[]){if(!l.productId||!stock.has(l.productId))continue;stock.set(l.productId,stock.get(l.productId)+num(l.qty));}}
   for(const d of S.preturns){const rt=dRatio(d);for(const l of d.lines||[]){if(!l.productId||!stock.has(l.productId))continue;const q=num(l.qty);stock.set(l.productId,stock.get(l.productId)-q);cq.set(l.productId,cq.get(l.productId)-q);cv.set(l.productId,cv.get(l.productId)-num(l.total)*rt);}}
   for(const p of S.products){const q=cq.get(p.id);avg.set(p.id,q>0?cv.get(p.id)/q:num(p.cost));}
@@ -556,6 +561,32 @@ function invStatus(kind,d){
   if(ed&&ed<today()) return [p>0?'متأخرة (جزئي)':'متأخرة','b-red'];
   if(p>0) return ['مدفوعة جزئياً','b-amber'];
   return ['غير مدفوعة','b-red'];
+}
+/* ---------- delivery & installation (per invoice line) ---------- */
+const DL_SINCE='2026-11-19';
+const dlKey=l=>l.productId||('n:'+norm(l.name));
+function dlItems(d){
+  const m=new Map();
+  for(const l of d.lines||[]){if(!l.productId||num(l.qty)<=0)continue;const k=dlKey(l);const p=S._products.get(l.productId);
+    const x=m.get(k)||{k,name:l.name,nameEn:l.nameEn||'',desc:l.desc||'',productId:l.productId,svc:!!(p&&p.service),qty:0};x.qty=r3(x.qty+num(l.qty));if(!x.desc&&l.desc)x.desc=l.desc;m.set(k,x)}
+  const dl=d.dl||{};
+  return [...m.values()].map(x=>{const v=dl[x.k]||{};const i=Math.max(0,Math.min(x.qty,num(v.i)));const r=x.svc?i:Math.max(0,Math.min(x.qty,Math.max(num(v.r),i)));return {...x,r,i}});
+}
+const dlTracked=d=>!!d&&!d.migrated&&!d.woId&&(!!d.dl||String(d.createdAt||'')>=DL_SINCE)&&dlItems(d).length>0;
+function dlState(d){
+  if(!dlTracked(d))return null;const it=dlItems(d),goods=it.filter(x=>!x.svc);
+  if(it.every(x=>x.i>=x.qty-1e-9))return 'done';
+  if(goods.length&&goods.every(x=>x.r>=x.qty-1e-9))return 'recv';
+  return it.some(x=>x.r>0||x.i>0)?'part':'none';
+}
+const DL_ST={none:['لم يُستلم','Not delivered','b-red'],part:['استلام جزئي','Partly delivered','b-amber'],recv:['مستلم — بانتظار التركيب','Delivered — awaiting install','b-pri'],done:['تم التسليم والتركيب','Delivered & installed','b-green']};
+const dlBadge=d=>{const st=dlState(d);return st?`<span class="badge ${DL_ST[st][2]}">📦 ${T(DL_ST[st][0],DL_ST[st][1])}</span>`:''};
+const dlProg=d=>{const it=dlItems(d);const q=it.reduce((a,x)=>a+x.qty,0),i=it.reduce((a,x)=>a+x.i,0);return q?Math.round(i*100/q):0};
+async function dlWrite(id,vals,txt,silent){
+  const d=S._sales.get(id);if(!d)return false;
+  const dl={...(d.dl||{})};for(const [k,v] of vals)dl[k]={r:r3(v.r),i:r3(v.i)};
+  const dlog=[...(d.dlog||[]),{at:nowIso(),by:MYID||'',txt:String(txt||'').slice(0,400)}].slice(-60);
+  return W(()=>db.collection('sales').doc(id).update({dl,dlog,dlAt:nowIso()}),silent?'':T('تم الحفظ ✓','Saved ✓'));
 }
 const productByKey=key=>{const k=norm(key);if(!k)return null;return S.products.find(p=>norm(p.name)===k)||S.products.find(p=>p.nameEn&&norm(p.nameEn)===k)||S.products.find(p=>p.code&&norm(p.code)===k)||null};
 const dn=o=>o?(LANG==='en'&&o.nameEn?o.nameEn:o.name):'';
@@ -629,7 +660,7 @@ function navHtml(cur){
   return out;
 }
 function renderShell(){
-  const cur=route;
+  const cur=route;try{document.body.classList.toggle('noprice',!!(ROLE&&NOPRICE()))}catch(_){}
   $('#side').innerHTML=`<div class="brand">${ST().logo?`<img class="blogo" src="${esc(ST().logo)}" alt="">`:''}${esc(ST().company||'نظام الإدارة والمحاسبة')}<small>المبيعات · المشتريات · المخزون</small></div>`+navHtml(cur)+`${canInstall()?`<a href="#" data-act="install" style="margin-top:14px;background:#1d3347;color:#fff"><span class="ic">📲</span>${T('تثبيت التطبيق','Install app')}</a>`:''}<a href="#" data-act="lang" translate="no" style="margin-top:14px;border-top:1px solid #24384c;border-radius:0;padding-top:14px"><span class="ic">🌐</span>${LANG==='en'?'العربية':'English'}</a>`;
   $('#bottom').innerHTML=BOTTOM.filter(([k])=>k==='more'||routeOk(k)).map(([k,t,i])=>k==='more'?`<a href="#" data-act="openSide"><span>${i}</span>${t}</a>`:`<a href="#${k}" class="${cur===k?'on':''}" data-act="nav" data-r="${k}"><span>${i}</span>${t}</a>`).join('');
   {const tl=$('#tb-logo');if(tl){const lg=ST().logo||'';if(lg){if(tl.getAttribute('src')!==lg)tl.src=lg;tl.hidden=false}else tl.hidden=true}}
@@ -1034,7 +1065,8 @@ function woView(d){
    ${!RO&&['new','scheduled'].includes(d.status||'new')?`<button class="btn pri" data-act="woStatus" data-id="${id}" data-v="progress">▶ ${T('بدء التنفيذ','Start work')}</button>`:''}
    ${!RO&&d.status==='progress'?`<button class="btn pri" data-act="woDone" data-id="${id}">✓ ${T('إنهاء العمل','Complete job')}</button>`:''}
    ${!RO&&d.status==='done'?`<button class="btn pri" data-act="woInvoice" data-id="${id}">🧾 ${T('إنشاء فاتورة','Create invoice')}</button>`:''}
-   ${d.invoiceId?`<button class="btn" data-act="openSub" data-type="doc" data-k="sales" data-id="${d.invoiceId}">🧾 ${T('عرض الفاتورة','View invoice')} <span class="num">${esc(d.invoiceNo||'')}</span></button>`:''}
+   ${d.invId&&S._sales.get(d.invId)?`<button class="btn" data-act="openSub" data-type="inst" data-id="${d.invId}">📦 ${T('التسليم والتركيب','Delivery & install')} <span class="num">${esc(d.invNo||'')}</span></button>`:''}
+   ${d.invoiceId&&can('sales',1)?`<button class="btn" data-act="openSub" data-type="doc" data-k="sales" data-id="${d.invoiceId}">🧾 ${T('عرض الفاتورة','View invoice')} <span class="num">${esc(d.invoiceNo||'')}</span></button>`:''}
    ${RO||['done','invoiced'].includes(d.status)?'':`<button class="btn" data-act="editDoc" data-k="workorders" data-id="${id}">✏️ تعديل</button>`}
    ${!RO&&!['done','invoiced','cancelled'].includes(d.status)?`<button class="btn" data-act="newAppt" data-wo="${id}">📅 ${T('حجز موعد','Book visit')}</button>`:''}
    <button class="btn" data-act="pdfDoc" data-k="workorders" data-id="${id}">⬇︎ ${T('ورقة العمل PDF','Job sheet PDF')}</button>
@@ -1054,7 +1086,7 @@ function woView(d){
    <span>${T('القيمة التقديرية','Estimated value')}</span><span>${money(d.total)}</span>
    ${d.result?`<span>${T('ملاحظات التنفيذ','Completion notes')}</span><span translate="no" style="white-space:pre-wrap">${esc(d.result)}</span>`:''}
   </div></div>
-  ${mat.length?`<div class="card"><h3>${T('المواد','Materials')} ${['done','invoiced'].includes(d.status)?`<span class="badge b-green">${T('خُصمت من المخزون','Taken from stock')}</span>`:`<span class="badge">${T('تُخصم عند الإنهاء','Deducted on completion')}</span>`}</h3><table class="t">${mat.map(l=>`<tr><td translate="no">${esc(l.name)}${(l.serials||[]).length?`<div class="muted num" style="font-size:11.5px">S/N: ${esc(l.serials.join(', '))}</div>`:''}</td><td class="n num">${fq(l.qty)}</td><td class="n muted">${T('المتوفر','In stock')}: <span class="num">${fq(derive().stock.get(l.productId)||0)}</span></td></tr>`).join('')}</table></div>`:''}
+  ${mat.length?`<div class="card"><h3>${T('المواد','Materials')} ${d.invId?`<span class="badge">${T('مخصومة مع الفاتورة','Taken with the invoice')}</span>`:['done','invoiced'].includes(d.status)?`<span class="badge b-green">${T('خُصمت من المخزون','Taken from stock')}</span>`:`<span class="badge">${T('تُخصم عند الإنهاء','Deducted on completion')}</span>`}</h3><table class="t">${mat.map(l=>`<tr><td translate="no">${esc(l.name)}${(l.serials||[]).length?`<div class="muted num" style="font-size:11.5px">S/N: ${esc(l.serials.join(', '))}</div>`:''}</td><td class="n num">${fq(l.qty)}</td><td class="n muted">${T('المتوفر','In stock')}: <span class="num">${fq(derive().stock.get(l.productId)||0)}</span></td></tr>`).join('')}</table></div>`:''}
   ${appts.length?`<div class="card"><h3>📅 ${T('الزيارات','Visits')}</h3><div class="list" style="border:0">${appts.map(a=>apItem(a,true)).join('')}</div></div>`:''}
   <div class="paperwrap"><div class="paper" dir="${pdir()}">${paperDoc('workorders',d)}</div></div>`;
 }
@@ -1064,6 +1096,9 @@ function newWOFrom(o){
   if(o.quote){const q=S._quotes.get(o.quote);if(q){Object.assign(dd,{partyId:q.partyId,partyName:q.partyName,lines:JSON.parse(JSON.stringify(q.lines||[])),discount:q.discount,discType:q.discType,discPct:q.discPct,vatOn:q.vatOn,vatRate:q.vatRate,notes:q.notes,ref:q.ref||''});const c=S._customers.get(q.partyId);if(c)dd.location=c.address||'';opts.quoteId=o.quote}}
   if(o.appt){const a=S._appointments.get(o.appt);if(a){Object.assign(dd,{partyId:a.customerId,partyName:a.customerName,location:a.location||'',due:a.date,time:a.time||'',techs:a.assignedTo?[a.assignedTo]:[],ref:a.notes||''});opts.apptId=o.appt}}
   if(o.customer){const c=S._customers.get(o.customer);if(c)dd.location=c.address||''}
+  if(o.inv){const v=S._sales.get(o.inv);if(v){const left=new Map(dlItems(v).map(x=>[x.k,r3(x.qty-x.i)]));
+    const lines=JSON.parse(JSON.stringify(v.lines||[])).filter(l=>l.productId&&(left.get(dlKey(l))||0)>0).map(l=>{const q=Math.min(num(l.qty),left.get(dlKey(l)));left.set(dlKey(l),r3(left.get(dlKey(l))-q));const p=S._products.get(l.productId);return {...l,qty:q,...(p&&!p.service?{noStock:true}:{})}});
+    const c=S._customers.get(v.partyId);Object.assign(dd,{partyId:v.partyId,partyName:v.partyName,lines:lines.length?lines:dd.lines,discount:0,discType:'a',discPct:0,vatOn:v.vatOn,vatRate:v.vatRate,ref:T('تركيب — فاتورة ','Install — invoice ')+docNo('sales',v.no),location:c?[c.city,c.address].filter(Boolean).join(' — '):''});opts.invId=o.inv}}
   if(!dd.techs)dd.techs=MYID?[MYID]:[];
   openEditor('workorders',null,dd,opts);
 }
@@ -1075,7 +1110,7 @@ function woInvoice(id){
 }
 function woDone(id){
   const w=S._workorders.get(id);const st=derive().stock;
-  const short=(w.lines||[]).filter(l=>{const p=l.productId&&S._products.get(l.productId);return p&&!p.service&&num(l.qty)>(st.get(p.id)||0)+0.0005});
+  const short=(w.lines||[]).filter(l=>{const p=l.productId&&S._products.get(l.productId);return p&&!p.service&&!l.noStock&&num(l.qty)>(st.get(p.id)||0)+0.0005});
   openModal(`<div data-keep><h3>✓ ${T('إنهاء أمر العمل','Complete work order')}</h3>
    <p class="muted" style="font-size:13px;margin-top:0">${T('تأكد أن المواد في أمر العمل هي فعلاً ما تم استخدامه (عدّل الأمر قبل الإنهاء إذا لزم). عند الإنهاء تُخصم من المخزون.','Make sure the materials list matches what was actually used (edit before completing if needed). Completing deducts them from stock.')}</p>
    ${short.length?`<div class="banner" style="margin:0 0 10px">${T('الكمية غير كافية في المخزون لـ:','Not enough stock for:')} ${short.map(l=>esc(l.name)).join('، ')}</div>`:''}
@@ -1378,7 +1413,7 @@ function quickActions(){
 }
 
 VIEWS.dashboard=()=>{
-  if(!can('reports',1))return `<div class="head"><h1>${esc(ST().company||'لوحة التحكم')}</h1></div>${quickActions()}<p class="muted">${T('اختر من القائمة القسم اللي تبيه.','Pick a section from the menu.')}</p>`;
+  if(!can('reports',1))return `<div class="head"><h1>${esc(ST().company||'لوحة التحكم')}</h1></div>${quickActions()}${instCard()}<p class="muted">${T('اختر من القائمة القسم اللي تبيه.','Pick a section from the menu.')}</p>`;
   const d=derive(),t=today(),m0=t.slice(0,7);
   const inM=x=>(x.date||'').startsWith(m0);
   const salesM=S.sales.filter(inM).reduce((a,x)=>a+num(x.total),0)-S.sreturns.filter(inM).reduce((a,x)=>a+num(x.total),0);
@@ -1395,6 +1430,7 @@ VIEWS.dashboard=()=>{
   ${firstRun?`<div class="card" style="border-color:var(--pri)"><h3>أهلاً بك 👋 لنبدأ</h3><p class="muted" style="margin:0 0 12px">ثلاث خطوات لتجهيز البرنامج:</p><div class="btns"><button class="btn pri" data-act="nav" data-r="settings">١. بيانات الشركة والشعار</button><button class="btn" data-act="nav" data-r="settings">٢. استيراد العملاء والأصناف من دفترة (Excel)</button><button class="btn" data-act="newDoc" data-k="sales">٣. أول فاتورة</button></div></div>`:''}
   <div class="head"><h1>${esc(ST().company||'لوحة التحكم')}</h1></div>
   ${RO?'':quickActions()}
+  ${instCard()}
   <div class="grid g4" style="margin-bottom:14px">
     <div class="stat"><div class="k">مبيعات هذا الشهر</div><div class="v">${money(salesM)}</div><div class="s">${S.sales.filter(inM).length} فاتورة</div></div>
     <div class="stat"><div class="k">المقبوضات هذا الشهر</div><div class="v">${money(colM)}</div></div>
@@ -1876,6 +1912,7 @@ AFTER.reports=()=>{const a=$('#rep-from'),b=$('#rep-to');if(a){a.onchange=()=>{Q
 /* ================= detail pages ================= */
 function renderSub(){
   {const m=sub.type==='doc'?KMOD[sub.k]:sub.type==='party'?sub.col:sub.type==='product'||sub.type==='stocktake'?'products':sub.type==='pay'||sub.type==='account'?'finance':sub.type==='appt'?'appointments':sub.type==='staffu'?'admin':null;if(m&&!can(m,1))return noPerm()}
+  if(sub.type==='inst') return canInst(1)?instView(sub.id):noPerm();
   if(sub.type==='staffu') return staffUserView(sub.id);
   if(sub.type==='doc') return docView(sub.k,sub.id);
   if(sub.type==='party') return partyView(sub.col,sub.id);
@@ -1889,6 +1926,106 @@ function renderSub(){
 }
 const backBtn=`<button class="btn ghost" data-act="back" style="padding-inline:6px">→ رجوع</button>`;
 
+/* ---------- delivery & installation views ---------- */
+function dlTable(d,showDesc){
+  const it=dlItems(d);
+  return `<table class="dlt" style="width:100%;border-collapse:collapse"><tr><th>${T('الصنف','Item')}</th><th class="n">${T('الكمية','Qty')}</th><th class="n">${T('استلم','Delivered')}</th><th class="n">${T('تركّب','Installed')}</th></tr>
+   ${it.map(x=>`<tr><td translate="no" dir="auto">${esc(x.name)}${showDesc&&x.desc?`<div class="muted" style="font-size:12px">${esc(x.desc)}</div>`:''}${x.svc?` <span class="badge" style="font-size:11px">${T('خدمة','Service')}</span>`:''}</td><td class="n num">${fq(x.qty)}</td>
+   <td class="n num">${x.svc?'—':`${x.r>=x.qty?'✅':x.r>0?'🟡':'⬜'} ${fq(x.r)}`}</td><td class="n num">${x.i>=x.qty?'✅':x.i>0?'🟡':'⬜'} ${fq(x.i)}</td></tr>`).join('')}</table>`;
+}
+function dlLog(d,n){
+  const L=[...(d.dlog||[])].reverse().slice(0,n||8);if(!L.length)return '';
+  return `<div class="muted" style="font-size:12.5px;margin-top:10px">${L.map(x=>`🕘 <span class="num">${fdate((x.at||'').slice(0,10))} ${(x.at||'').slice(11,16)}</span> · <span translate="no" dir="auto">${esc(staffName(x.by)||'—')}</span> — <span dir="auto">${esc(x.txt||'')}</span>`).join('<br>')}</div>`;
+}
+function dlCard(d){
+  if(!dlTracked(d)){
+    if(d.migrated||d.woId||!dlItems(d).length||!canInst(2)||RO)return '';
+    return `<div class="card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="flex:1;min-width:180px"><b>📦 ${T('التسليم والتركيب','Delivery & installation')}</b><div class="muted" style="font-size:12.5px">${T('هذي الفاتورة قبل إضافة التتبع.','This invoice predates tracking.')}</div></div><button class="btn sm" data-act="dlStart" data-id="${d.id}">${T('ابدأ التتبع','Start tracking')}</button></div>`;
+  }
+  const id=d.id;
+  return `<div class="card"><h3 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">📦 ${T('التسليم والتركيب','Delivery & installation')} ${dlBadge(d)}</h3>
+   ${dlTable(d)}
+   <div class="btns" style="margin-top:10px">${!RO&&canInst(2)?`<button class="btn pri" data-act="dlEdit" data-id="${id}">✏️ ${T('تحديث الاستلام والتركيب','Update delivery & install')}</button>`:''}
+   <button class="btn" data-act="openSub" data-type="inst" data-id="${id}">📋 ${T('صفحة الفني','Technician page')}</button>
+   ${downloads?`<button class="btn" data-act="dlNote" data-id="${id}">⬇︎ ${T('سند تسليم','Delivery note')}</button>`:''}
+   ${!RO&&can('workorders',2)&&dlState(d)!=='done'?`<button class="btn" data-act="newWO" data-inv="${id}">🛠️ ${T('أمر تركيب','Install job')}</button>`:''}</div>
+   ${dlLog(d,4)}</div>`;
+}
+function instView(id){
+  const d=S._sales.get(id);
+  if(!d)return `${backBtn}<div class="empty">${allReady()?T('غير موجود','Not found'):'<span class="spin"></span>'}</div>`;
+  const c=d.partyId?S._customers.get(d.partyId)||{}:{};
+  const loc=[c.city,c.address].filter(Boolean).join(' — ');const ml=loc?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`:'';
+  const wos=S.workorders.filter(w=>w.invId===id);
+  return `<div class="head">${backBtn}<h2>📦 ${T('تسليم وتركيب','Delivery & install')} <span class="num">${docNo('sales',d.no)}</span></h2>${dlBadge(d)}</div>
+  <div class="btns" style="margin-bottom:12px">${!RO&&canInst(2)&&dlTracked(d)?`<button class="btn pri" data-act="dlEdit" data-id="${id}">✏️ ${T('تحديث الاستلام والتركيب','Update delivery & install')}</button>`:''}
+   ${!RO&&canInst(2)&&!dlTracked(d)&&!d.migrated?`<button class="btn pri" data-act="dlStart" data-id="${id}">${T('ابدأ التتبع','Start tracking')}</button>`:''}
+   ${downloads&&dlTracked(d)?`<button class="btn" data-act="dlNote" data-id="${id}">⬇︎ ${T('سند تسليم','Delivery note')}</button>`:''}
+   ${c.phone?`<a class="btn" href="tel:${esc(c.phone)}">📞 ${T('اتصال','Call')}</a><a class="btn" href="${waLink(c.phone,'')}" target="_blank" rel="noopener">واتساب</a>`:''}
+   ${ml?`<a class="btn" href="${esc(ml)}" target="_blank" rel="noopener">🗺️ ${T('الخريطة','Map')}</a>`:''}
+   ${can('sales',1)?`<button class="btn" data-act="openSub" data-type="doc" data-k="sales" data-id="${id}">🧾 ${T('الفاتورة','Invoice')}</button>`:''}</div>
+  <div class="card"><div class="kv">
+   <span>${T('العميل','Customer')}</span><span translate="no" dir="auto">${esc(d.partyName||'—')}</span>
+   ${c.phone?`<span>${T('الهاتف','Phone')}</span><span class="num">${esc(c.phone)}</span>`:''}
+   ${loc?`<span>${T('العنوان','Address')}</span><span translate="no" dir="auto">${esc(loc)}</span>`:''}
+   <span>${T('تاريخ الفاتورة','Invoice date')}</span><span class="num">${fdate(d.date)}</span>
+   ${d.notes?`<span>${T('ملاحظات','Notes')}</span><span dir="auto" style="white-space:pre-wrap">${esc(d.notes)}</span>`:''}
+  </div></div>
+  ${dlTracked(d)?`<div class="card"><h3>${T('البنود','Items')} <span class="muted" style="font-weight:400;font-size:13px">${T('التركيب','Installed')} ${dlProg(d)}%</span></h3>${dlTable(d,true)}${dlLog(d,20)}</div>`:''}
+  ${wos.length?`<div class="card"><h3>🛠️ ${T('أوامر التركيب','Install jobs')}</h3><div class="list" style="border:0">${wos.map(w=>`<div class="item" data-act="openSub" data-type="doc" data-k="workorders" data-id="${w.id}"><div class="m"><div class="t num">${docNo('workorders',w.no)}</div><div class="d">${w.due?fdate(w.due):''} ${(w.techs||[]).map(u=>esc((staffName(u)||'').split('@')[0])).join('، ')}</div></div><span class="badge ${invStatus('workorders',w)[1]}">${invStatus('workorders',w)[0]}</span></div>`).join('')}</div></div>`:''}`;
+}
+VIEWS.installs=()=>{
+  const f=Q.inst_f||'open';const q=norm(Q.inst||'');
+  let arr=S.sales.filter(dlTracked).map(d=>({d,st:dlState(d)}));
+  const cnt={open:arr.filter(x=>x.st!=='done').length,done:arr.filter(x=>x.st==='done').length,all:arr.length};
+  if(f==='open')arr=arr.filter(x=>x.st!=='done');else if(f==='done')arr=arr.filter(x=>x.st==='done');
+  if(q)arr=arr.filter(x=>norm(x.d.partyName).includes(q)||docNo('sales',x.d.no).toLowerCase().includes(q));
+  const ord={none:0,part:1,recv:2,done:3};arr.sort((a,b)=>ord[a.st]-ord[b.st]||String(a.d.date).localeCompare(String(b.d.date)));
+  return `<div class="head"><h1>📦 ${T('التسليم والتركيب','Delivery & installation')}</h1></div>${loading()}
+  <div class="seg" style="display:flex;margin-bottom:10px">${[['open',T('غير مكتملة','Pending')],['done',T('مكتملة','Completed')],['all',T('الكل','All')]].map(([k,t])=>`<button class="${f===k?'on':''}" data-act="instF" data-v="${k}">${t} <span class="num">(${cnt[k]})</span></button>`).join('')}</div>
+  <input id="q-inst" class="search" placeholder="${T('بحث بالعميل أو رقم الفاتورة','Search customer or invoice no.')}" value="${esc(Q.inst||'')}" oninput="Q.inst=this.value;render()" style="margin-bottom:10px;width:100%">
+  ${arr.length?`<div class="list">${arr.map(({d,st})=>{const it=dlItems(d);return `<div class="item" data-act="openSub" data-type="inst" data-id="${d.id}"><div class="m"><div class="t" translate="no" dir="auto">${esc(d.partyName||'—')}</div><div class="d"><span class="num">${docNo('sales',d.no)}</span> · <span class="num">${fdate(d.date)}</span> · ${it.length} ${T('بند','items')} · ${T('التركيب','installed')} <span class="num">${dlProg(d)}%</span></div></div><span class="badge ${DL_ST[st][2]}">${T(DL_ST[st][0],DL_ST[st][1])}</span></div>`}).join('')}</div>`:`<div class="empty">${f==='open'?T('ما في تسليم أو تركيب معلّق 👍','Nothing pending 👍'):T('لا يوجد','None')}</div>`}`;
+};
+function instCard(){
+  if(!canInst(1))return '';
+  const pend=S.sales.filter(d=>{const st=dlState(d);return st&&st!=='done'});if(!pend.length)return '';
+  const n=k=>pend.filter(d=>dlState(d)===k).length;
+  return `<a class="card" href="#installs" data-act="nav" data-r="installs" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit"><span style="font-size:26px">📦</span><div style="flex:1"><b>${T('تسليم وتركيب معلّق','Pending delivery & install')}: <span class="num">${pend.length}</span></b><div class="muted" style="font-size:12.5px">${T('لم يُستلم','Not delivered')} ${n('none')} · ${T('جزئي','Partial')} ${n('part')} · ${T('بانتظار التركيب','Awaiting install')} ${n('recv')}</div></div><span class="muted">‹</span></a>`;
+}
+function dlEdit(id){
+  const d=S._sales.get(id);if(!d)return;const it=dlItems(d);
+  openModal(`<div data-keep><div class="mh"><h3>📦 ${T('الاستلام والتركيب','Delivery & installation')} — <span class="num">${docNo('sales',d.no)}</span></h3><button class="btn ghost" data-act="closeModal">✕</button></div>
+   <div class="btns" style="margin:0 0 10px"><button class="btn sm" data-act="dlAll" data-w="r">✅ ${T('استلم الكل','All delivered')}</button><button class="btn sm" data-act="dlAll" data-w="i">✅ ${T('تركّب الكل','All installed')}</button><button class="btn sm ghost" data-act="dlAll" data-w="0">${T('تصفير','Clear')}</button></div>
+   <table class="dlt" style="width:100%;border-collapse:collapse"><tr><th>${T('الصنف','Item')}</th><th class="n">${T('الكمية','Qty')}</th><th class="n">${T('استلم','Delivered')}</th><th class="n">${T('تركّب','Installed')}</th></tr>
+   ${it.map((x,j)=>`<tr data-j="${j}" data-k="${esc(x.k)}" data-q="${x.qty}" data-svc="${x.svc?1:0}"><td translate="no" dir="auto">${esc(x.name)}</td><td class="n num">${fq(x.qty)}</td>
+    <td class="n">${x.svc?'—':`<input class="dlin dl-r num" inputmode="decimal" value="${fq(x.r)}">`}</td><td class="n"><input class="dlin dl-i num" inputmode="decimal" value="${fq(x.i)}"></td></tr>`).join('')}</table>
+   <label style="margin-top:10px;display:block">${T('ملاحظة (اختياري)','Note (optional)')}<input id="dl-note" placeholder="${T('مثال: استلمها الأخ محمد / باقي الكاميرات الأسبوع الجاي','e.g. received by Mohammed / rest next week')}"></label>
+   <p class="muted" style="font-size:12px;margin:8px 0 0">${T('التركيب يعني إن القطعة مستلمة أيضاً.','Installed also counts as delivered.')}</p>
+   <div class="btns" style="margin-top:12px;justify-content:flex-end"><button class="btn" data-act="closeModal">${T('إلغاء','Cancel')}</button><button class="btn pri" data-act="dlSave" data-id="${id}">${T('حفظ','Save')}</button></div></div>`);
+}
+async function dlSave(id){
+  const d=S._sales.get(id);if(!d)return;const old=new Map(dlItems(d).map(x=>[x.k,x]));
+  const vals=new Map(),ch=[];let bad=false;
+  $$('#mbox tr[data-k]').forEach(tr=>{const k=tr.dataset.k,q=num(tr.dataset.q),svc=tr.dataset.svc==='1';
+    let i=num($('.dl-i',tr).value),r=svc?i:num(($('.dl-r',tr)||{}).value);
+    if(i<0||r<0||i>q+1e-9||r>q+1e-9)bad=true;i=Math.min(q,Math.max(0,i));r=Math.min(q,Math.max(i,r));
+    vals.set(k,{r,i});const o=old.get(k)||{r:0,i:0};const nm=(o.name||'');
+    if(!svc&&r!==o.r)ch.push(`${T('استلام','delivered')} ${nm} ${fq(o.r)}→${fq(r)}`);if(i!==o.i)ch.push(`${T('تركيب','installed')} ${nm} ${fq(o.i)}→${fq(i)}`)});
+  if(bad){toast(T('الكمية لازم تكون بين صفر وكمية الفاتورة','Quantities must be between zero and the invoice quantity'),3500);return}
+  const note=$('#dl-note').value.trim();if(!ch.length&&!note){closeModal();return}
+  if(await dlWrite(id,vals,[ch.join('، '),note].filter(Boolean).join(' — ')))closeModal();
+}
+function dlNoteHtml(d){
+  const c=d.partyId?S._customers.get(d.partyId)||{}:{};const it=dlItems(d).filter(x=>!x.svc);
+  const loc=[c.city,c.address].filter(Boolean).join(' — ');
+  return `${paperHead()}${paperTitle('سند تسليم','Delivery Note')}
+  <div class="meta"><div class="bx"><div><span>${PL('العميل','Customer')}</span><b>${PN(d.partyName,c.nameEn)}</b></div>${c.phone?`<div><span>${PL('الهاتف','Phone')}</span><span class="num">${esc(c.phone)}</span></div>`:''}${loc?`<div><span>${PL('العنوان','Address')}</span><span>${esc(loc)}</span></div>`:''}</div>
+   <div class="bx"><div><span>${PL('الفاتورة','Invoice')}</span><b class="num">${docNo('sales',d.no)}</b></div><div><span>${PL('تاريخ التسليم','Delivery date')}</span><span class="num">${fdate(today())}</span></div></div></div>
+  <table class="lines"><tr class="lh"><th style="width:30px">#</th><th>${PL('الصنف','Item',1)}</th><th class="n">${PL('الكمية','Qty',1)}</th><th class="n">${PL('المستلم','Delivered',1)}</th><th class="n">${PL('المتبقي','Remaining',1)}</th></tr>
+  ${it.map((x,j)=>`<tr><td class="li">${j+1}</td><td class="lnm">${PN(x.name,x.nameEn)}${x.desc?`<div style="color:#555;font-size:11px">${esc(x.desc)}</div>`:''}</td><td class="n num">${fq(x.qty)}</td><td class="n num">${fq(x.r)}</td><td class="n num">${fq(r3(x.qty-x.r))}</td></tr>`).join('')}</table>
+  <div class="terms" style="white-space:normal">${PL('أقر باستلام الأصناف المذكورة أعلاه بحالة جيدة.','I confirm receipt of the items above in good condition.')}</div>
+  <div class="foot"><div>${PL('توقيع المستلم','Received by')}</div><div>${PL('توقيع المسلّم','Delivered by')}</div></div>`;
+}
 function docView(kind,id){
   const d=S['_'+kind].get(id);
   if(!d) return `${backBtn}<div class="empty">${allReady()?'المستند غير موجود (ربما حُذف)':'<span class="spin"></span> جارِ التحميل…'}</div>`;
@@ -1923,6 +2060,7 @@ function docView(kind,id){
   ${!isQuo(kind)?`<div class="grid g3" style="margin-bottom:12px"><div class="stat"><div class="k">الإجمالي</div><div class="v">${money(d.total)}</div></div><div class="stat"><div class="k">المدفوع</div><div class="v pos">${money(cashPaid)}</div>${retAmt>0.0005?`<div class="s">${T('مرتجع','Returned')}: ${fmt(retAmt)}</div>`:''}</div>${rem<-0.0005?`<div class="stat" style="border-color:var(--amber)"><div class="k">مبلغ زائد (رصيد لصالح ${kind==='sales'?'العميل':'المورد'})</div><div class="v" style="color:var(--amber)">${money(-rem)}</div><div class="s">المدفوع أكثر من الإجمالي</div></div>`:`<div class="stat"><div class="k">المتبقي</div><div class="v ${rem>0.0005?'neg':''}">${money(rem)}</div></div>`}</div>`:''}
   ${d.createdBy||d.updatedBy?`<div class="muted" style="font-size:12.5px;margin:-4px 0 6px">👤 ${T('أنشأها','Created by')} <span translate="no" dir="auto">${esc(staffName(d.createdBy)||'—')}</span>${d.updatedBy&&d.updatedBy!==d.createdBy?` · ${T('آخر تعديل','Last edit')} <span translate="no" dir="auto">${esc(staffName(d.updatedBy))}</span>`:''}${ADMIN?` · <a href="#" data-act="docHistory" data-id="${id}">${T('السجل','History')}</a>`:''}</div>`:''}
   ${einvBadge(kind,d)}
+  ${kind==='sales'?dlCard(d):''}
   ${d.migrated?`<div class="muted" style="font-size:12.5px;margin:-4px 0 10px">📦 ${T('منقولة من','Migrated from')} <b dir="auto">${esc(d.migrated)}</b> — ${T('ما تأثر على المخزون','does not affect stock')}</div>`:''}
   ${d.lastEmail?`<div class="muted" style="font-size:12.5px;margin:-4px 0 10px">📧 آخر إرسال بالإيميل: <span translate="no" dir="ltr">${esc(d.lastEmail.to)}</span> · ${fdate((d.lastEmail.at||'').slice(0,10))}</div>`:''}
   ${pays.length?`<div class="card"><h3>الدفعات</h3><div class="list" style="border:0">${pays.map(payItem).join('')}</div></div>`:''}
@@ -1987,6 +2125,7 @@ function paperDoc(kind,d){
    <div class="bx"><div><span>${pl}</span><b>${PN(d.partyName,party.nameEn)}</b></div>${party.phone?`<div><span>${PL('الهاتف','Phone')}</span><span class="num">${esc(party.phone)}</span></div>`:''}${party.vatNo?`<div><span>${PL('الرقم الضريبي','VATIN')}</span><span class="num">${esc(party.vatNo)}</span></div>`:''}${party.address?`<div><span>${PL('العنوان','Address')}</span><span>${esc(party.address)}</span></div>`:''}</div>
    <div class="bx"><div><span>${PL('الرقم','No.')}</span><b class="num">${docNo(kind,d.no)}</b></div><div><span>${PL('التاريخ','Date')}</span><span class="num">${fdate(d.date)}</span></div>${d.due?`<div><span>${kind==='quotes'?PL('صالح حتى','Valid until'):kind==='porders'?PL('تاريخ التوريد','Delivery date'):isWO(kind)?PL('تاريخ التنفيذ','Scheduled'):PL('تاريخ الاستحقاق','Due date')}</span><span class="num">${fdate(d.due)}</span></div>`:''}${d.ref?`<div><span>${isWO(kind)?PL('العمل','Job'):PL('المرجع','Ref.')}</span><span class="num">${esc(d.ref)}</span></div>`:''}${isRet(kind)&&d.invoiceNo?`<div><span>${PL('الفاتورة الأصلية','Original invoice')}</span><span class="num">${esc(d.invoiceNo)}</span></div>`:''}${isWO(kind)&&d.location?`<div><span>${PL('الموقع','Location')}</span><span>${esc(d.location)}</span></div>`:''}${isWO(kind)&&(d.techs||[]).length?`<div><span>${PL('الفني','Technician')}</span><span>${esc(d.techs.map(u=>(staffName(u)||'').split('@')[0]).join('، '))}</span></div>`:''}</div>
   </div>
+  ${NOPRICE()?`<table class="lines"><tr class="lh"><th style="width:30px">#</th><th>${PL('الصنف','Item',1)}</th><th>${PL('الوصف','Description',1)}</th><th class="n">${PL('الكمية','Qty',1)}</th></tr>${(d.lines||[]).map((l,i)=>`<tr><td class="li">${i+1}</td><td class="lnm">${PN(l.name,lineEn(l))}${(l.serials||[]).length?`<div style="color:#555;font-size:11px" dir="ltr">S/N: ${esc(l.serials.join(', '))}</div>`:''}</td><td class="ldesc" dir="auto">${esc(l.desc||'')}</td><td class="n num">${fq(l.qty)}</td></tr>`).join('')}</table><div class="sum"><div class="notes">${esc(d.notes||'')}</div></div>`:''}${NOPRICE()?'':`
   <table class="lines"><tr class="lh"><th style="width:30px">#</th>${showImg?'<th class="pimg"></th>':''}<th>${hasDesc?PL('الصنف','Item',1):PL('الصنف / الوصف','Item / Description',1)}</th>${hasDesc?`<th>${PL('الوصف','Description',1)}</th>`:''}<th class="n">${PL('الكمية','Qty',1)}</th><th class="n">${PL('السعر','Price',1)}</th>${hasDisc?`<th class="n">${PL('الخصم','Discount',1)}</th>`:''}<th class="n">${PL('الإجمالي','Amount',1)}</th></tr>
   ${(d.lines||[]).map((l,i)=>`<tr><td class="li">${i+1}</td>${imgCell(l)}<td class="lnm">${PN(l.name,lineEn(l))}${d.vatOn&&l.noVat?' <sup title="No VAT">*</sup>':''}${(l.serials||[]).length?`<div style="color:#555;font-size:11px" dir="ltr">S/N: ${esc(l.serials.join(', '))}</div>`:''}${num(l.warranty)&&(kind==='sales'||isWO(kind))?`<div style="color:#555;font-size:11px">${PL('الضمان','Warranty')}: ${fq(l.warranty)} ${PL('شهر','months')}${kind==='sales'?` — ${PL('حتى','until')} <span class="num">${fdate(addMonths(d.date,l.warranty))}</span>`:''}</div>`:''}</td>${hasDesc?`<td class="ldesc" dir="auto">${esc(l.desc||'')}</td>`:''}<td class="n num lc" data-l="${PLt('الكمية','Qty')}">${fq(l.qty)}</td><td class="n num lc" data-l="${PLt('السعر','Price')}">${fmt(l.price)}</td>${hasDisc?`<td class="n num lc" data-l="${PLt('الخصم','Discount')}">${discLabel(l)}</td>`:''}<td class="n num lc lt" data-l="${PLt('الإجمالي','Amount')}">${fmt(l.total)}</td></tr>`).join('')}</table>
   <div class="sum"><div class="notes">${esc(d.notes||'')}</div><table>
@@ -1995,7 +2134,7 @@ function paperDoc(kind,d){
    ${d.vatOn?`<tr><td>${PL('المبلغ الخاضع للضريبة','Taxable amount')}</td><td class="n num">${fmt(d.vatBase!=null?d.vatBase:num(d.sub)-num(d.discount))}</td></tr>${(d.lines||[]).some(l=>l.noVat)?`<tr><td>* ${PL('بدون ضريبة','Not subject to VAT')}</td><td class="n num">${fmt(r3(num(d.sub)-num(d.discount)-(d.vatBase!=null?num(d.vatBase):num(d.sub)-num(d.discount))))}</td></tr>`:''}<tr><td>${PL('ضريبة القيمة المضافة','VAT')} ${fq(d.vatRate)}%</td><td class="n num">${fmt(d.vat)}</td></tr>`:''}
    <tr class="big"><td>${PL('الإجمالي','Total')} (${esc(s.currency)})</td><td class="n num">${fmt(d.total)}</td></tr>
    ${isInv&&(paid>0||retA>0)?`${retA>0?`<tr><td>${PL('المرتجع','Returned')}</td><td class="n num">-${fmt(retA)}</td></tr>`:''}${paid>0?`<tr><td>${PL('المدفوع','Paid')}</td><td class="n num">${fmt(paid)}</td></tr>`:''}<tr><td><b>${PL('المتبقي','Balance due')}</b></td><td class="n num"><b>${fmt(Math.max(0,num(d.total)-settled))}</b></td></tr>${settled-num(d.total)>0.0005?`<tr><td>${PL('مبلغ زائد (رصيد لصالحكم)','Overpaid (your credit)')}</td><td class="n num">${fmt(settled-num(d.total))}</td></tr>`:''}`:''}
-  </table></div>
+  </table></div>`}
   ${isWO(kind)?`<div class="terms" style="white-space:normal"><b>${PL('ملاحظات التنفيذ','Completion notes')}:</b> ${esc(d.result||'')}<br><br>${PL('أقر باستلام العمل بحالة جيدة','I confirm the work was received in good condition')}</div><div class="foot"><div>${PL('توقيع الفني','Technician signature')}</div><div>${PL('توقيع العميل','Customer signature')}</div></div>`:''}
   ${k.party==='customers'&&kind!=='sreturns'&&!isWO(kind)&&(s.terms||s.bank)?`<div class="terms">${esc(s.terms||'')}${s.terms&&s.bank?'\n\n':''}${esc(s.bank||'')}</div>`:''}
   ${isWO(kind)?'':`<div class="foot"><div>${PL('التوقيع','Signature')}</div><div>${PL('الختم','Stamp')}</div></div>`}`;
@@ -2126,6 +2265,7 @@ function openEditor(kind,id,data,opts={}){
      <label style="display:flex;gap:8px;align-items:center;color:var(--ink);margin-bottom:6px"><input type="radio" name="e-settle" value="credit" checked> ${kind==='sreturns'?T('خصم من رصيد العميل (إشعار دائن)','Credit the customer balance'):T('خصم من رصيد المورد','Deduct from supplier balance')}</label>
      <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="radio" name="e-settle" value="refund"> ${kind==='sreturns'?T('رد المبلغ للعميل الآن','Refund the customer now'):T('استلام المبلغ من المورد الآن','Receive refund from supplier now')}</label>
      <div id="e-refw" class="grid g2 hide" style="margin-top:10px"><label>${T('طريقة الدفع','Method')}<select id="e-method" onchange="var a=document.getElementById('e-acc');if(a&&!a.dataset.t)a.value=defAcc(this.value)">${Object.entries(METHODS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label><label>${kind==='sreturns'?T('من خزينة / حساب','From cash box / account'):T('إلى خزينة / حساب','Into cash box / account')}<select id="e-acc" onchange="this.dataset.t=1">${accOptions(defAcc('cash'))}</select></label></div></div>`:''}
+   ${isNew&&kind==='sales'&&!E.woId?`<label style="margin-top:12px;display:block">📦 ${T('تسليم البضاعة','Delivery')}<select id="e-dl"><option value="none">${T('لم يستلم بعد','Not delivered yet')}</option><option value="recv">${T('استلم كل البنود — بانتظار التركيب','All delivered — awaiting install')}</option><option value="done">${T('استلم ولا يحتاج تركيب / تم التركيب','Delivered, no install needed / installed')}</option></select></label>`:''}
    ${isNew&&(kind==='sales'||kind==='purchases')?`<div class="grid g2" style="margin-top:12px"><label>${kind==='sales'?'المبلغ المستلم الآن':'المبلغ المدفوع الآن'}<input id="e-paid" inputmode="decimal" placeholder="0.000"></label><label>طريقة الدفع<select id="e-method" onchange="var a=document.getElementById('e-acc');if(a&&!a.dataset.t)a.value=defAcc(this.value)">${Object.entries(METHODS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label><label style="grid-column:1/-1">${kind==='sales'?T('إلى خزينة / حساب','Into cash box / account'):T('من خزينة / حساب','From cash box / account')}<select id="e-acc" onchange="this.dataset.t=1">${accOptions(defAcc('cash'))}</select></label></div><button class="btn sm" style="margin-top:8px" data-act="payFull">دُفع بالكامل</button>`:''}
    </div>
    <div class="card"><table class="totals">
@@ -2268,6 +2408,7 @@ async function saveDoc(then){
   {const c0=calc(JSON.parse(JSON.stringify(d)));if(c0.discount<0||(d.discType==='p'&&num(d.discPct)>100)||c0.discount>c0.sub+0.0005){toast(T('خصم الفاتورة غير صحيح: يجب أن يكون بين صفر والمجموع','Invoice discount must be between zero and the subtotal'),3500);return}
    if(num(d.vatRate)<0||num(d.vatRate)>100){toast(T('نسبة الضريبة غير صحيحة','Invalid VAT rate'));return}}
   const paidNow=$('#e-paid')?Math.max(0,num($('#e-paid').value)):0;
+  const dlChoice=$('#e-dl')?$('#e-dl').value:'';
   const method=$('#e-method')?$('#e-method').value:'cash';const accId=$('#e-acc')?$('#e-acc').value:defAcc(method);
   // returns: qty vs original invoice
   if(isRet(kind)&&d.invoiceId){
@@ -2321,7 +2462,7 @@ async function saveDoc(then){
     let id=E.id,no;
     if(isRet(kind)){body.invoiceId=d.invoiceId||'';body.invoiceNo=d.invoiceNo||'';body.due=''}
     if(isWO(kind)){Object.assign(body,{time:d.time||'',location:d.location||'',techs:d.techs||[]})}
-    if(id){const old=S['_'+kind].get(id)||{};Object.assign(body,{no:old.no,createdAt:old.createdAt||nowIso(),createdBy:old.createdBy||'',status:old.status||(isWO(kind)?'new':'open'),quoteId:old.quoteId||''});if(old.poId)body.poId=old.poId;if(old.woId)body.woId=old.woId;if(isWO(kind))Object.assign(body,{result:old.result||'',invoiceId:old.invoiceId||'',apptId:old.apptId||''});if(!isRet(kind))body.invoiceId=old.invoiceId||'';else body.settle=old.settle||'credit';
+    if(id){const old=S['_'+kind].get(id)||{};Object.assign(body,{no:old.no,createdAt:old.createdAt||nowIso(),createdBy:old.createdBy||'',status:old.status||(isWO(kind)?'new':'open'),quoteId:old.quoteId||''});if(old.poId)body.poId=old.poId;if(old.woId)body.woId=old.woId;for(const f of ['dl','dlog','dlAt','migrated','invId','invNo'])if(old[f]!=null)body[f]=old[f];if(isWO(kind))Object.assign(body,{result:old.result||'',invoiceId:old.invoiceId||'',apptId:old.apptId||''});if(!isRet(kind))body.invoiceId=old.invoiceId||'';else body.settle=old.settle||'credit';
       await db.collection(kind).doc(id).set(body);no=old.no;
       // keep linked vouchers consistent with the edited document
       if((old.partyId||'')!==(body.partyId||'')||(old.partyName||'')!==body.partyName){
@@ -2333,8 +2474,9 @@ async function saveDoc(then){
     } else {
       const r=await nextRef(kind,k.prefix);id=r.id;no=r.no;
       Object.assign(body,{no,createdAt:nowIso(),createdBy:MYID||'',status:isWO(kind)?(d.due?'scheduled':'new'):'open',quoteId:E.quoteId||''});
-      if(isWO(kind)){body.apptId=E.apptId||'';body.result=''}
+      if(isWO(kind)){body.apptId=E.apptId||'';body.result='';if(E.invId&&S._sales.get(E.invId)){body.invId=E.invId;body.invNo=docNo('sales',S._sales.get(E.invId).no)}}
       if(kind==='sales'&&E.woId)body.woId=E.woId;
+      if(kind==='sales'&&!E.woId&&!d.migrated){const tmp={...body,dl:{}};const dl={};if(dlChoice==='recv'||dlChoice==='done')for(const x of dlItems(tmp))dl[x.k]={r:x.qty,i:dlChoice==='done'||x.svc&&dlChoice==='done'?x.qty:0};body.dl=dl;body.dlog=dlChoice&&dlChoice!=='none'?[{at:nowIso(),by:MYID||'',txt:dlChoice==='done'?T('استلم كل البنود وتم التركيب (عند إنشاء الفاتورة)','All delivered & installed (at invoice creation)'):T('استلم كل البنود (عند إنشاء الفاتورة)','All delivered (at invoice creation)')}]:[]}
       if(kind==='purchases'&&E.poId)body.poId=E.poId;
       if(!isRet(kind))body.invoiceId='';else body.settle=settle;
       await r.ref.set(body);id=r.id;no=r.no;
@@ -2812,12 +2954,12 @@ async function portalWa(cid,docText){
 }
 
 /* ---------- permissions ---------- */
-const MODS=[['sales','🧾','المبيعات (الفواتير والمرتجعات)','Sales (invoices & returns)'],['quotes','📝','عروض الأسعار','Quotations'],['purchases','📥','المشتريات (الفواتير والمرتجعات)','Purchases (invoices & returns)'],['porders','📋','أوامر الشراء','Purchase orders'],['customers','👥','العملاء وأرصدتهم','Customers & balances'],['suppliers','🏭','الموردين وأرصدتهم','Suppliers & balances'],['products','📦','الأصناف والمخزون والجرد','Items, stock & stocktake'],['finance','💰','المالية: السندات والمصروفات والخزائن','Finance: vouchers, expenses, cash & bank'],['appointments','📅','المواعيد والزيارات','Appointments & visits'],['workorders','🛠️','أوامر العمل والتركيب والضمان','Work orders, installs & warranty'],['reports','📊','التقارير وأرقام لوحة التحكم','Reports & dashboard figures']];
+const MODS=[['sales','🧾','المبيعات (الفواتير والمرتجعات)','Sales (invoices & returns)'],['quotes','📝','عروض الأسعار','Quotations'],['purchases','📥','المشتريات (الفواتير والمرتجعات)','Purchases (invoices & returns)'],['porders','📋','أوامر الشراء','Purchase orders'],['customers','👥','العملاء وأرصدتهم','Customers & balances'],['suppliers','🏭','الموردين وأرصدتهم','Suppliers & balances'],['products','📦','الأصناف والمخزون والجرد','Items, stock & stocktake'],['finance','💰','المالية: السندات والمصروفات والخزائن','Finance: vouchers, expenses, cash & bank'],['appointments','📅','المواعيد والزيارات','Appointments & visits'],['workorders','🛠️','أوامر العمل والتركيب والضمان','Work orders, installs & warranty'],['reports','📊','التقارير وأرقام لوحة التحكم','Reports & dashboard figures'],['install','📦','التسليم والتركيب (الفنيين — بدون أسعار)','Delivery & installation (technicians — no prices)']];
 const LVN=[['لا يوجد','None'],['عرض','View'],['إضافة وتعديل','Add & edit'],['كامل + حذف','Full + delete']];
 const PALL=v=>Object.fromEntries(MODS.map(m=>[m[0],v]));
 const PRESETS=[
- ['sales',T('موظف مبيعات','Salesperson'),{...PALL(0),sales:2,quotes:2,customers:2,products:1,appointments:2,workorders:1}],
- ['tech',T('فني تركيب','Technician'),{...PALL(0),appointments:2,workorders:2,customers:1,products:1}],
+ ['sales',T('موظف مبيعات','Salesperson'),{...PALL(0),sales:2,quotes:2,customers:2,products:1,appointments:2,workorders:1,install:2}],
+ ['tech',T('فني تركيب','Technician'),{...PALL(0),appointments:2,workorders:2,customers:1,products:1,install:2}],
  ['acct',T('محاسب','Accountant'),{...PALL(1),sales:2,purchases:2,porders:2,customers:2,suppliers:2,finance:3,reports:1}],
  ['store',T('أمين مخزن','Storekeeper'),{...PALL(0),products:2,purchases:1,porders:2,suppliers:1}],
  ['view',T('مشاهد فقط','View only'),PALL(1)],
@@ -2830,7 +2972,9 @@ const can=(m,l=1)=>m==='admin'?ADMIN:lvl(m)>=l;
 function deny(){toast('🔒 '+T('ليس لديك صلاحية','You do not have permission'),3000);return false}
 const KMOD={sales:'sales',sreturns:'sales',quotes:'quotes',purchases:'purchases',preturns:'purchases',porders:'porders',workorders:'workorders'};
 const ROUTE_MOD={sales:'sales',sreturns:'sales',quotes:'quotes',purchases:'purchases',preturns:'purchases',porders:'porders',customers:'customers','+customer':'customers',custbal:'customers',suppliers:'suppliers',supbal:'suppliers',products:'products',warranty:'workorders',accounts:'finance',receipts:'finance',payouts:'finance',expenses:'finance',appointments:'appointments',workorders:'workorders',reports:'reports',activity:'admin',staff:'admin','+staff':'admin',requests:'admin'};
-function routeOk(r){const m=ROUTE_MOD[r];if(!m)return true;if(r==='+customer')return can('customers',2);return can(m,1)}
+function routeOk(r){if(r==='installs')return canInst(1);const m=ROUTE_MOD[r];if(!m)return true;if(r==='+customer')return can('customers',2);return can(m,1)}
+const canInst=(l=1)=>can('install',l)||can('sales',l);
+const NOPRICE=()=>!ADMIN&&!['sales','quotes','purchases','porders','finance'].some(m=>can(m,1));
 const noPerm=()=>`<div class="empty" style="padding:50px 16px"><div style="font-size:40px">🔒</div><h3 style="margin:10px 0 4px">${T('ليس لديك صلاحية','You do not have permission')}</h3><div class="muted">${T('اطلب من المدير إعطاءك صلاحية لهذا القسم.','Ask the admin to give you access to this section.')}</div></div>`;
 const permSummary=p=>{if(!p)return '';const a=MODS.filter(m=>num(p[m[0]])>0);return a.length?a.map(m=>`${m[1]}${['','👁','✏️','🗑'][num(p[m[0]])]}`).join(' '):T('بدون صلاحيات','No access')};
 
@@ -3332,11 +3476,21 @@ ${dayName(a.date)} ${fdate(a.date)} — ${fTime(a.time)}${a.location?'\n'+a.loca
   discType:(o,el)=>{const t=el.dataset.t==='a'?'p':'a';el.dataset.t=t;el.textContent=t==='a'?curSym():'%';const inp=el.previousElementSibling;if(inp)inp.focus();updTotals()},
   docHistory:o=>{Q.activity=S._sales.get(o.id)?docNo('sales',S._sales.get(o.id).no):(S._purchases.get(o.id)?docNo('purchases',S._purchases.get(o.id).no):(S._quotes.get(o.id)?docNo('quotes',S._quotes.get(o.id).no):o.id));go('activity')},
   install:()=>doInstall(),
-  newWO:o=>newWOFrom({quote:o.quote,appt:o.appt,customer:o.customer}),
+  newWO:o=>newWOFrom({quote:o.quote,appt:o.appt,customer:o.customer,inv:o.inv}),
   woStatus:async o=>{if(o.v==='cancelled'&&!(await ask(T('إلغاء أمر العمل؟','Cancel this work order?'),T('إلغاء الأمر','Cancel order'),true,T('رجوع','Back'))))return;await W(()=>db.collection('workorders').doc(o.id).update({status:o.v,updatedAt:nowIso(),...(o.v==='progress'?{startedAt:nowIso()}:{})}),T('تم','Done'))},
   woDone:o=>woDone(o.id),
-  saveWoDone:async o=>{const r=$('#wo-res').value.trim();if(await W(()=>db.collection('workorders').doc(o.id).update({status:'done',result:r,doneAt:nowIso(),doneBy:MYID||''}),T('تم إنهاء العمل ✓','Job completed ✓')))closeModal()},
+  saveWoDone:async o=>{const r=$('#wo-res').value.trim();const w=S._workorders.get(o.id);const inv=w&&w.invId?S._sales.get(w.invId):null;
+    const ok=await W(()=>db.collection('workorders').doc(o.id).update({status:inv?'invoiced':'done',result:r,doneAt:nowIso(),doneBy:MYID||'',...(inv?{invoiceId:inv.id,invoiceNo:docNo('sales',inv.no)}:{})}),T('تم إنهاء العمل ✓','Job completed ✓'));
+    if(ok&&inv){const cur=new Map(dlItems(inv).map(x=>[x.k,x]));const vals=new Map();const ch=[];
+      for(const l of w.lines||[]){if(!l.productId)continue;const k=dlKey(l);const x=cur.get(k);if(!x)continue;const prev=vals.get(k)||{r:x.r,i:x.i};const i=Math.min(x.qty,r3(prev.i+num(l.qty)));vals.set(k,{r:Math.max(prev.r,i),i});ch.push(`${x.name} ×${fq(num(l.qty))}`)}
+      if(vals.size)await dlWrite(inv.id,vals,T('تركيب عبر أمر العمل ','Installed via work order ')+docNo('workorders',w.no)+': '+ch.join('، '),true)}
+    if(ok)closeModal()},
   woInvoice:o=>woInvoice(o.id),
+  dlEdit:o=>canInst(2)?dlEdit(o.id):deny(),dlSave:o=>canInst(2)?dlSave(o.id):deny(),
+  dlAll:o=>{$$('#mbox tr[data-k]').forEach(tr=>{const q=tr.dataset.q;const ri=$('.dl-r',tr),ii=$('.dl-i',tr);if(o.w==='0'){if(ri)ri.value=0;ii.value=0}else if(o.w==='r'){if(ri)ri.value=q;else ii.value=q}else{ii.value=q;if(ri)ri.value=q}})},
+  dlStart:async o=>{if(!canInst(2))return deny();const d=S._sales.get(o.id);if(d)await W(()=>db.collection('sales').doc(o.id).update({dl:{},dlog:[{at:nowIso(),by:MYID||'',txt:T('بدء تتبع التسليم','Tracking started')}],dlAt:nowIso()}),T('تم ✓','Done ✓'))},
+  dlNote:o=>{const d=S._sales.get(o.id);if(d)htmlToPdf(dlNoteHtml(d),`${T('سند تسليم','Delivery note')} ${docNo('sales',d.no)}.pdf`)},
+  instF:o=>{Q.inst_f=o.v;render()},
   snOpen:o=>{Q.warranty=o.sn;go('warranty')},
   scanClose:()=>closeScanner(),scanTorch:()=>scanTorch(),
   scanLines:()=>scanIntoEditor(),

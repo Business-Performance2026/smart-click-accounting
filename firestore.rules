@@ -129,7 +129,10 @@ service cloud.firestore {
         && canWriteCol(col);
       // numbered documents (INV-00012…) can't be silently replaced by a different new document with the same number
       allow update: if isStaff() && col in ['customers', 'suppliers', 'products', 'quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'appointments', 'workorders', 'pimages', 'porders']
-        && canWriteCol(col)
+        && (canWriteCol(col)
+            // technicians: only the delivery & installation fields of a sales invoice
+            || (col == 'sales' && (lvl('install') >= 2 || lvl('workorders') >= 2)
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dl', 'dlog', 'dlAt'])))
         && (!(col in ['quotes', 'sales', 'purchases', 'payments', 'sreturns', 'preturns', 'workorders', 'porders'])
             || resource.data.get('createdAt', null) == null
             || request.resource.data.get('createdAt', null) == resource.data.createdAt);
