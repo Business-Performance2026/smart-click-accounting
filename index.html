@@ -1440,10 +1440,11 @@ function quickActions(){
    ['in','سند قبض','Receipt','newPay','data-t="in"','#17803d','#e8f6ed'],
    ['out','سند صرف','Payment','newPay','data-t="out"','#b4381a','#fdeee8'],
    ['expense','مصروف','Expense','newPay','data-t="out" data-exp="1"','#94600a','#fdf4dc'],
+   ['income','إيراد / إيداع','Income / deposit','newPay','data-t="in" data-pt="income"','#0b6e8a','#e3f3f8'],
    ['customer','عميل جديد','New customer','editParty','data-col="customers"','#6d4fc2','#efebfa'],
    ['product','صنف جديد','New item','editProduct','','#3a4a5e','#eceff3'],
   ];
-  const QM={sales:'sales',quote:'quotes',purchase:'purchases',in:'finance',out:'finance',expense:'finance',customer:'customers',product:'products'};
+  const QM={sales:'sales',quote:'quotes',purchase:'purchases',in:'finance',out:'finance',expense:'finance',income:'finance',customer:'customers',product:'products'};
   const AA=A.filter(a=>can(QM[a[0]],2));if(!AA.length)return '';
   return `<div class="qa">${AA.map(([ic,ar,en,act,attrs,c,bg])=>`<button class="qa-c" data-act="${act}" ${attrs}><span class="qa-i" style="background:${bg};color:${c}"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${QI[ic]}</svg></span><span class="qa-t">${T(ar,en)}</span></button>`).join('')}</div>`;
 }
@@ -1454,7 +1455,7 @@ VIEWS.dashboard=()=>{
   const inM=x=>(x.date||'').startsWith(m0);
   const salesM=S.sales.filter(inM).reduce((a,x)=>a+num(x.total),0)-S.sreturns.filter(inM).reduce((a,x)=>a+num(x.total),0);
   const purM=S.purchases.filter(inM).reduce((a,x)=>a+num(x.total),0)-S.preturns.filter(inM).reduce((a,x)=>a+num(x.total),0);
-  const colM=S.payments.filter(p=>inM(p)&&p.type==='in').reduce((a,x)=>a+num(x.amount),0);
+  const colM=S.payments.filter(p=>inM(p)&&p.type==='in'&&p.partyType!=='owner'&&!p.noCash).reduce((a,x)=>a+num(x.amount),0);
   const expM=S.payments.filter(p=>inM(p)&&p.type==='out'&&p.partyType==='expense').reduce((a,x)=>a+num(x.amount),0);
   const recv=[...d.cust.values()].reduce((a,x)=>a+(x>0?x:0),0);
   const pay=[...d.sup.values()].reduce((a,x)=>a+(x>0?x:0),0);
@@ -1790,8 +1791,7 @@ function accMoves(id){
     const a=num(p.amount);
     if(p.type==='tr'){if(p.fromAcc===id)mv.push({p,out:a,desc:`${T('تحويل إلى','Transfer to')} ${accName(accById(p.toAcc))}`});if(p.toAcc===id)mv.push({p,in:a,desc:`${T('تحويل من','Transfer from')} ${accName(accById(p.fromAcc))}`});continue}
     if(p.noCash||payAcc(p)!==id)continue;
-    const who=p.partyType==='expense'?(p.category||T('مصروف','Expense'))+(p.partyName?' — '+p.partyName:''):(p.partyName||'');
-    mv.push({p,[p.type==='in'?'in':'out']:a,desc:`${p.type==='in'?T('قبض','Receipt'):p.partyType==='expense'?T('مصروف','Expense'):T('صرف','Payment')}: ${who}${p.invoiceNo?' · '+p.invoiceNo:''}`});
+    mv.push({p,[p.type==='in'?'in':'out']:a,desc:`${payKind(p)}: ${p.partyType==='owner'?(p.partyName||''):payWho(p)}${p.invoiceNo?' · '+p.invoiceNo:''}`});
   }
   mv.sort((x,y)=>((x.p.date||'')+(x.p.createdAt||'')).localeCompare((y.p.date||'')+(y.p.createdAt||'')));
   return mv;
@@ -1871,10 +1871,24 @@ async function saveTransfer(id){
   if(ok){closeModal();render()}
 }
 
+/* ---------- other income & owner account ---------- */
+const INC_CATS=['عمولة','بيع مستعمل / خردة','فوائد بنك','إيجار','أخرى'];
+function payKind(p){
+  if(p.type==='tr')return T('تحويل','Transfer');
+  if(p.partyType==='expense')return T('مصروف','Expense');
+  if(p.partyType==='income')return T('إيراد آخر','Other income');
+  if(p.partyType==='owner')return p.type==='in'?T('إيداع من المالك','Owner deposit'):T('سحب المالك','Owner withdrawal');
+  return p.type==='in'?T('قبض','Receipt'):T('صرف','Payment');
+}
+function payWho(p){
+  if(p.partyType==='expense'||p.partyType==='income')return (p.category||payKind(p))+(p.partyName?' — '+p.partyName:'');
+  if(p.partyType==='owner')return payKind(p)+(p.partyName?' — '+p.partyName:'');
+  return p.partyName||'—';
+}
 function payItem(p){
   if(p.type==='tr')return `<div class="item" data-act="openSub" data-type="pay" data-id="${p.id}"><div class="m"><div class="t" translate="no" dir="auto">${esc(accName(accById(p.fromAcc)))} ${T('←','→')} ${esc(accName(accById(p.toAcc)))}</div><div class="d"><span class="num">${payNo(p)}</span> · ${esc(p.date)}${p.notes?' · <span translate="no">'+esc(p.notes)+'</span>':''} <span class="badge b-pri">${T('تحويل','Transfer')}</span></div></div><div class="a">${money(p.amount)}</div></div>`;
   const exp=p.partyType==='expense';
-  return `<div class="item" data-act="openSub" data-type="pay" data-id="${p.id}"><div class="m"><div class="t" translate="no" dir="auto">${esc(exp?(p.category||'مصروف'):(p.partyName||'—'))}</div><div class="d"><span class="num">${payNo(p)}</span> · ${esc(p.date)} · <span translate="no">${esc(accName(accById(payAcc(p))))}</span>${p.invoiceNo?` · <span class="num">${esc(p.invoiceNo)}</span>`:''} <span class="badge ${p.type==='in'?'b-green':exp?'b-amber':'b-red'}">${p.type==='in'?'قبض':exp?'مصروف':'صرف'}</span></div></div><div class="a ${p.type==='in'?'pos':'neg'}">${money(p.amount)}</div></div>`;
+  return `<div class="item" data-act="openSub" data-type="pay" data-id="${p.id}"><div class="m"><div class="t" translate="no" dir="auto">${esc(payWho(p))}</div><div class="d"><span class="num">${payNo(p)}</span> · ${esc(p.date)} · <span translate="no">${esc(accName(accById(payAcc(p))))}</span>${p.invoiceNo?` · <span class="num">${esc(p.invoiceNo)}</span>`:''} <span class="badge ${p.type==='in'?'b-green':exp?'b-amber':'b-red'}">${p.type==='in'?'قبض':exp?'مصروف':'صرف'}</span></div></div><div class="a ${p.type==='in'?'pos':'neg'}">${money(p.amount)}</div></div>`;
 }
 
 /* ---------- reports ---------- */
@@ -1896,6 +1910,10 @@ VIEWS.reports=()=>{
   const pT=pur.reduce((a,x)=>a+num(x.total),0)-pRT,pV=pur.reduce((a,x)=>a+num(x.vat),0)-pRet.reduce((a,x)=>a+num(x.vat),0);
   const exp=pays.filter(p=>p.partyType==='expense').reduce((a,p)=>a+num(p.amount),0);
   const col=pays.filter(p=>p.type==='in'&&p.partyType==='customer').reduce((a,p)=>a+num(p.amount),0);
+  const oInc=pays.filter(p=>p.type==='in'&&p.partyType==='income').reduce((a,p)=>a+num(p.amount),0);
+  const own=pays.filter(p=>p.partyType==='owner');const ownIn=own.filter(p=>p.type==='in').reduce((a,p)=>a+num(p.amount),0),ownOut=own.filter(p=>p.type==='out').reduce((a,p)=>a+num(p.amount),0);
+  const ownAll=S.payments.filter(p=>p.partyType==='owner').reduce((a,p)=>a+(p.type==='in'?1:-1)*num(p.amount),0);
+  const incCat=new Map();pays.filter(p=>p.type==='in'&&p.partyType==='income').forEach(p=>incCat.set(p.category||'أخرى',(incCat.get(p.category||'أخرى')||0)+num(p.amount)));
   let cogs=0;const prod=new Map();
   for(const s of sales){const ratio=num(s.sub)>0?(num(s.sub)-num(s.discount))/num(s.sub):1;for(const l of s.lines||[]){const key=l.productId||('x:'+l.name);const e=prod.get(key)||{name:l.productId&&S._products.get(l.productId)?dn(S._products.get(l.productId)):l.name,qty:0,val:0,cost:0};const c=num(l.qty)*unitCost(l,d.avg);e.qty+=num(l.qty);e.val+=num(l.total)*ratio;e.cost+=c;cogs+=c;prod.set(key,e)}}
   for(const s of sRet){const ratio=num(s.sub)>0?(num(s.sub)-num(s.discount))/num(s.sub):1;for(const l of s.lines||[]){const key=l.productId||('x:'+l.name);const e=prod.get(key);const c=num(l.qty)*unitCost(l,d.avg);cogs-=c;if(e){e.qty-=num(l.qty);e.val-=num(l.total)*ratio;e.cost-=c}}}
@@ -1912,7 +1930,7 @@ VIEWS.reports=()=>{
    <div class="stat"><div class="k">المبيعات (شامل الضريبة)</div><div class="v">${money(sT)}</div><div class="s">${sales.length} فاتورة · صافي ${fmt(sN)}${sRT?` · ${T('مرتجعات','returns')} ${fmt(sRT)}`:''}</div></div>
    <div class="stat"><div class="k">المشتريات (شامل الضريبة)</div><div class="v">${money(pT)}</div><div class="s">${pur.length} فاتورة${pRT?` · ${T('مرتجعات','returns')} ${fmt(pRT)}`:''}</div></div>
    <div class="stat"><div class="k">مجمل الربح (تقديري)</div><div class="v ${gp<0?'neg':''}">${money(gp)}</div><div class="s">صافي المبيعات − تكلفة البضاعة المباعة ${fmt(cogs)}</div></div>
-   <div class="stat"><div class="k">صافي الربح (تقديري)</div><div class="v ${gp-exp<0?'neg':''}">${money(gp-exp)}</div><div class="s">بعد المصروفات ${fmt(exp)}</div></div>
+   <div class="stat"><div class="k">صافي الربح (تقديري)</div><div class="v ${gp-exp+oInc<0?'neg':''}">${money(gp-exp+oInc)}</div><div class="s">بعد المصروفات ${fmt(exp)}${oInc?` · ${T('+ إيرادات أخرى','+ other income')} ${fmt(oInc)}`:''}</div></div>
    <div class="stat"><div class="k">ضريبة المخرجات (مبيعات)</div><div class="v">${money(sV)}</div></div>
    <div class="stat"><div class="k">ضريبة المدخلات (مشتريات)</div><div class="v">${money(pV)}</div></div>
    <div class="stat"><div class="k">صافي الضريبة المستحقة</div><div class="v ${sV-pV<0?'pos':''}">${money(sV-pV)}</div><div class="s">${sV-pV<0?'رصيد دائن لصالحك':'مستحقة لجهاز الضرائب'}</div></div>
@@ -1923,6 +1941,10 @@ VIEWS.reports=()=>{
    <div class="stat"><div class="k">إجمالي المستحق على العملاء</div><div class="v">${money(recv)}</div></div>
    <div class="stat"><div class="k">إجمالي المستحق للموردين</div><div class="v">${money(payb)}</div></div>
   </div>
+  ${oInc||own.length||ownAll?`<div class="grid g2" style="margin-bottom:14px">
+   <div class="card" style="margin:0"><h3>💵 ${T('الإيرادات الأخرى','Other income')} <span class="num" style="font-weight:400">${fmt(oInc)}</span></h3>${incCat.size?`<table class="totals" style="max-width:100%">${[...incCat].sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${fmt(v)}</td></tr>`).join('')}</table>`:`<p class="muted" style="margin:0">—</p>`}<p class="muted" style="font-size:12px;margin:6px 0 0">${T('داخلة في صافي الربح.','Included in net profit.')}</p></div>
+   <div class="card" style="margin:0"><h3>👤 ${T('حساب المالك','Owner account')}</h3><table class="totals" style="max-width:100%"><tr><td>${T('إيداعات في الفترة','Deposits in period')}</td><td class="num">${fmt(ownIn)}</td></tr><tr><td>${T('سحوبات في الفترة','Withdrawals in period')}</td><td class="num">− ${fmt(ownOut)}</td></tr><tr class="big"><td>${T('صافي ما أودعه المالك (كل الفترات)','Net owner funding (all time)')}</td><td class="num">${fmt(ownAll)}</td></tr></table><p class="muted" style="font-size:12px;margin:6px 0 0">${T('ما يدخل في الربح — يأثر على رصيد الصندوق والبنك فقط.','Not part of profit — affects cash/bank balances only.')}</p></div>
+  </div>`:''}
   <div class="grid g2 f">
    <div class="card"><h3>الأصناف الأكثر مبيعاً</h3><div class="tw"><table class="t"><tr><th>الصنف</th><th class="n">الكمية</th><th class="n">المبيعات</th><th class="n">الربح</th></tr>${top.map(e=>`<tr><td>${esc(e.name)}</td><td class="n num">${fq(e.qty)}</td><td class="n num">${fmt(e.val)}</td><td class="n num">${fmt(e.val-e.cost)}</td></tr>`).join('')||`<tr><td colspan=4 class="muted">لا توجد مبيعات</td></tr>`}</table></div></div>
    <div class="card"><h3>أعلى أرصدة العملاء</h3><div class="tw"><table class="t"><tr><th>العميل</th><th class="n">الرصيد</th></tr>${debtors.map(([c,b])=>`<tr data-act="openSub" data-type="party" data-col="customers" data-id="${c.id}" style="cursor:pointer"><td>${esc(c.name)}</td><td class="n num">${fmt(b)}</td></tr>`).join('')||`<tr><td colspan=2 class="muted">لا توجد أرصدة</td></tr>`}</table></div></div>
@@ -2346,8 +2368,8 @@ function payView(id){
   if(p.type==='tr')return `<div class="head">${backBtn}<h2>⇄ ${T('تحويل','Transfer')} <span class="num">${payNo(p)}</span></h2></div>
    <div class="btns" style="margin-bottom:12px">${RO?'':`<button class="btn" data-act="editPay" data-id="${id}">✏️ ${T('تعديل','Edit')}</button>`}${!RO&&ADMIN?`<button class="btn red" data-act="delPay" data-id="${id}">${T('حذف','Delete')}</button>`:''}</div>
    <div class="card"><div class="kv"><span>${T('من','From')}</span><span translate="no">${esc(accName(accById(p.fromAcc)))}</span><span>${T('إلى','To')}</span><span translate="no">${esc(accName(accById(p.toAcc)))}</span><span>${T('المبلغ','Amount')}</span><span>${money(p.amount)}</span><span>${T('التاريخ','Date')}</span><span class="num">${esc(p.date)}</span>${p.notes?`<span>${T('البيان','Description')}</span><span translate="no">${esc(p.notes)}</span>`:''}</div></div>`;
-  return `<div class="head">${backBtn}<h2>${p.type==='in'?'سند قبض':p.partyType==='expense'?'سند صرف (مصروف)':'سند صرف'} <span class="num">${payNo(p)}</span></h2></div>
-  <div class="btns" style="margin-bottom:12px">${RO?'':`<button class="btn" data-act="editPay" data-id="${id}">✏️ تعديل</button>`}${downloads?`<button class="btn pri" data-act="pdfPay" data-id="${id}">⬇︎ PDF</button>`:''}${MCP&&p.partyType!=='expense'?`<button class="btn" data-act="emailPay" data-id="${id}">📧 إيميل</button>`:''}${p.invoiceId?`<button class="btn" data-act="openSub" data-type="doc" data-k="${p.invoiceKind||'sales'}" data-id="${p.invoiceId}">عرض الفاتورة</button>`:''}${!RO&&ADMIN?`<button class="btn red" data-act="delPay" data-id="${id}">حذف</button>`:''}</div>
+  return `<div class="head">${backBtn}<h2>${p.type==='in'?'سند قبض':'سند صرف'}${['expense','income','owner'].includes(p.partyType)?` (${payKind(p)})`:''} <span class="num">${payNo(p)}</span></h2></div>
+  <div class="btns" style="margin-bottom:12px">${RO?'':`<button class="btn" data-act="editPay" data-id="${id}">✏️ تعديل</button>`}${downloads?`<button class="btn pri" data-act="pdfPay" data-id="${id}">⬇︎ PDF</button>`:''}${MCP&&(p.partyType==='customer'||p.partyType==='supplier')?`<button class="btn" data-act="emailPay" data-id="${id}">📧 إيميل</button>`:''}${p.invoiceId?`<button class="btn" data-act="openSub" data-type="doc" data-k="${p.invoiceKind||'sales'}" data-id="${p.invoiceId}">عرض الفاتورة</button>`:''}${!RO&&ADMIN?`<button class="btn red" data-act="delPay" data-id="${id}">حذف</button>`:''}</div>
   ${p.noCash?`<div class="muted" style="font-size:12.5px;margin:-4px 0 10px">📦 ${T('منقول من','Migrated from')} <b dir="auto">${esc(p.migrated||T('النظام السابق','the old system'))}</b> — ${T('يؤثر على رصيد العميل والفاتورة فقط، وما يدخل الخزينة','affects the customer balance and invoice only, not the cash/bank balance')}</div>`:''}
   <div class="paperwrap"><div class="paper" dir="${pdir()}">${paperPay(p)}</div></div>`;
 }
@@ -2357,7 +2379,7 @@ function paperPay(p){
   const col=p.partyType==='customer'?'customers':'suppliers';const pe=!exp&&p.partyId&&S['_'+col].get(p.partyId);
   return `${paperHead()}${p.type==='in'?paperTitle('سند قبض','Receipt Voucher'):paperTitle('سند صرف','Payment Voucher')}
   <div class="meta"><div class="bx"><div><span>${PL('الرقم','No.')}</span><b class="num">${payNo(p)}</b></div><div><span>${PL('التاريخ','Date')}</span><span class="num">${fdate(p.date)}</span></div><div><span>${PL('طريقة الدفع','Method')}</span><span>${PL(MET[0],MET[1])}</span></div></div>
-  <div class="bx"><div><span>${p.type==='in'?PL('استلمنا من','Received from'):exp?PL('البند','Category'):PL('صرفنا إلى','Paid to')}</span><b>${exp?esc((p.category||'مصروف')+(p.partyName?' — '+p.partyName:'')):PN(p.partyName,pe&&pe.nameEn)}</b></div>${p.invoiceNo?`<div><span>${PL('عن الفاتورة','For invoice')}</span><span class="num">${esc(p.invoiceNo)}</span></div>`:''}</div></div>
+  <div class="bx"><div><span>${p.partyType==='income'?PL('نوع الإيراد','Income type'):p.partyType==='owner'?PL('النوع','Type'):p.type==='in'?PL('استلمنا من','Received from'):exp?PL('البند','Category'):PL('صرفنا إلى','Paid to')}</span><b>${exp||p.partyType==='income'||p.partyType==='owner'?esc(payWho(p)):PN(p.partyName,pe&&pe.nameEn)}</b></div>${p.invoiceNo?`<div><span>${PL('عن الفاتورة','For invoice')}</span><span class="num">${esc(p.invoiceNo)}</span></div>`:''}</div></div>
   <table><tr><th>${PL('البيان','Description',1)}</th><th class="n">${PL('المبلغ','Amount',1)} (${esc(s.currency)})</th></tr><tr><td>${esc(p.notes)||(p.type==='in'?PL('دفعة مستلمة','Payment received'):PL('دفعة','Payment'))}</td><td class="n num" style="font-size:16px;font-weight:700">${fmt(p.amount)}</td></tr></table>
   <div class="foot" style="margin-top:50px"><div>${PL('المستلم','Received by')}</div><div>${PL('المحاسب','Accountant')}</div></div>`;
 }
@@ -2727,12 +2749,12 @@ function editPay(o){
   const p=o.id?{...S._payments.get(o.id)}:{type:o.type,date:today(),partyType:o.exp?'expense':(o.partyType||(o.type==='in'?'customer':'supplier')),partyId:o.partyId||'',partyName:'',invoiceId:o.invId||'',invoiceKind:o.invKind||'',amount:'',method:'cash',notes:'',category:''};
   if(p.partyId&&!p.partyName){const col=p.partyType==='customer'?'customers':'suppliers';const x=S['_'+col].get(p.partyId);if(x)p.partyName=x.name}
   if(o.invId&&!o.id){const inv=S['_'+o.invKind].get(o.invId);if(inv){p.partyId=inv.partyId;p.partyName=inv.partyName;p.partyType=o.invKind==='sales'?'customer':'supplier';p.amount=r3(num(inv.total)-(derive().paid.get(o.invId)||0))}}
-  const cats=[...new Set(S.payments.map(x=>x.category).filter(Boolean).concat(['إيجار','رواتب','كهرباء ومياه','وقود ونقل','اتصالات وإنترنت','صيانة','مستلزمات مكتبية','تسويق']))];
+  const cats=[...new Set(S.payments.filter(x=>x.partyType==='expense').map(x=>x.category).filter(Boolean).concat(['إيجار','رواتب','كهرباء ومياه','وقود ونقل','اتصالات وإنترنت','صيانة','مستلزمات مكتبية','تسويق']))];
   openModal(`<div data-keep><h3>${o.id?'تعديل':'إضافة'} ${p.type==='in'?'سند قبض':p.partyType==='expense'?'مصروف':'سند صرف'}</h3>
   <input type="hidden" id="y-type" value="${p.type}">
   <div class="grid g2 f">
-   ${p.type==='out'?`<label style="grid-column:1/-1">نوع الصرف<select id="y-pt"><option value="supplier" ${p.partyType==='supplier'?'selected':''}>دفعة لمورد</option><option value="expense" ${p.partyType==='expense'?'selected':''}>مصروف</option><option value="customer" ${p.partyType==='customer'?'selected':''}>مرتجع / رد مبلغ لعميل</option></select></label>`:`<input type="hidden" id="y-pt" value="customer">`}
-   <label id="y-catw" style="grid-column:1/-1">بند المصروف<input id="y-cat" list="dl-expcats" value="${esc(p.category||'')}" placeholder="إيجار، رواتب…"><datalist id="dl-expcats">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label>
+   ${p.type==='out'?`<label style="grid-column:1/-1">نوع الصرف<select id="y-pt"><option value="supplier" ${p.partyType==='supplier'?'selected':''}>دفعة لمورد</option><option value="expense" ${p.partyType==='expense'?'selected':''}>مصروف</option><option value="customer" ${p.partyType==='customer'?'selected':''}>مرتجع / رد مبلغ لعميل</option><option value="owner" ${p.partyType==='owner'?'selected':''}>${T('سحب المالك (ما يعتبر مصروف)','Owner withdrawal (not an expense)')}</option></select></label>`:`<label style="grid-column:1/-1">${T('نوع القبض','Receipt type')}<select id="y-pt"><option value="customer" ${p.partyType==='customer'?'selected':''}>${T('من عميل','From a customer')}</option><option value="income" ${p.partyType==='income'?'selected':''}>${T('إيراد آخر (عمولة، بيع مستعمل…)','Other income (commission, used items…)')}</option><option value="owner" ${p.partyType==='owner'?'selected':''}>${T('إيداع من المالك (رأس مال — ما يعتبر ربح)','Owner deposit (capital — not profit)')}</option></select></label>`}
+   <label id="y-catw" style="grid-column:1/-1"><span id="y-catl">بند المصروف</span><input id="y-cat" list="dl-expcats" value="${esc(p.category||'')}" placeholder="إيجار، رواتب…"><datalist id="dl-expcats">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist><datalist id="dl-inccats">${[...new Set(INC_CATS.concat(S.payments.filter(x=>x.partyType==='income').map(x=>x.category).filter(Boolean)))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label>
    <label id="y-partyw" style="grid-column:1/-1"><span id="y-plbl"></span><input id="y-party" value="${esc(p.partyName||'')}" autocomplete="off"></label>
    <label id="y-invw" style="grid-column:1/-1">عن فاتورة (اختياري)<select id="y-inv"></select></label>
    <label id="y-projw" style="grid-column:1/-1">💰 ${T('مرتبط بفاتورة / مشروع (اختياري)','Linked to an invoice / project (optional)')}<select id="y-proj"><option value="">${T('— مصروف عام —','— general expense —')}</option>${[...S.sales].sort((a,b)=>String(b.date).localeCompare(String(a.date))||num(b.no)-num(a.no)).slice(0,300).map(x=>`<option value="${x.id}" ${(p.projId||o.proj||'')===x.id?'selected':''}>${esc(docNo('sales',x.no))} — ${esc(x.partyName||'')}</option>`).join('')}</select></label>
@@ -2746,9 +2768,11 @@ function editPay(o){
   <div id="y-warn"></div><div class="btns" style="margin-top:14px;justify-content:flex-end"><button class="btn" data-act="closeModal">إلغاء</button><button class="btn pri" data-act="savePay" data-id="${o.id||''}">حفظ</button></div></div>`);
   const sync=()=>{
     if(!$('#y-pt'))return;
-    const pt=$('#y-pt').value;const exp=pt==='expense';
-    $('#y-catw').classList.toggle('hide',!exp);{const pw=$('#y-projw');if(pw)pw.classList.toggle('hide',!exp)}
-    $('#y-plbl').textContent=exp?'المستفيد (اختياري)':pt==='customer'?'العميل *':'المورد *';
+    const pt0=$('#y-pt').value;const inc=pt0==='income',own=pt0==='owner';const pt=pt0;const exp=pt==='expense'||inc||own;
+    $('#y-catw').classList.toggle('hide',!(pt==='expense'||inc));{const pw=$('#y-projw');if(pw)pw.classList.toggle('hide',pt!=='expense')}
+    $('#y-catl').textContent=inc?T('نوع الإيراد','Income type'):'بند المصروف';$('#y-cat').setAttribute('list',inc?'dl-inccats':'dl-expcats');$('#y-cat').placeholder=inc?T('عمولة، بيع مستعمل…','commission, used items…'):'إيجار، رواتب…';
+    {const mg=$('#y-mig');if(mg){const w=mg.closest('label');if(w)w.classList.toggle('hide',inc||own);if(inc||own)mg.checked=false}}
+    $('#y-plbl').textContent=own?T('الاسم (اختياري)','Name (optional)'):inc?T('من (اختياري)','From (optional)'):exp?'المستفيد (اختياري)':pt==='customer'?'العميل *':'المورد *';
     $('#y-party').setAttribute('list',exp?'':pt==='customer'?'dl-customers':'dl-suppliers');
     const col=pt==='customer'?'customers':'suppliers';const pr=exp?null:partyByName(col,$('#y-party').value);
     const ik=pt==='customer'?'sales':'purchases';
@@ -2766,11 +2790,11 @@ function editPay(o){
   sync();
 }
 async function savePay(id){
-  const type=$('#y-type').value;const pt=$('#y-pt').value;const exp=pt==='expense';
+  const type=$('#y-type').value;const pt=$('#y-pt').value;const exp=pt==='expense'||pt==='income'||pt==='owner';
   const amount=r3(num($('#y-amount').value));if(amount<=0){toast('أدخل المبلغ');return}
   const pname=$('#y-party').value.trim();
   if(!exp&&!pname){toast('اختر '+(pt==='customer'?'العميل':'المورد'));return}
-  if(exp&&!$('#y-cat').value.trim()){toast('اكتب بند المصروف');return}
+  if((pt==='expense'||pt==='income')&&!$('#y-cat').value.trim()){toast(pt==='income'?T('اختر نوع الإيراد','Choose the income type'):'اكتب بند المصروف');return}
   const invId=exp?'':$('#y-inv').value;const ik=$('#y-inv').dataset.k;
   const V={date:$('#y-date').value||today(),cat:$('#y-cat').value.trim(),method:$('#y-method').value,acc:$('#y-acc').value,notes:$('#y-notes').value.trim(),mig:$('#y-mig')?$('#y-mig').checked:null};
   if(invId){const inv=S['_'+ik].get(invId);if(inv){const oldP=id?S._payments.get(id):null;const other=(derive().paid.get(invId)||0)-(oldP&&oldP.invoiceId===invId?num(oldP.amount):0);const rem=r3(num(inv.total)-other);
@@ -2779,8 +2803,8 @@ async function savePay(id){
   const ok=await W(async()=>{
     let party=null;if(!exp){party=await ensureParty(pt==='customer'?'customers':'suppliers',pname)}
     const inv=invId?S['_'+ik].get(invId):null;
-    const body={type,date:V.date,partyType:pt,partyId:party?party.id:'',partyName:party?party.name:pname,category:exp?V.cat:'',...(exp&&$('#y-proj')&&$('#y-proj').value?{projId:$('#y-proj').value}:{}),invoiceKind:inv?ik:'',invoiceId:inv?invId:'',invoiceNo:inv?docNo(ik,inv.no):'',amount,method:V.method,accountId:V.acc,notes:V.notes,updatedAt:nowIso()};
-    if(id){const old=S._payments.get(id)||{};body.no=old.no;body.createdAt=old.createdAt||nowIso();body.createdBy=old.createdBy||'';if(old.returnId)Object.assign(body,{returnId:old.returnId,returnKind:old.returnKind||'',returnNo:old.returnNo||''});if(old.woId)body.woId=old.woId;if(V.mig===null?old.noCash:V.mig)Object.assign(body,{noCash:true,migrated:old.migrated||T('النظام السابق','previous system')});
+    const body={type,date:V.date,partyType:pt,partyId:party?party.id:'',partyName:party?party.name:pname,category:pt==='expense'||pt==='income'?V.cat:'',...(pt==='expense'&&$('#y-proj')&&$('#y-proj').value?{projId:$('#y-proj').value}:{}),invoiceKind:inv?ik:'',invoiceId:inv?invId:'',invoiceNo:inv?docNo(ik,inv.no):'',amount,method:V.method,accountId:V.acc,notes:V.notes,updatedAt:nowIso()};
+    if(id){const old=S._payments.get(id)||{};body.no=old.no;body.createdAt=old.createdAt||nowIso();body.createdBy=old.createdBy||'';if(old.returnId)Object.assign(body,{returnId:old.returnId,returnKind:old.returnKind||'',returnNo:old.returnNo||''});if(old.woId)body.woId=old.woId;if(!(pt==='income'||pt==='owner')&&(V.mig===null?old.noCash:V.mig))Object.assign(body,{noCash:true,migrated:old.migrated||T('النظام السابق','previous system')});
       if(old.type!==type){const r=await nextRef('payments',type==='in'?'RV':'PV',x=>x.type===type);body.no=r.no}
       await db.collection('payments').doc(id).set(body);return id}
     const r=await nextRef('payments',type==='in'?'RV':'PV',x=>x.type===type);
@@ -2882,6 +2906,7 @@ async function exportReport(from,to){
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(S.sales.filter(inR).map(x=>({الرقم:docNo('sales',x.no),التاريخ:x.date,العميل:x.partyName,الصافي:r3(num(x.total)-num(x.vat)),الضريبة:num(x.vat),الإجمالي:num(x.total)})).concat([{}])),'المبيعات');
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(S.purchases.filter(inR).map(x=>({الرقم:docNo('purchases',x.no),مرجع_المورد:x.ref,التاريخ:x.date,المورد:x.partyName,الصافي:r3(num(x.total)-num(x.vat)),الضريبة:num(x.vat),الإجمالي:num(x.total)})).concat([{}])),'المشتريات');
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(S.payments.filter(x=>inR(x)&&x.partyType==='expense').map(x=>({الرقم:payNo(x),التاريخ:x.date,البند:x.category,المبلغ:num(x.amount),ملاحظات:x.notes})).concat([{}])),'المصروفات');
+  {const rows=S.payments.filter(x=>inR(x)&&(x.partyType==='income'||x.partyType==='owner')).map(x=>({الرقم:payNo(x),التاريخ:x.date,النوع:payKind(x),البند:x.category||'',الاسم:x.partyName||'',المبلغ:(x.type==='in'?1:-1)*num(x.amount),الحساب:accName(accById(payAcc(x))),ملاحظات:x.notes||''}));if(rows.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'إيرادات أخرى وحساب المالك')}
   if(canProfit()){const R=pfData(from,to);XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(R.rows.map(({d,P})=>({الفاتورة:docNo('sales',d.no),التاريخ:d.date,العميل:d.partyName,الإيراد_بدون_ضريبة:P.rev,تكلفة_الأجهزة:P.cost,تكاليف_إضافية:P.extra,صافي_الربح:P.net,النسبة:r3(P.pct)})).concat([{}])),'ربحية المشاريع');}
   const out=XLSX.write(wb,{bookType:'xlsx',type:'array'});
   await saveFile(`تقرير-${from}-إلى-${to}.xlsx`,new Blob([out]));
