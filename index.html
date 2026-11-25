@@ -1491,13 +1491,13 @@ VIEWS.dashboard=()=>{
 function overdueBlock(od,amt){
   const c=ST().currency;
   if(!od.length) return allReady()&&S.sales.length?`<div class="card" style="display:flex;align-items:center;gap:10px"><span class="badge b-green">✓</span><span>لا توجد فواتير متأخرة عن الدفع</span></div>`:'';
-  const rows=od.slice(0,5).map(o=>{const x=o.x;const p=x.partyId?S._customers.get(x.partyId):null;
-    const wa=waLink(p&&p.phone,`${ST().company||''}\nالسيد/ ${x.partyName}\nنود تذكيركم بالفاتورة رقم ${docNo('sales',x.no)} بتاريخ ${fdate(x.date)}\nالمبلغ المتبقي: ${fmt(o.rem)} ${c}\nمتأخرة ${o.late} يوماً عن تاريخ الاستحقاق.\nشكراً لكم.`);
+  const rows=(Q.lateAll?od:od.slice(0,5)).map(o=>{const x=o.x;const p=x.partyId?S._customers.get(x.partyId):null;
+    const wa=waLink(p&&p.phone,`${ST().company||''}\nعميلنا العزيز/ ${x.partyName}\nنود تذكيركم بالفاتورة رقم ${docNo('sales',x.no)} بتاريخ ${fdate(x.date)}\nالمبلغ المتبقي: ${fmt(o.rem)} ${c}\nمتأخرة ${o.late} يوماً عن تاريخ الاستحقاق.\nشكراً لكم.`);
     return `<div class="item" data-act="openSub" data-type="doc" data-k="sales" data-id="${x.id}"><div class="m"><div class="t" translate="no" dir="auto">${esc(x.partyName)}</div><div class="d"><span class="num">${docNo('sales',x.no)}</span> · استحقت ${fdate(o.due)} · <span class="badge ${o.late>60?'b-red':'b-amber'}">متأخرة ${o.late} يوم</span></div></div><div class="a neg">${money(o.rem)}${wa?`<div><a class="btn sm" style="margin-top:4px" href="${wa}" target="_blank" rel="noopener" data-stop="1">تذكير واتساب</a></div>`:''}</div></div>`}).join('');
   return `<div class="card" style="border-color:#f1c4b6;padding:14px 14px 6px">
    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px"><h3 style="margin:0;flex:1">⚠️ فواتير متأخرة عن الدفع</h3><span class="muted" style="font-size:13px">${od.length} فاتورة · ${fmt(amt)} ${esc(c)}</span></div>
    <div class="list" style="border:0;margin:0 -14px">${rows}</div>
-   ${od.length>5?`<div style="text-align:center;padding:8px"><button class="btn sm" data-act="showLate">عرض الكل (${od.length})</button></div>`:''}
+   ${od.length>5?`<div style="text-align:center;padding:8px"><button class="btn sm" data-act="lateAll">${Q.lateAll?T('عرض أقل','Show less'):`عرض الكل (${od.length})`}</button></div>`:''}
   </div>`;
 }
 /* ---------- charts ---------- */
@@ -2294,7 +2294,7 @@ function partyView(col,id){
   if(!p) return `${backBtn}<div class="empty">${allReady()?'غير موجود':'<span class="spin"></span>'}</div>`;
   const bal=(isC?derive().cust:derive().sup).get(id)||0;
   const rows=statement(col,id);
-  const wa=waLink(p.phone,`${ST().company||''}\nالسيد/ ${p.name}\nرصيد حسابكم: ${fmt(bal)} ${ST().currency}`);
+  const wa=waLink(p.phone,`${ST().company||''}\nعميلنا العزيز/ ${p.name}\nرصيد حسابكم: ${fmt(bal)} ${ST().currency}`);
   const docs=isC?S.sales.filter(x=>x.partyId===id):S.purchases.filter(x=>x.partyId===id);
   const quotes=isC?S.quotes.filter(x=>x.partyId===id):S.porders.filter(x=>x.partyId===id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   return `<div class="head">${backBtn}<h2 translate="no">${esc(p.name)}${p.nameEn?` <span class="muted" style="font-size:14px;font-weight:400" dir="ltr">${esc(p.nameEn)}</span>`:''}</h2></div>
@@ -3103,7 +3103,7 @@ async function portalWa(cid,docText){
   const w=window.open('','_blank');
   try{
     const link=await portalLink(cid);const c=S._customers.get(cid);
-    const text=(docText?docText+'\n\n':`${ST().company||''}\n${T('السيد/','Dear')} ${c.name}\n`)+`${T('جميع فواتيركم وكشف الحساب على الرابط:','All your invoices and statement:')}\n${link}`;
+    const text=(docText?docText+'\n\n':`${ST().company||''}\n${T('عميلنا العزيز/','Dear')} ${c.name}\n`)+`${T('جميع فواتيركم وكشف الحساب على الرابط:','All your invoices and statement:')}\n${link}`;
     const url=waLink(c.phone,text)||`https://wa.me/?text=${encodeURIComponent(text)}`;
     if(w)w.location.href=url;else location.href=url;
   }catch(e){console.error(e);if(w)w.close();toast(T('تعذر إنشاء الرابط','Could not create the link'))}
@@ -3566,6 +3566,7 @@ const ACT={
   openSub:o=>openSub(o.type,o.id,{k:o.k,col:o.col}),
   filt:o=>{Q[o.k+'_f']=o.v;render()},
   showLate:()=>{Q.sales_f='late';go('sales')},
+  lateAll:()=>{Q.lateAll=!Q.lateAll;render()},
   lang:()=>{closeSide();setLang(LANG==='en'?'ar':'en');if(!ROLE&&AUTHU!==undefined)resolveAccess()},
   emailPdf:()=>emailPdf(),supBalPdf:()=>supBalPdf(),pushOn:()=>pushOn(),mcpNew:()=>mcpNew(),mcpCopy:async()=>{const v=$('#mcp-url').value;try{await navigator.clipboard.writeText(v);toast(T('تم النسخ ✓','Copied ✓'))}catch(_){$('#mcp-url').select();toast(T('انسخ الرابط يدوياً','Copy the URL manually'))}},pushOff:()=>pushOff(),pushSave:()=>pushSave(),pushTest:()=>pushTest(),saveVapid:async()=>{const v=$('#s-vapid').value.trim();if(await W(()=>db.doc('meta/settings').update({vapidKey:v}),T('تم الحفظ ✓','Saved ✓')))render()},xmlDoc:o=>xmlDoc(o.k,o.id),lowStockPO:()=>lowStockPO(),custBalPdf:()=>custBalPdf(),exportJson:()=>exportJson(),
   portalWa:o=>portalWa(o.id),
@@ -3642,7 +3643,7 @@ const ACT={
   delAppt:async o=>{if(await ask(T('حذف الموعد نهائياً؟','Delete this appointment?'),T('حذف','Delete'),true)&&await W(()=>db.collection('appointments').doc(o.id).delete(),T('تم الحذف','Deleted')))back()},
   icsAppt:o=>icsAppt(o.id),
   waAppt:o=>{const a=S._appointments.get(o.id);const c=S._customers.get(a.customerId);const ty=apType(a);const w=window.open(waLink(c.phone,`${ST().company||''}
-${T('السيد/','Dear')} ${a.customerName}
+${T('عميلنا العزيز/','Dear')} ${a.customerName}
 ${T('نذكّركم بموعد','Reminder of your appointment')}: ${T(ty[0],ty[1])}
 ${dayName(a.date)} ${fdate(a.date)} — ${fTime(a.time)}${a.location?'\n'+a.location:''}${a.mapUrl?'\n'+a.mapUrl:''}`),'_blank');if(!w)toast(T('تعذر فتح واتساب','Could not open WhatsApp'))},
   discType:(o,el)=>{const t=el.dataset.t==='a'?'p':'a';el.dataset.t=t;el.textContent=t==='a'?curSym():'%';const inp=el.previousElementSibling;if(inp)inp.focus();updTotals()},
