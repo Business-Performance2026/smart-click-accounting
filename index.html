@@ -485,13 +485,29 @@ const accName=a=>a?(LANG==='en'&&a.nameEn?a.nameEn:a.name):'—';
 const accOptions=sel=>activeAccs().map(a=>`<option value="${esc(a.id)}" ${a.id===sel?'selected':''}>${a.type==='cash'?'💵':'🏦'} ${esc(accName(a))}</option>`).join('');
 
 /* ================= derived data ================= */
+/* ---------- shipping spread over the items of a purchase (landed cost) ---------- */
+const SHIP_RE=/شحن|shipping|freight|توصيل/i;
+const isShipLine=l=>!l.productId&&SHIP_RE.test(String(l.name||''));
+const shipExtra=()=>{const m=new Map();for(const p of S.payments)if(p.type==='out'&&p.partyType==='expense'&&p.shipFor)m.set(p.shipFor,(m.get(p.shipFor)||0)+num(p.amount));return m};
+// per-line shipping share (excl. VAT, after the invoice discount); only real stock lines get a share
+function shipAlloc(d,extra){
+  const lines=d.lines||[];const rt=num(d.sub)>0?(num(d.sub)-num(d.discount))/num(d.sub):1;
+  const ship=lines.filter(isShipLine).reduce((a,l)=>a+num(l.total),0)*rt+num(extra);
+  const out=lines.map(()=>0);if(ship<=0)return {ship:0,out};
+  const idx=lines.map((l,i)=>i).filter(i=>{const l=lines[i];const p=l.productId&&S._products&&S._products.get(l.productId);return l.productId&&!l.noStock&&!(p&&p.service)&&num(l.qty)>0});
+  if(!idx.length)return {ship,out};
+  const byQty=d.shipBy==='qty';let w=idx.map(i=>byQty?num(lines[i].qty):num(lines[i].total));let tw=w.reduce((a,x)=>a+x,0);
+  if(tw<=0){w=idx.map(i=>num(lines[i].qty));tw=w.reduce((a,x)=>a+x,0)}
+  idx.forEach((i,j)=>{out[i]=ship*w[j]/tw});return {ship,out};
+}
 let D=null,Dver=-1;
 function derive(){
   if(Dver===ver&&D) return D;
   const stock=new Map(),cq=new Map(),cv=new Map(),avg=new Map(),paid=new Map(),cust=new Map(),sup=new Map();
   for(const p of S.products){const o=num(p.opening);stock.set(p.id,o);cq.set(p.id,o);cv.set(p.id,o*num(p.cost));}
   const dRatio=d=>num(d.sub)>0?(num(d.sub)-num(d.discount))/num(d.sub):1;
-  for(const d of S.purchases){const rt=dRatio(d);for(const l of d.lines||[]){if(!l.productId||l.noStock||!stock.has(l.productId))continue;const q=num(l.qty);stock.set(l.productId,stock.get(l.productId)+q);cq.set(l.productId,cq.get(l.productId)+q);cv.set(l.productId,cv.get(l.productId)+num(l.total)*rt);}}
+  const sx=shipExtra();
+  for(const d of S.purchases){const rt=dRatio(d);const al=shipAlloc(d,sx.get(d.id)).out;(d.lines||[]).forEach((l,i)=>{if(!l.productId||l.noStock||!stock.has(l.productId))return;const q=num(l.qty);stock.set(l.productId,stock.get(l.productId)+q);cq.set(l.productId,cq.get(l.productId)+q);cv.set(l.productId,cv.get(l.productId)+num(l.total)*rt+al[i]);});}
   for(const d of S.sales){for(const l of d.lines||[]){if(!l.productId||l.noStock||!stock.has(l.productId))continue;stock.set(l.productId,stock.get(l.productId)-num(l.qty));}}
   for(const d of S.workorders){if(d.status!=='done'&&d.status!=='invoiced')continue;for(const l of d.lines||[]){if(!l.productId||l.noStock||!stock.has(l.productId))continue;stock.set(l.productId,stock.get(l.productId)-num(l.qty));}}
   for(const d of S.sreturns){for(const l of d.lines||[]){if(!l.productId||!stock.has(l.productId))continue;stock.set(l.productId,stock.get(l.productId)+num(l.qty));}}
@@ -580,6 +596,18 @@ function profitOf(d,D){
 const pfColor=pct=>pct<0?'var(--red)':pct<15?'var(--amber)':'#17803d';
 // moved-from-Daftra invoices count only while still unpaid (user's choice)
 const pfIncluded=(d,D)=>!d.migrated||r3(num(d.total)-((D||derive()).paid.get(d.id)||0))>0.0005;
+function shipCard(d){
+  const ex=shipExtra().get(d.id)||0;const A=shipAlloc(d,ex);if(A.ship<=0)return '';
+  const rt=num(d.sub)>0?(num(d.sub)-num(d.discount))/num(d.sub):1;
+  const rows=(d.lines||[]).map((l,i)=>({l,sh:A.out[i]})).filter(x=>x.l.productId&&!x.l.noStock&&num(x.l.qty)>0);
+  const linked=S.payments.filter(p=>p.type==='out'&&p.partyType==='expense'&&p.shipFor===d.id);
+  return `<div class="card"><h3>🚢 ${T('توزيع الشحن على الأصناف','Shipping spread over items')} <span class="num" style="font-weight:400">${fmt(A.ship)}</span></h3>
+   <p class="muted" style="font-size:12.5px;margin:-4px 0 8px">${T('حسب','By')} ${d.shipBy==='qty'?T('الكمية','quantity'):T('القيمة','value')} — ${T('التكلفة الحقيقية للقطعة = سعر الشراء + نصيبها من الشحن، وتدخل في متوسط التكلفة والأرباح.','Real unit cost = purchase price + its shipping share; used in average cost and profit.')}</p>
+   <div class="tw"><table class="t"><tr><th>${T('الصنف','Item')}</th><th class="n">${T('الكمية','Qty')}</th><th class="n">${T('سعر الشراء','Unit price')}</th><th class="n">${T('شحن/قطعة','Ship/unit')}</th><th class="n">${T('التكلفة الحقيقية','Landed cost')}</th></tr>
+   ${rows.map(({l,sh})=>{const q=num(l.qty);const u=num(l.total)*rt/q;const s1=sh/q;return `<tr><td translate="no" dir="auto">${esc(l.name)}</td><td class="n num">${fq(q)}</td><td class="n num">${fmt(u)}</td><td class="n num">${fmt(s1)}</td><td class="n num"><b>${fmt(u+s1)}</b></td></tr>`}).join('')}</table></div>
+   ${linked.length?`<div style="margin-top:8px;font-size:13px">${T('شحن مسجّل كمصروف على هالفاتورة','Shipping recorded as expenses for this invoice')}: ${linked.map(e=>`<a href="#" data-act="openSub" data-type="pay" data-id="${e.id}">${esc(payNo(e))}</a> <span class="num">${fmt(e.amount)}</span>`).join(' · ')}</div>`:''}
+  </div>`;
+}
 function profitCard(d){
   if(!canProfit())return '';
   const P=profitOf(d);const c=pfColor(P.pct);
@@ -1456,7 +1484,7 @@ VIEWS.dashboard=()=>{
   const salesM=S.sales.filter(inM).reduce((a,x)=>a+num(x.total),0)-S.sreturns.filter(inM).reduce((a,x)=>a+num(x.total),0);
   const purM=S.purchases.filter(inM).reduce((a,x)=>a+num(x.total),0)-S.preturns.filter(inM).reduce((a,x)=>a+num(x.total),0);
   const colM=S.payments.filter(p=>inM(p)&&p.type==='in'&&p.partyType!=='owner'&&!p.noCash).reduce((a,x)=>a+num(x.amount),0);
-  const expM=S.payments.filter(p=>inM(p)&&p.type==='out'&&p.partyType==='expense').reduce((a,x)=>a+num(x.amount),0);
+  const expM=S.payments.filter(p=>inM(p)&&p.type==='out'&&p.partyType==='expense'&&!p.shipFor).reduce((a,x)=>a+num(x.amount),0);
   const recv=[...d.cust.values()].reduce((a,x)=>a+(x>0?x:0),0);
   const pay=[...d.sup.values()].reduce((a,x)=>a+(x>0?x:0),0);
   const low=S.products.filter(p=>!p.service&&(d.stock.get(p.id)||0)<=num(p.minQty)&&(num(p.minQty)>0||(d.stock.get(p.id)||0)<=0));
@@ -1908,7 +1936,7 @@ VIEWS.reports=()=>{
   const sRT=sRet.reduce((a,x)=>a+num(x.total),0),pRT=pRet.reduce((a,x)=>a+num(x.total),0);
   const sT=sales.reduce((a,x)=>a+num(x.total),0)-sRT,sV=sales.reduce((a,x)=>a+num(x.vat),0)-sRet.reduce((a,x)=>a+num(x.vat),0),sN=sT-sV;
   const pT=pur.reduce((a,x)=>a+num(x.total),0)-pRT,pV=pur.reduce((a,x)=>a+num(x.vat),0)-pRet.reduce((a,x)=>a+num(x.vat),0);
-  const exp=pays.filter(p=>p.partyType==='expense').reduce((a,p)=>a+num(p.amount),0);
+  const exp=pays.filter(p=>p.partyType==='expense'&&!p.shipFor).reduce((a,p)=>a+num(p.amount),0);
   const col=pays.filter(p=>p.type==='in'&&p.partyType==='customer').reduce((a,p)=>a+num(p.amount),0);
   const oInc=pays.filter(p=>p.type==='in'&&p.partyType==='income').reduce((a,p)=>a+num(p.amount),0);
   const own=pays.filter(p=>p.partyType==='owner');const ownIn=own.filter(p=>p.type==='in').reduce((a,p)=>a+num(p.amount),0),ownOut=own.filter(p=>p.type==='out').reduce((a,p)=>a+num(p.amount),0);
@@ -1922,7 +1950,7 @@ VIEWS.reports=()=>{
   const recv=[...d.cust.values()].reduce((a,x)=>a+(x>0?x:0),0),payb=[...d.sup.values()].reduce((a,x)=>a+(x>0?x:0),0);
   const top=[...prod.values()].sort((a,b)=>b.val-a.val).slice(0,15);
   const debtors=S.customers.map(c=>[c,d.cust.get(c.id)||0]).filter(x=>x[1]>0.0005).sort((a,b)=>b[1]-a[1]).slice(0,15);
-  const expCat=new Map();pays.filter(p=>p.partyType==='expense').forEach(p=>expCat.set(p.category||'أخرى',(expCat.get(p.category||'أخرى')||0)+num(p.amount)));
+  const expCat=new Map();pays.filter(p=>p.partyType==='expense'&&!p.shipFor).forEach(p=>expCat.set(p.category||'أخرى',(expCat.get(p.category||'أخرى')||0)+num(p.amount)));
   return `${loading()}<div class="head"><h1>التقارير</h1>${downloads?`<button class="btn" data-act="exportReport" data-from="${from}" data-to="${to}">⬇︎ Excel</button>`:''}</div>
   <div class="tabs">${[['month','هذا الشهر'],['lmonth','الشهر الماضي'],['quarter','هذا الربع'],['year','هذه السنة'],['custom','فترة مخصصة']].map(([v,tx])=>`<button class="${per===v?'on':''}" data-act="rep" data-v="${v}">${tx}</button>`).join('')}</div>
   ${per==='custom'?`<div class="grid g2" style="max-width:420px;margin-bottom:12px"><label>من<input type="date" id="rep-from" value="${from}"></label><label>إلى<input type="date" id="rep-to" value="${to}"></label></div>`:`<p class="muted" style="margin:0 0 12px;font-size:13px">من ${from} إلى ${to}</p>`}
@@ -1957,7 +1985,7 @@ function pfData(from,to,D){
   D=D||derive();const inR=x=>x.date>=from&&x.date<=to;
   const rows=S.sales.filter(x=>inR(x)&&pfIncluded(x,D)).map(d=>({d,P:profitOf(d,D)}));
   const tot={rev:0,cost:0,extra:0,net:0};rows.forEach(({P})=>{tot.rev+=P.rev;tot.cost+=P.cost;tot.extra+=P.extra;tot.net+=P.net});
-  const overhead=S.payments.filter(p=>inR(p)&&p.type==='out'&&p.partyType==='expense'&&!(p.projId&&S._sales.get(p.projId))&&!(p.woId&&S.sales.some(x=>x.woId===p.woId))).reduce((a,p)=>a+num(p.amount),0);
+  const overhead=S.payments.filter(p=>inR(p)&&p.type==='out'&&p.partyType==='expense'&&!p.shipFor&&!(p.projId&&S._sales.get(p.projId))&&!(p.woId&&S.sales.some(x=>x.woId===p.woId))).reduce((a,p)=>a+num(p.amount),0);
   const cat=new Map(),cus=new Map();
   rows.forEach(({d,P})=>{P.lines.forEach(l=>{const k=l.svc?T('خدمات وتركيب','Services & installation'):l.free?T('بنود أخرى (شحن، رسوم…)','Other lines (shipping, fees…)'):(l.cat||T('بدون تصنيف','Uncategorised'));const e=cat.get(k)||{k,rev:0,cost:0};e.rev+=l.rev;e.cost+=l.cost;cat.set(k,e)});
     const k=d.partyId||d.partyName;const e=cus.get(k)||{name:d.partyName,id:d.partyId,rev:0,net:0,n:0};e.rev+=P.rev;e.net+=P.net;e.n++;cus.set(k,e)});
@@ -2210,6 +2238,7 @@ function docView(kind,id){
   ${d.createdBy||d.updatedBy?`<div class="muted" style="font-size:12.5px;margin:-4px 0 6px">👤 ${T('أنشأها','Created by')} <span translate="no" dir="auto">${esc(staffName(d.createdBy)||'—')}</span>${d.updatedBy&&d.updatedBy!==d.createdBy?` · ${T('آخر تعديل','Last edit')} <span translate="no" dir="auto">${esc(staffName(d.updatedBy))}</span>`:''}${ADMIN?` · <a href="#" data-act="docHistory" data-id="${id}">${T('السجل','History')}</a>`:''}</div>`:''}
   ${einvBadge(kind,d)}
   ${kind==='sales'?profitCard(d):''}
+  ${kind==='purchases'?shipCard(d):''}
   ${kind==='sales'?dlCard(d):''}
   ${d.migrated?`<div class="muted" style="font-size:12.5px;margin:-4px 0 10px">📦 ${T('منقولة من','Migrated from')} <b dir="auto">${esc(d.migrated)}</b> — ${T('ما تأثر على المخزون','does not affect stock')}</div>`:''}
   ${d.lastEmail?`<div class="muted" style="font-size:12.5px;margin:-4px 0 10px">📧 آخر إرسال بالإيميل: <span translate="no" dir="ltr">${esc(d.lastEmail.to)}</span> · ${fdate((d.lastEmail.at||'').slice(0,10))}</div>`:''}
@@ -2408,7 +2437,8 @@ function openEditor(kind,id,data,opts={}){
    ${!RET&&!isWO(kind)?'':''}${RET?`<label>${T('الفاتورة الأصلية (اختياري)','Original invoice (optional)')}<select id="e-inv"><option value="">— ${T('بدون','None')} —</option>${invOpts().map(x=>`<option value="${x.id}" ${x.id===d.invoiceId?'selected':''}>${docNo(k.ret,x.no)} · ${x.date} · ${fmt(x.total)}</option>`).join('')}</select><input type="hidden" id="e-due" value=""></label>`:isWO(kind)?'':`<label>${kind==='quotes'?'صالح حتى':kind==='porders'?T('تاريخ التوريد المتوقع','Expected delivery'):'تاريخ الاستحقاق'}<input type="date" id="e-due" value="${esc(d.due||'')}"></label>`}
    <label ${isWO(kind)?'style="grid-column:1/-1"':''}>${isWO(kind)?T('وصف العمل','Job description'):kind==='purchases'?'رقم فاتورة المورد':'المرجع / رقم أمر الشراء'}<input id="e-ref" value="${esc(d.ref||'')}" ${isWO(kind)?`placeholder="${T('مثال: تركيب 8 كاميرات ونظام تسجيل','e.g. Install 8 cameras and NVR')}"`:''}></label>
   </div><div id="e-partyinfo" class="muted" style="font-size:12.5px;margin-top:6px"></div></div>
-  <div class="card"><h3>${isWO(kind)?T('المواد والخدمات','Materials & services'):'الأصناف'}</h3>${isWO(kind)?`<p class="muted" style="margin:-4px 0 10px;font-size:12.5px">${T('المواد تُخصم من المخزون عند إنهاء أمر العمل، وتنتقل إلى الفاتورة بدون خصم مرة ثانية.','Materials leave stock when the job is completed and carry into the invoice without a second deduction.')}</p>`:''}<div id="e-lines"></div><div class="btns"><button class="btn" data-act="addLine">+ إضافة سطر</button><button class="btn" data-act="scanLines">📷 ${T('مسح باركود','Scan barcode')}</button></div></div>
+  <div class="card"><h3>${isWO(kind)?T('المواد والخدمات','Materials & services'):'الأصناف'}</h3>${isWO(kind)?`<p class="muted" style="margin:-4px 0 10px;font-size:12.5px">${T('المواد تُخصم من المخزون عند إنهاء أمر العمل، وتنتقل إلى الفاتورة بدون خصم مرة ثانية.','Materials leave stock when the job is completed and carry into the invoice without a second deduction.')}</p>`:''}<div id="e-lines"></div><div class="btns"><button class="btn" data-act="addLine">+ إضافة سطر</button><button class="btn" data-act="scanLines">📷 ${T('مسح باركود','Scan barcode')}</button>${kind==='purchases'||kind==='porders'?`<button class="btn" data-act="addShip">🚢 ${T('+ شحن','+ Shipping')}</button>`:''}</div>
+   ${kind==='purchases'||kind==='porders'?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:13px"><span class="muted">🚢 ${T('أي سطر اسمه «شحن» يتوزع على تكلفة الأصناف حسب','Any line named “Shipping” is spread over item costs by')}</span><select id="e-shipby" style="min-height:34px"><option value="value" ${E.d.shipBy!=='qty'?'selected':''}>${T('القيمة','value')}</option><option value="qty" ${E.d.shipBy==='qty'?'selected':''}>${T('الكمية','quantity')}</option></select></div>`:''}</div>
   <div class="grid g2 f">
    <div class="card"><label>ملاحظات (تظهر في المستند)<textarea id="e-notes">${esc(d.notes||'')}</textarea></label>
    ${isNew&&RET?`<div style="margin-top:12px"><div style="font-size:13px;color:var(--mute);font-weight:500;margin-bottom:6px">${T('التسوية','Settlement')}</div>
@@ -2490,7 +2520,7 @@ function readEditor(){
   const d=E.d;
   d.partyName=$('#e-party').value.trim();d.date=$('#e-date').value||today();d.due=$('#e-due').value;d.ref=$('#e-ref').value.trim();
   d.notes=$('#e-notes').value;d.discType=$('#e-disc-t')&&$('#e-disc-t').dataset.t==='p'?'p':'a';if(d.discType==='p'){d.discPct=num($('#e-discount').value);d.discount=0}else{d.discount=num($('#e-discount').value);d.discPct=0}d.vatOn=$('#e-vat').checked;d.vatRate=num($('#e-vatRate').value);
-  d.lines=readLines();
+  d.lines=readLines();if($('#e-shipby'))d.shipBy=$('#e-shipby').value;
   if(isWO(E.kind)){d.time=$('#e-time').value;d.location=$('#e-loc').value.trim();d.techs=$$('#e-techs input:checked').map(x=>x.value)}
   if($('#e-inv')){d.invoiceId=$('#e-inv').value;const inv=d.invoiceId&&S['_'+KIND[E.kind].ret].get(d.invoiceId);d.invoiceNo=inv?docNo(KIND[E.kind].ret,inv.no):''}
   return d;
@@ -2609,7 +2639,7 @@ async function saveDoc(then){
     const c=calc(d);
     const body={date:d.date,due:d.due||'',partyId:party?party.id:'',partyName:party?party.name:(k.party==='suppliers'?'مورد نقدي':'عميل نقدي'),ref:d.ref,
       lines:d.lines.map(l=>({productId:l.productId||'',name:l.name,nameEn:l.nameEn||'',...(l.desc?{desc:l.desc}:{}),qty:r3(l.qty),price:r3(l.price),disc:r3(l.disc),discType:l.discType==='a'?'a':'p',...(l.noVat?{noVat:true}:{}),...((l.serials||[]).length?{serials:l.serials}:{}),...(num(l.warranty)>0?{warranty:num(l.warranty)}:{}),...(l.noStock&&l.productId?{noStock:true}:{}),...(kind==='sales'&&l.productId?{cost:pfCostAt(l)}:{}),total:r3(l.total)})),
-      discount:c.discount,discType:d.discType==='p'?'p':'a',discPct:d.discType==='p'?Math.round(num(d.discPct)*1e6)/1e6:0,vatOn:!!d.vatOn,vatRate:d.vatRate,sub:c.sub,vatBase:c.vatBase,vat:c.vat,total:c.total,notes:d.notes||'',updatedAt:nowIso(),updatedBy:MYID||''};
+      discount:c.discount,discType:d.discType==='p'?'p':'a',discPct:d.discType==='p'?Math.round(num(d.discPct)*1e6)/1e6:0,vatOn:!!d.vatOn,vatRate:d.vatRate,sub:c.sub,vatBase:c.vatBase,vat:c.vat,total:c.total,notes:d.notes||'',...((kind==='purchases'||kind==='porders')&&d.shipBy==='qty'?{shipBy:'qty'}:{}),updatedAt:nowIso(),updatedBy:MYID||''};
     let id=E.id,no;
     if(isRet(kind)){body.invoiceId=d.invoiceId||'';body.invoiceNo=d.invoiceNo||'';body.due=''}
     if(isWO(kind)){Object.assign(body,{time:d.time||'',location:d.location||'',techs:d.techs||[]})}
@@ -2757,6 +2787,7 @@ function editPay(o){
    <label id="y-catw" style="grid-column:1/-1"><span id="y-catl">بند المصروف</span><input id="y-cat" list="dl-expcats" value="${esc(p.category||'')}" placeholder="إيجار، رواتب…"><datalist id="dl-expcats">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist><datalist id="dl-inccats">${[...new Set(INC_CATS.concat(S.payments.filter(x=>x.partyType==='income').map(x=>x.category).filter(Boolean)))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label>
    <label id="y-partyw" style="grid-column:1/-1"><span id="y-plbl"></span><input id="y-party" value="${esc(p.partyName||'')}" autocomplete="off"></label>
    <label id="y-invw" style="grid-column:1/-1">عن فاتورة (اختياري)<select id="y-inv"></select></label>
+   <label id="y-shipw" style="grid-column:1/-1">🚢 ${T('شحن لفاتورة مشتريات (يتوزع على تكلفة أصنافها — ما ينحسب مصروف)','Shipping for a purchase invoice (spread over its items — not an expense)')}<select id="y-ship"><option value="">${T('— لا —','— no —')}</option>${[...S.purchases].sort((a,b)=>String(b.date).localeCompare(String(a.date))||num(b.no)-num(a.no)).slice(0,200).map(x=>`<option value="${x.id}" ${(p.shipFor||'')===x.id?'selected':''}>${esc(docNo('purchases',x.no))} — ${esc(x.partyName||'')} · ${esc(x.date||'')}</option>`).join('')}</select></label>
    <label id="y-projw" style="grid-column:1/-1">💰 ${T('مرتبط بفاتورة / مشروع (اختياري)','Linked to an invoice / project (optional)')}<select id="y-proj"><option value="">${T('— مصروف عام —','— general expense —')}</option>${[...S.sales].sort((a,b)=>String(b.date).localeCompare(String(a.date))||num(b.no)-num(a.no)).slice(0,300).map(x=>`<option value="${x.id}" ${(p.projId||o.proj||'')===x.id?'selected':''}>${esc(docNo('sales',x.no))} — ${esc(x.partyName||'')}</option>`).join('')}</select></label>
    <label>المبلغ *<input id="y-amount" inputmode="decimal" value="${p.amount?fmt(p.amount).replace(/,/g,''):''}" placeholder="0.000"></label>
    <label>التاريخ<input type="date" id="y-date" value="${esc(p.date)}"></label>
@@ -2769,7 +2800,7 @@ function editPay(o){
   const sync=()=>{
     if(!$('#y-pt'))return;
     const pt0=$('#y-pt').value;const inc=pt0==='income',own=pt0==='owner';const pt=pt0;const exp=pt==='expense'||inc||own;
-    $('#y-catw').classList.toggle('hide',!(pt==='expense'||inc));{const pw=$('#y-projw');if(pw)pw.classList.toggle('hide',pt!=='expense')}
+    $('#y-catw').classList.toggle('hide',!(pt==='expense'||inc));{const sh=$('#y-ship')&&$('#y-ship').value;const pw=$('#y-projw');if(pw)pw.classList.toggle('hide',pt!=='expense'||!!sh);const sw=$('#y-shipw');if(sw)sw.classList.toggle('hide',pt!=='expense')}
     $('#y-catl').textContent=inc?T('نوع الإيراد','Income type'):'بند المصروف';$('#y-cat').setAttribute('list',inc?'dl-inccats':'dl-expcats');$('#y-cat').placeholder=inc?T('عمولة، بيع مستعمل…','commission, used items…'):'إيجار، رواتب…';
     {const mg=$('#y-mig');if(mg){const w=mg.closest('label');if(w)w.classList.toggle('hide',inc||own);if(inc||own)mg.checked=false}}
     $('#y-plbl').textContent=own?T('الاسم (اختياري)','Name (optional)'):inc?T('من (اختياري)','From (optional)'):exp?'المستفيد (اختياري)':pt==='customer'?'العميل *':'المورد *';
@@ -2785,7 +2816,7 @@ function editPay(o){
   let accTouched=!!o.id||!!o.acc;$('#y-acc').onchange=()=>{accTouched=true};
   $('#y-method').onchange=()=>{if(!accTouched)$('#y-acc').value=defAcc($('#y-method').value)};
   if(o.acc){const ac=accById(o.acc);if(ac&&ac.type==='cash')$('#y-method').value='cash';else if(ac)$('#y-method').value='bank'}
-  $('#y-pt').onchange=sync;$('#y-party').onchange=sync;$('#y-party').oninput=()=>{clearTimeout(sync._t);sync._t=setTimeout(sync,300)};
+  $('#y-pt').onchange=sync;if($('#y-ship'))$('#y-ship').onchange=()=>{if($('#y-ship').value&&!$('#y-cat').value.trim())$('#y-cat').value='شحن';sync()};$('#y-party').onchange=sync;$('#y-party').oninput=()=>{clearTimeout(sync._t);sync._t=setTimeout(sync,300)};
   $('#y-inv').onchange=()=>{const id=$('#y-inv').value;if(id&&!$('#y-amount').value){const k=$('#y-inv').dataset.k;const inv=S['_'+k].get(id);$('#y-amount').value=fmt(num(inv.total)-(derive().paid.get(id)||0)).replace(/,/g,'')}};
   sync();
 }
@@ -2803,7 +2834,7 @@ async function savePay(id){
   const ok=await W(async()=>{
     let party=null;if(!exp){party=await ensureParty(pt==='customer'?'customers':'suppliers',pname)}
     const inv=invId?S['_'+ik].get(invId):null;
-    const body={type,date:V.date,partyType:pt,partyId:party?party.id:'',partyName:party?party.name:pname,category:pt==='expense'||pt==='income'?V.cat:'',...(pt==='expense'&&$('#y-proj')&&$('#y-proj').value?{projId:$('#y-proj').value}:{}),invoiceKind:inv?ik:'',invoiceId:inv?invId:'',invoiceNo:inv?docNo(ik,inv.no):'',amount,method:V.method,accountId:V.acc,notes:V.notes,updatedAt:nowIso()};
+    const body={type,date:V.date,partyType:pt,partyId:party?party.id:'',partyName:party?party.name:pname,category:pt==='expense'||pt==='income'?V.cat:'',...(pt==='expense'&&$('#y-ship')&&$('#y-ship').value?{shipFor:$('#y-ship').value}:pt==='expense'&&$('#y-proj')&&$('#y-proj').value?{projId:$('#y-proj').value}:{}),invoiceKind:inv?ik:'',invoiceId:inv?invId:'',invoiceNo:inv?docNo(ik,inv.no):'',amount,method:V.method,accountId:V.acc,notes:V.notes,updatedAt:nowIso()};
     if(id){const old=S._payments.get(id)||{};body.no=old.no;body.createdAt=old.createdAt||nowIso();body.createdBy=old.createdBy||'';if(old.returnId)Object.assign(body,{returnId:old.returnId,returnKind:old.returnKind||'',returnNo:old.returnNo||''});if(old.woId)body.woId=old.woId;if(!(pt==='income'||pt==='owner')&&(V.mig===null?old.noCash:V.mig))Object.assign(body,{noCash:true,migrated:old.migrated||T('النظام السابق','previous system')});
       if(old.type!==type){const r=await nextRef('payments',type==='in'?'RV':'PV',x=>x.type===type);body.no=r.no}
       await db.collection('payments').doc(id).set(body);return id}
@@ -3597,6 +3628,7 @@ const ACT={
   editDoc:o=>{const d=S['_'+o.k].get(o.id);if(d){const c=JSON.parse(JSON.stringify(d));if(!c.lines.length)c.lines.push({productId:'',name:'',qty:1,price:'',disc:0});openEditor(o.k,o.id,c)}},
   dupDoc:o=>{const d=S['_'+o.k].get(o.id);if(!d)return;const n=newDocData(o.k,d.partyId);Object.assign(n,{partyName:d.partyName,lines:JSON.parse(JSON.stringify(d.lines)),discount:d.discount,discType:d.discType,discPct:d.discPct,vatOn:d.vatOn,vatRate:d.vatRate,notes:d.notes});openEditor(o.k,null,n)},
   cancelEdit:async()=>{if(await ask('إلغاء التعديلات غير المحفوظة؟','نعم، إلغاء',true)){back()}},
+  addShip:()=>{E.d.lines=readLines();E.d.lines.push({productId:'',name:'شحن',qty:1,price:'',disc:0,noVat:true});renderLines();updTotals();const n=$$('#e-lines .l-price').pop();if(n)n.focus()},
   addLine:()=>{E.d.lines=readLines();E.d.lines.push({productId:'',name:'',qty:1,price:'',disc:0});renderLines();updTotals();const n=$$('#e-lines .l-name').pop();if(n)n.focus()},
   rmLine:o=>{E.d.lines=readLines();E.d.lines.splice(+o.i,1);if(!E.d.lines.length)E.d.lines.push({productId:'',name:'',qty:1,price:'',disc:0});renderLines();updTotals()},
   payFull:()=>{updTotals();$('#e-paid').value=fmt(E.total||0).replace(/,/g,'')},
